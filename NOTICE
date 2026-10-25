@@ -1,0 +1,32 @@
+GPSx — PS4/PS5 Remote Play client
+Copyright (C) 2026 GPSx contributors
+
+GPSx is licensed under GNU AGPL-3.0-only. GPSx-authored material also carries
+the OpenSSL linking permission stated at the end of LICENSE. There is no
+warranty, to the extent permitted by law. Source: https://github.com/xalacaga/GPSx
+
+Upstream attribution
+====================
+
+chiaki-ng
+Repository: https://github.com/chiaki-ng/chiaki-ng
+Pinned baseline: c8bea2642d0e95402f373af55584a3b98cd89417
+License: LicenseRef-AGPL-3.0-only-OpenSSL
+
+The GPSx SRCH discovery formatter and response parser are behavioral Rust ports
+from `lib/include/chiaki/discovery.h`, `lib/src/discovery.c`,
+`lib/include/chiaki/http.h`, and `lib/src/http.c` at the pinned baseline.
+
+Chiaki
+Repository: https://github.com/thestr4ng3r/chiaki
+License lineage: AGPL-3.0 with an additional OpenSSL permission
+
+Pylux
+Repository: https://github.com/ForWard-Technologies-LLC/Pylux
+License: AGPL-3.0 with an additional OpenSSL permission
+
+As of 2026-10-25, no other Chiaki-family production source is copied or adapted.
+The other listed projects remain behavioral and architectural references. Any
+future derived file must first record its original copyright notice, exact
+source path, immutable revision, modifications and applicable permission here
+and in docs/PROVENANCE.md.

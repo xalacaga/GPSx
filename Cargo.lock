@@ -11,5 +11,9 @@ name = "gpsx-model"
 version = "0.1.0"
 
 [[package]]
+name = "gpsx-protocol"
+version = "0.1.0"
+
+[[package]]
 name = "gpsx-telemetry"
 version = "0.1.0"

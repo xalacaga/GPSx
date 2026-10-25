@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/gpsx-input",
     "crates/gpsx-model",
+    "crates/gpsx-protocol",
     "crates/gpsx-telemetry",
 ]
 

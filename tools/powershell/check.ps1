@@ -46,12 +46,97 @@ if (-not (Get-Command link.exe -ErrorAction SilentlyContinue)) {
 
 Push-Location $repositoryRoot
 try {
+    $workspaceManifest = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Cargo.toml')
+    if ($workspaceManifest -notmatch '(?m)^license\s*=\s*"AGPL-3\.0-only"\s*$') {
+        throw 'Cargo workspace package license must be AGPL-3.0-only.'
+    }
+
+    $noticePath = Join-Path $repositoryRoot 'NOTICE'
+    $provenancePath = Join-Path $repositoryRoot 'docs\PROVENANCE.md'
+    if (-not (Test-Path -LiteralPath $noticePath) -or -not (Test-Path -LiteralPath $provenancePath)) {
+        throw 'NOTICE and docs/PROVENANCE.md are mandatory.'
+    }
+
+    Import-Module (Join-Path $PSScriptRoot 'ProvenanceGuard.psm1') -Force
+    Assert-GpsxProvenance -RepositoryRoot $repositoryRoot
+    Invoke-ExternalChecked -FilePath 'powershell.exe' -Arguments @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', (Join-Path $PSScriptRoot 'test-provenance-guard.ps1')
+    )
+
+    $coreCrates = @('gpsx-model', 'gpsx-input', 'gpsx-protocol', 'gpsx-telemetry')
+
+    # CR3 authorizes gpsx-protocol only while it remains dependency-free and
+    # has no build script. Cargo metadata includes normal, dev, and build deps.
+    $metadataJson = & $cargoPath metadata --format-version 1 --no-deps
+    if ($LASTEXITCODE -ne 0) {
+        throw "cargo metadata failed ($LASTEXITCODE)."
+    }
+    $metadata = $metadataJson | ConvertFrom-Json
+    $protocolPackage = @($metadata.packages | Where-Object { $_.name -eq 'gpsx-protocol' })
+    if ($protocolPackage.Count -ne 1) {
+        throw 'gpsx-protocol must appear exactly once in Cargo metadata.'
+    }
+    if (@($protocolPackage[0].dependencies).Count -ne 0) {
+        throw 'gpsx-protocol must have zero normal, dev, and build dependencies.'
+    }
+    if (@($protocolPackage[0].targets | Where-Object { $_.kind -contains 'custom-build' }).Count -ne 0 -or
+        (Test-Path -LiteralPath (Join-Path $repositoryRoot 'crates\gpsx-protocol\build.rs'))) {
+        throw 'gpsx-protocol must not have a build script.'
+    }
+
+    $wrapperPropertiesPath = Join-Path $repositoryRoot 'apps\android-tv\gradle\wrapper\gradle-wrapper.properties'
+    $wrapperJarPath = Join-Path $repositoryRoot 'apps\android-tv\gradle\wrapper\gradle-wrapper.jar'
+    $wrapperProperties = Get-Content -Raw -LiteralPath $wrapperPropertiesPath
+    $expectedDistributionHash = 'bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01'
+    if ($wrapperProperties -notmatch "(?m)^distributionSha256Sum=$expectedDistributionHash$") {
+        throw 'The Gradle distribution SHA-256 is missing or differs from the reviewed Gradle 9.6.0 checksum.'
+    }
+    $expectedWrapperJarHash = '497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7'
+    $actualWrapperJarHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $wrapperJarPath).Hash.ToLowerInvariant()
+    if ($actualWrapperJarHash -ne $expectedWrapperJarHash) {
+        throw "Gradle wrapper JAR hash mismatch: $actualWrapperJarHash"
+    }
+
+    $workflowPath = Join-Path $repositoryRoot '.github\workflows\ci.yml'
+    foreach ($workflowLine in Get-Content -LiteralPath $workflowPath) {
+        if ($workflowLine -match '^\s*-\s+uses:\s+[^./][^@\s]+@([^\s#]+)') {
+            if ($Matches[1] -notmatch '^[0-9a-f]{40}$') {
+                throw "GitHub Action is not pinned to a full commit SHA: $($workflowLine.Trim())"
+            }
+        }
+    }
+
+    $requiredLegalStrings = @(
+        'about_title',
+        'legal_copyright',
+        'legal_license',
+        'legal_no_warranty',
+        'legal_redistribution',
+        'legal_source',
+        'legal_build'
+    )
+    $stringFiles = @(
+        (Join-Path $repositoryRoot 'apps\android-tv\app\src\main\res\values\strings.xml'),
+        (Join-Path $repositoryRoot 'apps\android-tv\app\src\main\res\values-en\strings.xml')
+    )
+    foreach ($stringFile in $stringFiles) {
+        [xml]$resources = Get-Content -Raw -LiteralPath $stringFile
+        $availableNames = @($resources.resources.string | ForEach-Object { $_.name })
+        foreach ($requiredName in $requiredLegalStrings) {
+            if ($availableNames -notcontains $requiredName) {
+                throw "Required legal string '$requiredName' is absent from $stringFile"
+            }
+        }
+    }
+
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('fmt', '--all', '--check')
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings')
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('test', '--workspace')
 
     # The portable core must never depend on platform crates (AGENTS.md).
-    $corePackages = @('gpsx-model', 'gpsx-input', 'gpsx-telemetry')
+    $corePackages = $coreCrates
     $treeArguments = @('tree', '--edges', 'normal,build', '--prefix', 'none') + ($corePackages | ForEach-Object { '-p', $_ })
     $tree = & $cargoPath @treeArguments
     if ($LASTEXITCODE -ne 0) {
