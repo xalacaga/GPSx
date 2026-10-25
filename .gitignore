@@ -5,6 +5,7 @@
 **/.kotlin/
 **/local.properties
 **/captures/
+**/build/
 /.idea/
 /.venv/
 /.pytest_cache/

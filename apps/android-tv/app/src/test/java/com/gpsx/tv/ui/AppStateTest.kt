@@ -34,6 +34,19 @@ class AppStateTest {
     }
 
     @Test
+    fun `stop cannot move a ready demo to stopped`() {
+        assertEquals(AppUiState(), reduce(AppUiState(), UiAction.StopDemo))
+    }
+
+    @Test
+    fun `about screen is reachable through normal navigation`() {
+        val result = reduce(AppUiState(), UiAction.Navigate(Destination.ABOUT))
+
+        assertEquals(Destination.ABOUT, result.destination)
+        assertEquals(SessionPhase.READY, result.sessionPhase)
+    }
+
+    @Test
     fun `quality cycles deterministically`() {
         var state = AppUiState()
         state = reduce(state, UiAction.CycleQuality)

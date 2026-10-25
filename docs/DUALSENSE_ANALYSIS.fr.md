@@ -52,6 +52,24 @@ passage 0 ↔ non-zéro d’une gâchette est une transition, jamais perdue (ré
 après CR1 : traiter chaque valeur analogique comme une transition saturerait
 toute file bornée). Déconnexion ou sortie envoie un état neutre.
 
+## Deux manettes physiques, un seul joueur Remote Play prouvé
+
+**FACT (revue amont CR1) :** le commit chiaki-ng épinglé stocke un seul état
+manette par session et fusionne toutes les manettes locales avant envoi. Aucune
+preuve actuelle n’établit un second canal joueur Remote Play indépendant. GPSx
+accepte donc au maximum deux manettes physiques mais expose un seul état distant :
+
+- identité, capacités, latence, perte et reconnexion restent isolées par `ControllerId` ;
+- les boutons utilisent un OU logique ;
+- les gâchettes gardent la pression maximale ;
+- chaque axe garde la valeur de plus grande amplitude ; à amplitude égale, le `ControllerId` le plus faible gagne ;
+- les transitions sont calculées après fusion : relâcher Croix sur une manette ne la relâche pas à distance si l’autre la maintient ;
+- une troisième manette est refusée des emplacements actifs et ne peut rester qu’un périphérique UI non affecté.
+
+Plusieurs joueurs distants restent `UNKNOWN` jusqu’à preuve protocolaire. Cette
+fusion est une politique de compatibilité déterministe, pas la preuve d’une bonne
+expérience de jeu en contrôle simultané.
+
 Pendant le stream, tous les boutons manette sont consommés, y compris un éventuel
 fallback BACK. Sortie primaire : Back/Menu de la télécommande. Sortie secondaire
 à valider : maintenir Create+Options deux secondes. L’ouverture de l’overlay

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 
 //! Platform-neutral, multi-controller input model.
@@ -8,6 +9,12 @@
 
 use std::collections::{BTreeMap, VecDeque};
 use std::num::NonZeroUsize;
+
+/// GPSx accepts at most two simultaneously active physical controllers.
+pub const MAX_LOCAL_CONTROLLERS: usize = 2;
+
+/// Controller identifier used for the single merged Remote Play player state.
+pub const REMOTE_PLAYER: ControllerId = ControllerId(0);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ControllerId(pub u64);
@@ -128,6 +135,23 @@ impl ControllerState {
     #[must_use]
     pub const fn is_pressed(&self, button: Button) -> bool {
         self.buttons & button.mask() != 0
+    }
+
+    /// Merges another physical controller into the single Remote Play state.
+    ///
+    /// Buttons use logical OR, triggers keep the greatest pressure, and each stick
+    /// axis keeps the value with the greatest absolute magnitude. Equal-magnitude
+    /// axes keep the existing value, making the lower [`ControllerId`] win because
+    /// [`ControllerSet`] iterates in key order.
+    pub fn merge_from(&mut self, other: &Self) {
+        self.buttons |= other.buttons;
+        self.left_trigger = self.left_trigger.max(other.left_trigger);
+        self.right_trigger = self.right_trigger.max(other.right_trigger);
+        for (current, candidate) in self.sticks.iter_mut().zip(other.sticks) {
+            if candidate.0.unsigned_abs() > current.0.unsigned_abs() {
+                *current = candidate;
+            }
+        }
     }
 }
 
@@ -282,23 +306,94 @@ impl InputTransitionQueue {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ControllerUpdateError {
+    ReservedId(ControllerId),
+    Capacity {
+        capacity: usize,
+        rejected: ControllerId,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MergedControllerUpdate {
+    pub state: ControllerState,
+    pub transitions: TransitionBatch,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ControllerSet {
     controllers: BTreeMap<ControllerId, ControllerState>,
 }
 
 impl ControllerSet {
-    pub fn update(&mut self, id: ControllerId, state: ControllerState) {
+    /// Updates one physical controller and derives edges from the merged state.
+    ///
+    /// Remote Play currently has one proven controller state per session. Physical
+    /// controllers remain isolated in this set for diagnostics and reconnect, but
+    /// callers must send only the returned merged state and transitions.
+    pub fn update_merged(
+        &mut self,
+        id: ControllerId,
+        state: ControllerState,
+        event_time_ns: u64,
+        sequence: u64,
+    ) -> Result<MergedControllerUpdate, ControllerUpdateError> {
+        if id == REMOTE_PLAYER {
+            return Err(ControllerUpdateError::ReservedId(id));
+        }
+        if !self.controllers.contains_key(&id) && self.controllers.len() >= MAX_LOCAL_CONTROLLERS {
+            return Err(ControllerUpdateError::Capacity {
+                capacity: MAX_LOCAL_CONTROLLERS,
+                rejected: id,
+            });
+        }
+        let previous = self.merged_state();
         self.controllers.insert(id, state);
+        let next = self.merged_state();
+        Ok(MergedControllerUpdate {
+            state: next,
+            transitions: diff(REMOTE_PLAYER, &previous, &next, event_time_ns, sequence),
+        })
     }
 
-    pub fn remove(&mut self, id: ControllerId) -> Option<ControllerState> {
-        self.controllers.remove(&id)
+    pub fn remove_merged(
+        &mut self,
+        id: ControllerId,
+        event_time_ns: u64,
+        sequence: u64,
+    ) -> Option<MergedControllerUpdate> {
+        let previous = self.merged_state();
+        self.controllers.remove(&id)?;
+        let next = self.merged_state();
+        Some(MergedControllerUpdate {
+            state: next,
+            transitions: diff(REMOTE_PLAYER, &previous, &next, event_time_ns, sequence),
+        })
     }
 
     #[must_use]
     pub fn get(&self, id: ControllerId) -> Option<&ControllerState> {
         self.controllers.get(&id)
+    }
+
+    #[must_use]
+    pub fn merged_state(&self) -> ControllerState {
+        let mut merged = ControllerState::default();
+        for state in self.controllers.values() {
+            merged.merge_from(state);
+        }
+        merged
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.controllers.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.controllers.is_empty()
     }
 }
 
@@ -307,8 +402,9 @@ mod tests {
     use std::num::NonZeroUsize;
 
     use super::{
-        Axis, Button, ControllerId, ControllerSet, ControllerState, InputTransitionQueue,
-        MAX_TRANSITIONS_PER_CHANGE, QueueOverflow, StickValue, TransitionKind, Trigger, diff,
+        Axis, Button, ControllerId, ControllerSet, ControllerState, ControllerUpdateError,
+        InputTransitionQueue, MAX_TRANSITIONS_PER_CHANGE, QueueOverflow, REMOTE_PLAYER, StickValue,
+        TransitionKind, Trigger, diff,
     };
 
     const PAD: ControllerId = ControllerId(1);
@@ -342,8 +438,10 @@ mod tests {
             left_trigger: 192,
             ..ControllerState::default()
         };
-        set.update(ControllerId(1), first);
-        set.update(ControllerId(2), ControllerState::default());
+        set.update_merged(ControllerId(1), first, 0, 0)
+            .expect("first slot");
+        set.update_merged(ControllerId(2), ControllerState::default(), 0, 1)
+            .expect("second slot");
         assert_eq!(
             set.get(ControllerId(1)).map(|state| state.left_trigger),
             Some(192)
@@ -352,6 +450,146 @@ mod tests {
             set.get(ControllerId(2)).map(|state| state.left_trigger),
             Some(0)
         );
+    }
+
+    #[test]
+    fn merged_buttons_release_only_after_every_controller_releases() {
+        let mut set = ControllerSet::default();
+        let mut pressed = ControllerState::default();
+        pressed.set_button(Button::Cross, true);
+
+        let first = set
+            .update_merged(ControllerId(1), pressed, 10, 1)
+            .expect("first slot");
+        assert_eq!(
+            first
+                .transitions
+                .iter()
+                .map(|item| item.kind)
+                .collect::<Vec<_>>(),
+            [TransitionKind::Button {
+                button: Button::Cross,
+                pressed: true,
+            }]
+        );
+        assert!(
+            set.update_merged(ControllerId(2), pressed, 11, 2)
+                .expect("second slot")
+                .transitions
+                .is_empty()
+        );
+        assert!(
+            set.update_merged(ControllerId(1), ControllerState::default(), 12, 3)
+                .expect("existing slot")
+                .transitions
+                .is_empty()
+        );
+        let last = set
+            .update_merged(ControllerId(2), ControllerState::default(), 13, 4)
+            .expect("existing slot");
+        assert_eq!(
+            last.transitions
+                .iter()
+                .map(|item| item.kind)
+                .collect::<Vec<_>>(),
+            [TransitionKind::Button {
+                button: Button::Cross,
+                pressed: false,
+            }]
+        );
+        assert!(
+            last.transitions
+                .iter()
+                .all(|item| item.controller == REMOTE_PLAYER)
+        );
+    }
+
+    #[test]
+    fn rejects_a_third_simultaneous_controller() {
+        let mut set = ControllerSet::default();
+        set.update_merged(ControllerId(1), ControllerState::default(), 0, 0)
+            .expect("first slot");
+        set.update_merged(ControllerId(2), ControllerState::default(), 0, 1)
+            .expect("second slot");
+        assert_eq!(
+            set.update_merged(ControllerId(3), ControllerState::default(), 0, 2),
+            Err(ControllerUpdateError::Capacity {
+                capacity: 2,
+                rejected: ControllerId(3),
+            })
+        );
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn reserves_remote_player_zero_from_physical_controllers() {
+        let mut set = ControllerSet::default();
+        assert_eq!(
+            set.update_merged(REMOTE_PLAYER, ControllerState::default(), 0, 0),
+            Err(ControllerUpdateError::ReservedId(REMOTE_PLAYER))
+        );
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn removing_controllers_derives_release_from_the_merged_state() {
+        let mut set = ControllerSet::default();
+        let mut pressed = ControllerState::default();
+        pressed.set_button(Button::Cross, true);
+        set.update_merged(ControllerId(1), pressed, 1, 1)
+            .expect("first slot");
+        set.update_merged(ControllerId(2), pressed, 2, 2)
+            .expect("second slot");
+
+        assert!(
+            set.remove_merged(ControllerId(1), 3, 3)
+                .expect("first controller exists")
+                .transitions
+                .is_empty()
+        );
+        let last = set
+            .remove_merged(ControllerId(2), 4, 4)
+            .expect("second controller exists");
+        assert_eq!(
+            last.transitions
+                .iter()
+                .map(|item| item.kind)
+                .collect::<Vec<_>>(),
+            [TransitionKind::Button {
+                button: Button::Cross,
+                pressed: false,
+            }]
+        );
+        assert!(
+            last.transitions
+                .iter()
+                .all(|item| item.controller == REMOTE_PLAYER)
+        );
+        assert!(set.is_empty());
+        assert_eq!(set.remove_merged(ControllerId(2), 5, 5), None);
+    }
+
+    #[test]
+    fn merged_analog_policy_is_max_trigger_and_greatest_axis_magnitude() {
+        let mut set = ControllerSet::default();
+        let mut first = ControllerState {
+            left_trigger: 90,
+            ..ControllerState::default()
+        };
+        first.set_stick(Axis::LeftX, StickValue(-12_000));
+        let mut second = ControllerState {
+            left_trigger: 210,
+            ..ControllerState::default()
+        };
+        second.set_stick(Axis::LeftX, StickValue(20_000));
+        set.update_merged(ControllerId(1), first, 0, 0)
+            .expect("first slot");
+        let merged = set
+            .update_merged(ControllerId(2), second, 0, 1)
+            .expect("second slot")
+            .state;
+        assert_eq!(merged.left_trigger, 210);
+        assert_eq!(merged.stick(Axis::LeftX), StickValue(20_000));
     }
 
     #[test]

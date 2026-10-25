@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 
 //! Portable session state and failure types.

@@ -1,12 +1,16 @@
 package com.gpsx.tv.ui
 
-enum class Destination(val label: String, val glyph: String) {
-    HOME("Accueil", "⌂"),
-    CONSOLES("Consoles", "▣"),
-    SESSION("Lecture", "▶"),
-    CONTROLLERS("Manettes", "✦"),
-    DIAGNOSTICS("Diagnostics", "⌁"),
-    SETTINGS("Réglages", "⚙"),
+import androidx.annotation.StringRes
+import com.gpsx.tv.R
+
+enum class Destination(@StringRes val labelRes: Int, val glyph: String) {
+    HOME(R.string.nav_home, "H"),
+    CONSOLES(R.string.nav_consoles, "C"),
+    SESSION(R.string.nav_session, ">"),
+    CONTROLLERS(R.string.nav_controllers, "2"),
+    DIAGNOSTICS(R.string.nav_diagnostics, "D"),
+    SETTINGS(R.string.nav_settings, "S"),
+    ABOUT(R.string.nav_about, "i"),
 }
 
 enum class SessionPhase {
@@ -46,6 +50,12 @@ sealed interface UiAction {
     data object CycleQuality : UiAction
 }
 
+/**
+ * UI-only reducer for the offline prototype.
+ *
+ * It does not model a Remote Play session. M3 replaces its demo phase with the
+ * portable Rust session state received through the coarse JNI bridge.
+ */
 fun reduce(state: AppUiState, action: UiAction): AppUiState =
     when (action) {
         is UiAction.Navigate -> state.copy(destination = action.destination)
@@ -63,7 +73,17 @@ fun reduce(state: AppUiState, action: UiAction): AppUiState =
                 state
             }
         }
-        UiAction.StopDemo -> state.copy(sessionPhase = SessionPhase.STOPPED)
+        UiAction.StopDemo -> {
+            if (
+                state.sessionPhase == SessionPhase.CONNECTING ||
+                state.sessionPhase == SessionPhase.STREAMING ||
+                state.sessionPhase == SessionPhase.FAILED
+            ) {
+                state.copy(sessionPhase = SessionPhase.STOPPED)
+            } else {
+                state
+            }
+        }
         UiAction.ToggleMetrics -> state.copy(metricsVisible = !state.metricsVisible)
         UiAction.ToggleLowLatency -> state.copy(lowLatency = !state.lowLatency)
         UiAction.ToggleTelemetry -> state.copy(telemetryEnabled = !state.telemetryEnabled)

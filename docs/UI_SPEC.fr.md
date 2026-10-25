@@ -27,6 +27,10 @@ Consoles réserve découverte locale, ajout manuel et connexion distante. Lectur
 exerce la machine d’états et l’overlay. Manettes expose le modèle de capacités.
 Diagnostics sépare les preuves réseau, vidéo, audio et entrée. Réglages propose
 des choix sûrs avant les pages avancées par sous-système.
+Manettes affiche deux emplacements DualSense physiques dont l’identité et l’état
+de reconnexion restent indépendants localement avant fusion en un seul joueur Remote Play.
+Diagnostics réserve une vue de coexistence Bluetooth pour deux manettes, la
+télécommande TV et la route audio, avec corrélation de l’impact sur le stream.
 
 ## Acceptation de cette tranche
 

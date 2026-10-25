@@ -26,7 +26,11 @@ Home provides the primary action, synthetic health summary and shortcuts. Consol
 reserves local discovery, manual registration and remote connection. Play exercises
 the session state machine and performance overlay. Controllers exposes the planned
 capability model. Diagnostics separates network, video, audio and input evidence.
-Settings provides safe presets before advanced subsystem pages.
+Settings provides safe presets before advanced subsystem pages. Controllers shows
+two explicit physical DualSense slots whose local identity and reconnect state
+remain independent before their inputs are merged into one Remote Play player.
+Diagnostics reserves a Bluetooth coexistence view for two controllers, the TV
+remote and an audio route, with correlated stream-impact events.
 
 ## Acceptance for this slice
 

@@ -1,7 +1,37 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val gpsxSourceRevision = providers.gradleProperty("gpsxSourceRevision")
+val sourceRevision = gpsxSourceRevision.orNull ?: "development"
+
+fun gitOutput(vararg arguments: String): String {
+    return providers.exec {
+        commandLine("git", *arguments)
+    }.standardOutput.asText.get().trim()
+}
+
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { task ->
+        task.project == project && task.name.contains("release", ignoreCase = true)
+    }
+    if (buildsRelease && !sourceRevision.matches(Regex("[0-9a-f]{40}"))) {
+        throw GradleException(
+            "Release builds require -PgpsxSourceRevision=<40-character lowercase Git commit SHA>.",
+        )
+    }
+    if (buildsRelease) {
+        val headRevision = gitOutput("rev-parse", "HEAD")
+        if (sourceRevision != headRevision) {
+            throw GradleException(
+                "Release source revision $sourceRevision does not match checked-out HEAD $headRevision.",
+            )
+        }
+        if (gitOutput("status", "--porcelain", "--untracked-files=all").isNotEmpty()) {
+            throw GradleException("Release builds require a clean Git worktree.")
+        }
+    }
 }
 
 android {
@@ -15,12 +45,20 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        buildConfigField("String", "SOURCE_REPOSITORY_URL", "\"https://github.com/xalacaga/GPSx\"")
+        buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            buildConfigField(
+                "String",
+                "SOURCE_REPOSITORY_URL",
+                "\"https://github.com/xalacaga/GPSx/tree/$sourceRevision\"",
+            )
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -30,7 +68,7 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
 
     compileOptions {
@@ -38,13 +76,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    // Pinned below the API 37-only Compose line so the project remains buildable
+    // with the current stable Android 16 SDK while still running on Android 11.
+    val composeBom = platform("androidx.compose:compose-bom:2025.08.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 

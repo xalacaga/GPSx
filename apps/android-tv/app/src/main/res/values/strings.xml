@@ -4,11 +4,13 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_consoles">Consoles</string>
     <string name="nav_session">Session</string>
+    <string name="nav_controllers">Manettes</string>
     <string name="nav_diagnostics">Diagnostics</string>
     <string name="nav_settings">Paramètres</string>
+    <string name="nav_about">À propos</string>
     <string name="offline_badge">MODE SIMULÉ</string>
     <string name="hero_title">Votre PS5, sur le meilleur écran.</string>
-    <string name="hero_subtitle">Interface locale prête pour les tests. Le protocole Remote Play reste verrouillé jusqu’à la décision de licence.</string>
+    <string name="hero_subtitle">Prototype hors ligne. Le protocole Remote Play commencera après validation des gates de provenance et de sécurité.</string>
     <string name="start_demo">Lancer la démo</string>
     <string name="stop_demo">Arrêter</string>
     <string name="console_title">PS5 Salon</string>
@@ -16,8 +18,25 @@
     <string name="ready">Prêt</string>
     <string name="connecting">Connexion simulée…</string>
     <string name="streaming">Session simulée active</string>
+    <string name="stopped">Session arrêtée proprement</string>
+    <string name="failed">Échec simulé</string>
     <string name="no_hardware">Aucun GP520 connecté</string>
     <string name="diagnostic_title">Santé de la session</string>
     <string name="settings_title">Préférences de lecture</string>
+    <string name="controller_screen_title">Deux DualSense physiques</string>
+    <string name="controller_screen_subtitle">Deux entrées locales isolées, fusionnées dans un seul joueur Remote Play.</string>
+    <string name="controller_a">Manette A</string>
+    <string name="controller_b">Manette B</string>
+    <string name="controller_waiting">EN ATTENTE</string>
+    <string name="controller_merge_note">Connexion et diagnostic restent indépendants ; l’état envoyé à la console est fusionné.</string>
+    <string name="about_title">À propos de GPSx</string>
+    <string name="about_eyebrow">Logiciel libre</string>
+    <string name="about_subtitle">Informations légales et source exacte de cette version.</string>
+    <string name="legal_copyright">Copyright © 2026 contributeurs GPSx</string>
+    <string name="legal_license">GPSx est un logiciel libre sous GNU AGPL-3.0-only avec permission additionnelle OpenSSL.</string>
+    <string name="legal_no_warranty">GPSx est fourni sans aucune garantie, dans les limites permises par la loi.</string>
+    <string name="legal_redistribution">Vous pouvez redistribuer et modifier GPSx selon les conditions de sa licence.</string>
+    <string name="legal_source">Code source correspondant</string>
+    <string name="legal_build">Révision installée</string>
 </resources>
 

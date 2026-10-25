@@ -36,12 +36,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.gpsx.tv.BuildConfig
+import com.gpsx.tv.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -86,6 +89,7 @@ fun GpsxApp() {
                     Destination.CONTROLLERS -> ControllersScreen()
                     Destination.DIAGNOSTICS -> DiagnosticsScreen()
                     Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
+                    Destination.ABOUT -> AboutScreen()
                 }
             }
         }
@@ -127,9 +131,9 @@ private fun NavigationRail(selected: Destination, onNavigate: (Destination) -> U
         }
 
         Spacer(Modifier.weight(1f))
-        StatusPill("HORS LIGNE", Mint)
+        StatusPill(stringResource(R.string.offline_badge), Mint)
         Spacer(Modifier.height(10.dp))
-        Text("Aucun appareil connecté", color = Muted, fontSize = 11.sp)
+        Text(stringResource(R.string.no_hardware), color = Muted, fontSize = 11.sp)
         Text("Prototype local · v0.1", color = Muted.copy(alpha = .65f), fontSize = 10.sp)
     }
 }
@@ -158,7 +162,7 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
         Text(destination.glyph, color = if (selected || focused) Mint else Muted, fontSize = 18.sp)
         Spacer(Modifier.width(13.dp))
         Text(
-            destination.label,
+            stringResource(destination.labelRes),
             color = if (selected || focused) SoftWhite else Muted,
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
@@ -234,17 +238,17 @@ private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
                 .padding(28.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            StatusPill("MODE 100 % SIMULÉ", Amber)
+            StatusPill(stringResource(R.string.offline_badge), Amber)
             Spacer(Modifier.height(15.dp))
-            Text("Votre console,\nsans friction.", fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.hero_title), fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(9.dp))
             Text(
-                "Explorez toute l’expérience avant l’ouverture de la connexion matérielle.",
+                stringResource(R.string.hero_subtitle),
                 color = Color(0xFFC7D8E3),
                 fontSize = 13.sp,
             )
             Spacer(Modifier.weight(1f))
-            FocusButton("Lancer la démo", primary = true) { dispatch(UiAction.StartDemo) }
+            FocusButton(stringResource(R.string.start_demo), primary = true) { dispatch(UiAction.StartDemo) }
         }
         Box(Modifier.width(330.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
             Box(
@@ -260,7 +264,11 @@ private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
                 }
             }
             StatusPill(
-                if (state.sessionPhase == SessionPhase.STREAMING) "DÉMO ACTIVE" else "PRÊTE",
+                if (state.sessionPhase == SessionPhase.STREAMING) {
+                    stringResource(R.string.streaming)
+                } else {
+                    stringResource(R.string.ready)
+                },
                 if (state.sessionPhase == SessionPhase.STREAMING) Mint else Sky,
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
@@ -273,7 +281,13 @@ private fun ConsolesScreen(dispatch: (UiAction) -> Unit) {
     ScreenFrame("Bibliothèque", "Vos consoles", "Découverte locale, ajout manuel, réveil et accès distant seront réunis ici.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ConsoleCard("PS5 Salon", "Console de démonstration", "SIMULÉE", Mint, Modifier.weight(1f)) {
+                ConsoleCard(
+                    stringResource(R.string.console_title),
+                    stringResource(R.string.console_subtitle),
+                    stringResource(R.string.offline_badge),
+                    Mint,
+                    Modifier.weight(1f),
+                ) {
                     dispatch(UiAction.StartDemo)
                 }
                 ConsoleCard("Ajouter une console", "Découverte ou adresse manuelle", "PLANIFIÉ", Sky, Modifier.weight(1f)) {}
@@ -318,7 +332,14 @@ private fun SessionScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
                     Modifier.align(Alignment.BottomStart).padding(18.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    FocusButton(if (state.sessionPhase == SessionPhase.STREAMING) "Arrêter" else "Relancer", primary = true) {
+                    FocusButton(
+                        if (state.sessionPhase == SessionPhase.STREAMING) {
+                            stringResource(R.string.stop_demo)
+                        } else {
+                            stringResource(R.string.start_demo)
+                        },
+                        primary = true,
+                    ) {
                         if (state.sessionPhase == SessionPhase.STREAMING || state.sessionPhase == SessionPhase.CONNECTING) {
                             dispatch(UiAction.StopDemo)
                         } else {
@@ -339,15 +360,38 @@ private fun SessionScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
 
 @Composable
 private fun ControllersScreen() {
-    ScreenFrame("Entrées", "Manettes", "Une architecture multi-manette, avec la DualSense comme référence prioritaire.") {
+    ScreenFrame(
+        "Entrées",
+        stringResource(R.string.controller_screen_title),
+        stringResource(R.string.controller_screen_subtitle),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ConsoleCard("DualSense", "Bluetooth · périphérique fictif", "NON CONNECTÉE", Amber, Modifier.weight(1.2f)) {}
-                MiniPanel("Inspecteur en direct", "Touches, axes, HAT, VID/PID et capacités", "DEV", Modifier.weight(1f))
+                ControllerSlot("1", stringResource(R.string.controller_a), Mint, Modifier.weight(1f))
+                ControllerSlot("2", stringResource(R.string.controller_b), Sky, Modifier.weight(1f))
             }
+            MiniPanel("Inspecteur en direct", "Sélection par ControllerId : touches, axes, HAT, VID/PID, batterie et capacités", "DEV", Modifier.fillMaxWidth())
             SectionTitle("Capacités prévues", "Chaque capacité restera NOT_TESTED jusqu’à validation appropriée")
             CapabilityGrid()
         }
+    }
+}
+
+@Composable
+private fun ControllerSlot(number: String, name: String, accent: Color, modifier: Modifier) {
+    Column(modifier.clip(PanelShape).background(Color(0xC0102835)).padding(22.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp).clip(CircleShape).background(accent.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                Text(number, color = accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(15.dp))
+            Column(Modifier.weight(1f)) {
+                Text(name, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            }
+            StatusPill(stringResource(R.string.controller_waiting), accent)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.controller_merge_note), color = Muted, fontSize = 10.sp)
     }
 }
 
@@ -375,7 +419,7 @@ private fun CapabilityGrid() {
 
 @Composable
 private fun DiagnosticsScreen() {
-    ScreenFrame("Observabilité", "Diagnostics", "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
+    ScreenFrame("Observabilité", stringResource(R.string.diagnostic_title), "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HealthCard("Réseau", "Simulation", "RTT · jitter · pertes · débit", Mint, Modifier.weight(1f))
@@ -388,6 +432,18 @@ private fun DiagnosticsScreen() {
                 MiniPanel("Journaux", "Structurés, filtrables et expurgés", "LOG", Modifier.weight(1f))
                 MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.weight(1f))
             }
+            MiniPanel(
+                "Coexistence Bluetooth",
+                "DualSense J1 + DualSense J2 + télécommande TV + route audio, avec événements corrélés",
+                "4 APPAREILS",
+                Modifier.fillMaxWidth(),
+            )
+            MiniPanel(
+                "Laboratoire de mesure",
+                "Tests guidés 2/10/30/60 min · export expurgé · comparaison GitHub privée",
+                "BASELINE → CANDIDATE",
+                Modifier.fillMaxWidth(),
+            )
             EvidenceBanner()
         }
     }
@@ -395,7 +451,7 @@ private fun DiagnosticsScreen() {
 
 @Composable
 private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
-    ScreenFrame("Personnalisation", "Réglages", "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
+    ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
             SettingRow("Mode faible latence", "Demandé au décodeur quand il est réellement supporté", yesNo(state.lowLatency)) { dispatch(UiAction.ToggleLowLatency) }
@@ -408,6 +464,48 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
                 MiniPanel("Profils", "Réglages locaux/distants par console", "USER", Modifier.weight(1f))
                 MiniPanel("Données", "Importer · exporter · réinitialiser", "DATA", Modifier.weight(1f))
             }
+            MiniPanel(
+                "Mettre à jour GPSx",
+                "Releases GitHub vérifiées · confirmation Android requise · Downloader en secours",
+                "PLANIFIÉ",
+                Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AboutScreen() {
+    ScreenFrame(
+        stringResource(R.string.about_eyebrow),
+        stringResource(R.string.about_title),
+        stringResource(R.string.about_subtitle),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            MiniPanel(
+                stringResource(R.string.legal_copyright),
+                stringResource(R.string.legal_license),
+                "AGPL-3.0-only",
+                Modifier.fillMaxWidth(),
+            )
+            MiniPanel(
+                stringResource(R.string.legal_no_warranty),
+                stringResource(R.string.legal_redistribution),
+                "NOTICE",
+                Modifier.fillMaxWidth(),
+            )
+            MiniPanel(
+                stringResource(R.string.legal_source),
+                BuildConfig.SOURCE_REPOSITORY_URL,
+                "SOURCE",
+                Modifier.fillMaxWidth(),
+            )
+            MiniPanel(
+                stringResource(R.string.legal_build),
+                BuildConfig.SOURCE_REVISION,
+                "REVISION",
+                Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -566,13 +664,14 @@ private fun OverlayMetric(label: String, value: String) {
     }
 }
 
+@Composable
 private fun sessionLabel(phase: SessionPhase): String =
     when (phase) {
-        SessionPhase.READY -> "Prête à démarrer"
-        SessionPhase.CONNECTING -> "Connexion simulée…"
-        SessionPhase.STREAMING -> "Session simulée active"
-        SessionPhase.STOPPED -> "Session arrêtée proprement"
-        SessionPhase.FAILED -> "Échec simulé"
+        SessionPhase.READY -> stringResource(R.string.ready)
+        SessionPhase.CONNECTING -> stringResource(R.string.connecting)
+        SessionPhase.STREAMING -> stringResource(R.string.streaming)
+        SessionPhase.STOPPED -> stringResource(R.string.stopped)
+        SessionPhase.FAILED -> stringResource(R.string.failed)
     }
 
 private fun yesNo(value: Boolean): String = if (value) "ACTIVÉ" else "DÉSACTIVÉ"

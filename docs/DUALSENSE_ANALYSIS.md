@@ -82,6 +82,24 @@ ControllerState                        (wire-exact integers)
 - Only continuous state may be coalesced into the latest state packet: sticks, motion, and intermediate trigger values. A trigger's engage/release crossing (0 ↔ non-zero) is a transition and is never dropped. (Revised after CR1: treating every analog trigger value as a transition would overflow any bounded queue during a fast pull.)
 - On disconnect, controller loss, or stream exit, the core sends a neutral state (all buttons released, sticks centered, triggers 0) before stopping the sender.
 
+## Two physical controllers, one proven Remote Play player
+
+**FACT (CR1 upstream review):** pinned chiaki-ng stores one controller state per
+session and merges all local controllers before sending it. No independent second
+Remote Play player channel is established by current evidence. GPSx therefore
+accepts at most two physical controllers but exposes one merged remote state:
+
+- local identity, capabilities, latency, disconnect and reconnect remain isolated by `ControllerId`;
+- buttons use logical OR;
+- triggers use the greatest pressure;
+- each stick axis uses the value with greatest absolute magnitude; an equal magnitude keeps the lower `ControllerId` value;
+- discrete transitions are derived only after merging, so one controller releasing Cross cannot release it remotely while the other still holds it;
+- a third controller is rejected from the active slots and may only remain an unassigned UI device.
+
+Independent remote players remain `UNKNOWN` until protocol evidence demonstrates
+them. The merge policy is a deterministic compatibility policy, not proof that
+simultaneous control is a good game experience.
+
 ## Stream input ownership and exit
 
 - During a stream, the stream handler consumes all gamepad keys, including ones Android would turn into fallback keys. **HYPOTHESIS:** under the Generic.kl fallback, Cross arrives as `BUTTON_B`, which Android turns into `BACK` when unhandled.
