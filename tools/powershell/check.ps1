@@ -117,16 +117,29 @@ try {
         'legal_source',
         'legal_build'
     )
-    $stringFiles = @(
-        (Join-Path $repositoryRoot 'apps\android-tv\app\src\main\res\values\strings.xml'),
-        (Join-Path $repositoryRoot 'apps\android-tv\app\src\main\res\values-en\strings.xml')
+    $androidResources = Join-Path $repositoryRoot 'apps\android-tv\app\src\main\res'
+    $defaultStringFile = Join-Path $androidResources 'values\strings.xml'
+    [xml]$defaultResources = Get-Content -Raw -LiteralPath $defaultStringFile
+    $defaultNames = @($defaultResources.resources.string | ForEach-Object { $_.name })
+    foreach ($requiredName in $requiredLegalStrings) {
+        if ($defaultNames -notcontains $requiredName) {
+            throw "Required legal string '$requiredName' is absent from $defaultStringFile"
+        }
+    }
+
+    $qualifiedValuesDirectories = @(
+        Get-ChildItem -LiteralPath $androidResources -Directory |
+            Where-Object { $_.Name -like 'values-*' }
     )
-    foreach ($stringFile in $stringFiles) {
-        [xml]$resources = Get-Content -Raw -LiteralPath $stringFile
-        $availableNames = @($resources.resources.string | ForEach-Object { $_.name })
-        foreach ($requiredName in $requiredLegalStrings) {
-            if ($availableNames -notcontains $requiredName) {
-                throw "Required legal string '$requiredName' is absent from $stringFile"
+    foreach ($valuesDirectory in $qualifiedValuesDirectories) {
+        $qualifiedResourceFiles = @(Get-ChildItem -LiteralPath $valuesDirectory.FullName -File -Filter '*.xml')
+        foreach ($qualifiedResourceFile in $qualifiedResourceFiles) {
+            [xml]$qualifiedResources = Get-Content -Raw -LiteralPath $qualifiedResourceFile.FullName
+            $qualifiedNames = @($qualifiedResources.resources.string | ForEach-Object { $_.name })
+            foreach ($requiredName in $requiredLegalStrings) {
+                if ($qualifiedNames -contains $requiredName) {
+                    throw "Legal string '$requiredName' must be defined only in $defaultStringFile"
+                }
             }
         }
     }

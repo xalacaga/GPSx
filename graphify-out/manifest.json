@@ -49,9 +49,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
-    "mtime": 1792960033.4249191,
-    "seen": 1792960184.3671386,
-    "ast_hash": "7f9f4d4d0c34cd3570316b4e0f3c9587",
+    "mtime": 1792963266.273866,
+    "seen": 1792963376.1883354,
+    "ast_hash": "ca67934c8bd98ca6d8b3513b281af062",
     "semantic_hash": ""
   },
   "tools/powershell/collect-gp520-baseline.ps1": {
@@ -361,9 +361,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1792961314.9323497,
-    "seen": 1792961373.039238,
-    "ast_hash": "e68d294d0d6420bcc1429e8f5618640f",
+    "mtime": 1792963328.7188125,
+    "seen": 1792963376.1883066,
+    "ast_hash": "65632d789f16128f1f6c70392858b81d",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -562,6 +562,18 @@
     "mtime": 1792960093.059865,
     "seen": 1792960184.367131,
     "ast_hash": "40d93330883fc15907cd478b62dab0a8",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/RemoteNavigationTest.kt": {
+    "mtime": 1792962804.1047175,
+    "seen": 1792962899.9664087,
+    "ast_hash": "b0a86a95abe44ab6b9406626ddcb6447",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/LargeTextLegalTest.kt": {
+    "mtime": 1792963266.273866,
+    "seen": 1792963376.1882987,
+    "ast_hash": "967b7eb6f01ffd1e2d7b65c584a961d3",
     "semantic_hash": ""
   }
 }

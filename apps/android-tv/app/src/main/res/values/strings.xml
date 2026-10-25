@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fr">
     <string name="app_name">GPSx</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_consoles">Consoles</string>
@@ -10,7 +10,7 @@
     <string name="nav_about">À propos</string>
     <string name="offline_badge">MODE SIMULÉ</string>
     <string name="hero_title">Votre PS5, sur le meilleur écran.</string>
-    <string name="hero_subtitle">Prototype hors ligne. Le protocole Remote Play commencera après validation des gates de provenance et de sécurité.</string>
+    <string name="hero_subtitle">Prototype hors ligne. Le protocole Remote Play commencera après validation des contrôles de provenance et de sécurité.</string>
     <string name="start_demo">Lancer la démo</string>
     <string name="stop_demo">Arrêter</string>
     <string name="console_title">PS5 Salon</string>

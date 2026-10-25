@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,10 +35,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +63,7 @@ private val PanelShape = RoundedCornerShape(22.dp)
 fun GpsxApp() {
     var state by remember { mutableStateOf(AppUiState()) }
     val scope = rememberCoroutineScope()
+    val firstLegalFocusRequester = remember { FocusRequester() }
 
     fun dispatch(action: UiAction) {
         state = reduce(state, action)
@@ -83,7 +91,11 @@ fun GpsxApp() {
     ) {
         CompositionLocalProvider(LocalContentColor provides SoftWhite) {
             Row(Modifier.fillMaxSize()) {
-                NavigationRail(state.destination, onNavigate = { dispatch(UiAction.Navigate(it)) })
+                NavigationRail(
+                    state.destination,
+                    firstLegalFocusRequester,
+                    onNavigate = { dispatch(UiAction.Navigate(it)) },
+                )
                 Box(Modifier.fillMaxSize().padding(start = 12.dp)) {
                     when (state.destination) {
                         Destination.HOME -> HomeScreen(state, ::dispatch)
@@ -92,7 +104,7 @@ fun GpsxApp() {
                         Destination.CONTROLLERS -> ControllersScreen()
                         Destination.DIAGNOSTICS -> DiagnosticsScreen()
                         Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
-                        Destination.ABOUT -> AboutScreen()
+                        Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
                     }
                 }
             }
@@ -101,7 +113,16 @@ fun GpsxApp() {
 }
 
 @Composable
-private fun NavigationRail(selected: Destination, onNavigate: (Destination) -> Unit) {
+private fun NavigationRail(
+    selected: Destination,
+    firstLegalFocusRequester: FocusRequester,
+    onNavigate: (Destination) -> Unit,
+) {
+    val homeFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(homeFocusRequester) {
+        homeFocusRequester.requestFocus()
+    }
+
     Column(
         modifier =
             Modifier
@@ -120,7 +141,7 @@ private fun NavigationRail(selected: Destination, onNavigate: (Destination) -> U
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("GPSx", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("REMOTE, REFINED", fontSize = 8.sp, color = Muted, letterSpacing = 1.6.sp)
+                Text("REMOTE PLAY, REPENSÉ", fontSize = 8.sp, color = Muted, letterSpacing = 1.6.sp)
             }
         }
 
@@ -130,6 +151,12 @@ private fun NavigationRail(selected: Destination, onNavigate: (Destination) -> U
                 destination = destination,
                 selected = destination == selected,
                 onClick = { onNavigate(destination) },
+                modifier =
+                    when (destination) {
+                        Destination.HOME -> Modifier.focusRequester(homeFocusRequester)
+                        Destination.ABOUT -> Modifier.focusProperties { right = firstLegalFocusRequester }
+                        else -> Modifier
+                    },
             )
             Spacer(Modifier.height(7.dp))
         }
@@ -143,7 +170,7 @@ private fun NavigationRail(selected: Destination, onNavigate: (Destination) -> U
 }
 
 @Composable
-private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> Unit) {
+private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
     val fill = when {
         focused -> Color(0xFF1D4657)
@@ -152,14 +179,14 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
     }
     Row(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
                 .background(fill)
                 .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(14.dp)) else Modifier)
                 .onFocusChanged { focused = it.isFocused }
-                .focusable()
-                .clickable(onClick = onClick)
+                .semantics { this.selected = selected }
+                .clickable(role = Role.Tab, onClick = onClick)
                 .padding(horizontal = 15.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -374,8 +401,8 @@ private fun ControllersScreen() {
                 ControllerSlot("1", stringResource(R.string.controller_a), Mint, Modifier.weight(1f))
                 ControllerSlot("2", stringResource(R.string.controller_b), Sky, Modifier.weight(1f))
             }
-            MiniPanel("Inspecteur en direct", "Sélection par ControllerId : touches, axes, HAT, VID/PID, batterie et capacités", "DEV", Modifier.fillMaxWidth())
-            SectionTitle("Capacités prévues", "Chaque capacité restera NOT_TESTED jusqu’à validation appropriée")
+            MiniPanel("Inspecteur en direct", "Sélection par ControllerId : touches, axes, HAT, VID/PID, batterie et capacités", "DÉV", Modifier.fillMaxWidth())
+            SectionTitle("Capacités prévues", "Chaque capacité restera NON TESTÉE jusqu’à validation appropriée")
             CapabilityGrid()
         }
     }
@@ -426,14 +453,14 @@ private fun DiagnosticsScreen() {
     ScreenFrame("Observabilité", stringResource(R.string.diagnostic_title), "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HealthCard("Réseau", "Simulation", "RTT · jitter · pertes · débit", Mint, Modifier.weight(1f))
+                HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
                 HealthCard("Vidéo", "Simulation", "FPS · files · rendu · erreurs", Sky, Modifier.weight(1f))
                 HealthCard("Audio", "Simulation", "Route · buffer · underruns", Amber, Modifier.weight(1f))
                 HealthCard("Entrées", "Simulation", "P50 · P95 · P99 · événements", Mint, Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MiniPanel("Performance", "Overlay, percentiles et comparaison baseline", "P95", Modifier.weight(1f))
-                MiniPanel("Journaux", "Structurés, filtrables et expurgés", "LOG", Modifier.weight(1f))
+                MiniPanel("Performance", "Superposition, percentiles et comparaison de référence", "P95", Modifier.weight(1f))
+                MiniPanel("Journaux", "Structurés, filtrables et expurgés", "JOURNAL", Modifier.weight(1f))
                 MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.weight(1f))
             }
             MiniPanel(
@@ -445,7 +472,7 @@ private fun DiagnosticsScreen() {
             MiniPanel(
                 "Laboratoire de mesure",
                 "Tests guidés 2/10/30/60 min · export expurgé · comparaison GitHub privée",
-                "BASELINE → CANDIDATE",
+                "RÉFÉRENCE → CANDIDAT",
                 Modifier.fillMaxWidth(),
             )
             EvidenceBanner()
@@ -464,9 +491,9 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
             SectionTitle("Fonctions avancées", "Prévues pour la parité complète")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniPanel("Image", "HDR · cadrage · zoom · étirement", "HDR", Modifier.weight(1f))
-                MiniPanel("Audio", "Sortie · buffer · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
-                MiniPanel("Profils", "Réglages locaux/distants par console", "USER", Modifier.weight(1f))
-                MiniPanel("Données", "Importer · exporter · réinitialiser", "DATA", Modifier.weight(1f))
+                MiniPanel("Audio", "Sortie · tampon · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
+                MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
+                MiniPanel("Données", "Importer · exporter · réinitialiser", "DONNÉES", Modifier.weight(1f))
             }
             MiniPanel(
                 "Mettre à jour GPSx",
@@ -479,36 +506,33 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
 }
 
 @Composable
-private fun AboutScreen() {
+private fun AboutScreen(firstLegalFocusRequester: FocusRequester) {
     ScreenFrame(
         stringResource(R.string.about_eyebrow),
         stringResource(R.string.about_title),
         stringResource(R.string.about_subtitle),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            MiniPanel(
+            LegalPanel(
                 stringResource(R.string.legal_copyright),
                 stringResource(R.string.legal_license),
                 "AGPL-3.0-only",
-                Modifier.fillMaxWidth(),
+                Modifier.focusRequester(firstLegalFocusRequester),
             )
-            MiniPanel(
+            LegalPanel(
                 stringResource(R.string.legal_no_warranty),
                 stringResource(R.string.legal_redistribution),
                 "NOTICE",
-                Modifier.fillMaxWidth(),
             )
-            MiniPanel(
+            LegalPanel(
                 stringResource(R.string.legal_source),
                 BuildConfig.SOURCE_REPOSITORY_URL,
-                "SOURCE",
-                Modifier.fillMaxWidth(),
+                "CODE SOURCE",
             )
-            MiniPanel(
+            LegalPanel(
                 stringResource(R.string.legal_build),
                 BuildConfig.SOURCE_REVISION,
-                "REVISION",
-                Modifier.fillMaxWidth(),
+                "RÉVISION",
             )
         }
     }
@@ -527,7 +551,7 @@ private fun FocusButton(label: String, primary: Boolean = false, onClick: () -> 
         modifier =
             Modifier.clip(RoundedCornerShape(13.dp)).background(background)
                 .then(if (focused) Modifier.border(BorderStroke(3.dp, Mint), RoundedCornerShape(13.dp)) else Modifier)
-                .onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick)
+                .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -549,12 +573,9 @@ private fun MetricCard(label: String, value: String, detail: String, accent: Col
 
 @Composable
 private fun FeatureCard(glyph: String, title: String, subtitle: String) {
-    var focused by remember { mutableStateOf(false) }
     Row(
         Modifier.width(248.dp).height(86.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (focused) Color(0xFF1C4252) else Color(0xAA102633))
-            .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(18.dp)) else Modifier)
-            .onFocusChanged { focused = it.isFocused }.focusable().clickable { }.padding(15.dp),
+            .background(Color(0xAA102633)).padding(15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Mint.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
@@ -574,7 +595,7 @@ private fun ConsoleCard(title: String, subtitle: String, status: String, accent:
     Row(
         modifier.clip(PanelShape).background(if (focused) Color(0xFF173B4C) else Color(0xC0102835))
             .then(if (focused) Modifier.border(2.dp, accent, PanelShape) else Modifier)
-            .onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick).padding(24.dp),
+            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(78.dp).clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
@@ -592,6 +613,23 @@ private fun ConsoleCard(title: String, subtitle: String, status: String, accent:
 @Composable
 private fun MiniPanel(title: String, subtitle: String, badge: String, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(17.dp)).background(Color(0xAD102835)).padding(17.dp)) {
+        Text(badge, color = Mint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Spacer(Modifier.height(10.dp))
+        Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+    }
+}
+
+@Composable
+private fun LegalPanel(title: String, subtitle: String, badge: String, modifier: Modifier = Modifier) {
+    var focused by remember { mutableStateOf(false) }
+    Column(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
+            .background(if (focused) Color(0xFF193E4F) else Color(0xAD102835))
+            .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(17.dp)) else Modifier)
+            .onFocusChanged { focused = it.isFocused }.semantics(mergeDescendants = true) {}
+            .focusable().padding(17.dp),
+    ) {
         Text(badge, color = Mint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(10.dp))
         Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -618,7 +656,7 @@ private fun SettingRow(title: String, detail: String, value: String, onClick: ()
         Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
             .background(if (focused) Color(0xFF193E4F) else Color(0xA9102835))
             .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(17.dp)) else Modifier)
-            .onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick).padding(18.dp),
+            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

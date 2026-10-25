@@ -1,17 +1,17 @@
 # Graph Report - GPSx  (2026-10-25)
 
 ## Corpus Check
-- 93 files · ~47,881 words
+- 95 files · ~48,460 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 19 file(s) not represented in the graph (top: .xml 8, (none) 4, .properties 2)
+- Unclassified: 18 file(s) not represented in the graph (top: .xml 7, (none) 4, .properties 2)
 
 ## Summary
-- 904 nodes · 1262 edges · 93 communities (62 shown, 31 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 20 edges (avg confidence: 0.85)
+- 942 nodes · 1327 edges · 94 communities (64 shown, 30 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 22 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1060e657`
+- Built from commit: `1c67b5ae`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -69,7 +69,7 @@
 - fixtures/README.fr.md
 - GpsxApp.kt
 - AppUiState
-- MainActivity.kt
+- RemoteNavigationTest.kt
 - Offline-first development before GP520 access
 - Développement offline-first avant accès au GP520
 - Android TV interface specification
@@ -104,6 +104,7 @@
 - DiscoveryState
 - gpsx-protocol
 - BoundedLines<'a>
+- cli.py
 
 ## God Nodes (most connected - your core abstractions)
 1. `Button` - 22 edges
@@ -134,11 +135,11 @@
 - 1-file cycle: `crates/gpsx-model/src/lib.rs -> crates/gpsx-model/src/lib.rs`
 - 1-file cycle: `crates/gpsx-telemetry/src/lib.rs -> crates/gpsx-telemetry/src/lib.rs`
 
-## Communities (93 total, 31 thin omitted)
+## Communities (94 total, 30 thin omitted)
 
 ### Community 0 - "redaction.py"
-Cohesion: 0.06
-Nodes (23): _load_allowed_keys(), main(), _redact_jsonl(), scan_for_secrets(), build_manifest(), fixture_paths(), _is_fixture(), _load_provenance() (+15 more)
+Cohesion: 0.09
+Nodes (11): is_sensitive_key(), key_tokens(), _redact_assignments(), _redact_auth_header(), redact_json_value(), _redact_query(), redact_text(), _redact_url() (+3 more)
 
 ### Community 1 - "SessionState"
 Cohesion: 0.07
@@ -265,12 +266,16 @@ Cohesion: 0.40
 Nodes (4): GPSx, Prérequis, Validation, État actuel
 
 ### Community 52 - "GpsxApp.kt"
-Cohesion: 0.06
-Nodes (27): AboutScreen(), CapabilityGrid(), ConsoleCard(), ConsolesScreen(), ControllerSlot(), ControllersScreen(), DiagnosticsScreen(), EvidenceBanner() (+19 more)
+Cohesion: 0.05
+Nodes (28): AboutScreen(), CapabilityGrid(), ConsoleCard(), ConsolesScreen(), ControllerSlot(), ControllersScreen(), DiagnosticsScreen(), EvidenceBanner() (+20 more)
 
 ### Community 53 - "AppUiState"
-Cohesion: 0.07
+Cohesion: 0.08
 Nodes (31): AppUiState, ConfirmDemoStarted, CycleQuality, Destination, ABOUT, CONSOLES, CONTROLLERS, DIAGNOSTICS (+23 more)
+
+### Community 54 - "RemoteNavigationTest.kt"
+Cohesion: 0.06
+Nodes (4): LargeTextLegalTest, RemoteNavigationTest, MainActivity, GpsxTheme()
 
 ### Community 55 - "Offline-first development before GP520 access"
 Cohesion: 0.33
@@ -384,10 +389,14 @@ Nodes (7): diff(), full_trigger_sweep_never_overflows_and_keeps_both_crossings()
 Cohesion: 0.40
 Nodes (4): DiscoveryState, Ready, Standby, Unknown
 
+### Community 93 - "cli.py"
+Cohesion: 0.14
+Nodes (12): _load_allowed_keys(), main(), _redact_jsonl(), scan_for_secrets(), build_manifest(), fixture_paths(), _is_fixture(), _load_provenance() (+4 more)
+
 ## Knowledge Gaps
 - **83 isolated node(s):** `HOME`, `CONSOLES`, `SESSION`, `CONTROLLERS`, `DIAGNOSTICS` (+78 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 554 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 564 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **30 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -399,10 +408,10 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `HOME`, `CONSOLES`, `SESSION` to the rest of the system?**
   _83 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `redaction.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.05886708626434654 - nodes in this community are weakly interconnected._
-- **Why does `AppUiState` connect `AppUiState` to `GpsxApp.kt`?**
+  _Cohesion score 0.09176788124156546 - nodes in this community are weakly interconnected._
+- **Why does `DiscoveryState` connect `DiscoveryState` to `discovery.rs`, `gpsx-protocol/src/lib.rs`, `DiscoveryParseError`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **Should `SessionState` be split into smaller, more focused modules?**
   _Cohesion score 0.06585365853658537 - nodes in this community are weakly interconnected._
-- **Why does `DiscoveryState` connect `DiscoveryState` to `discovery.rs`, `gpsx-protocol/src/lib.rs`, `DiscoveryParseError`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `AppUiState` connect `AppUiState` to `GpsxApp.kt`?**
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
