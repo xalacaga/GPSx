@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import com.gpsx.tv.BuildConfig
 import com.gpsx.tv.R
@@ -79,17 +81,19 @@ fun GpsxApp() {
                     ),
                 ),
     ) {
-        Row(Modifier.fillMaxSize()) {
-            NavigationRail(state.destination, onNavigate = { dispatch(UiAction.Navigate(it)) })
-            Box(Modifier.fillMaxSize().padding(start = 12.dp)) {
-                when (state.destination) {
-                    Destination.HOME -> HomeScreen(state, ::dispatch)
-                    Destination.CONSOLES -> ConsolesScreen(::dispatch)
-                    Destination.SESSION -> SessionScreen(state, ::dispatch)
-                    Destination.CONTROLLERS -> ControllersScreen()
-                    Destination.DIAGNOSTICS -> DiagnosticsScreen()
-                    Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
-                    Destination.ABOUT -> AboutScreen()
+        CompositionLocalProvider(LocalContentColor provides SoftWhite) {
+            Row(Modifier.fillMaxSize()) {
+                NavigationRail(state.destination, onNavigate = { dispatch(UiAction.Navigate(it)) })
+                Box(Modifier.fillMaxSize().padding(start = 12.dp)) {
+                    when (state.destination) {
+                        Destination.HOME -> HomeScreen(state, ::dispatch)
+                        Destination.CONSOLES -> ConsolesScreen(::dispatch)
+                        Destination.SESSION -> SessionScreen(state, ::dispatch)
+                        Destination.CONTROLLERS -> ControllersScreen()
+                        Destination.DIAGNOSTICS -> DiagnosticsScreen()
+                        Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
+                        Destination.ABOUT -> AboutScreen()
+                    }
                 }
             }
         }
