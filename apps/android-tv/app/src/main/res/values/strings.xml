@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPSx</string>
+    <string name="nav_home">Accueil</string>
+    <string name="nav_consoles">Consoles</string>
+    <string name="nav_session">Session</string>
+    <string name="nav_diagnostics">Diagnostics</string>
+    <string name="nav_settings">Paramètres</string>
+    <string name="offline_badge">MODE SIMULÉ</string>
+    <string name="hero_title">Votre PS5, sur le meilleur écran.</string>
+    <string name="hero_subtitle">Interface locale prête pour les tests. Le protocole Remote Play reste verrouillé jusqu’à la décision de licence.</string>
+    <string name="start_demo">Lancer la démo</string>
+    <string name="stop_demo">Arrêter</string>
+    <string name="console_title">PS5 Salon</string>
+    <string name="console_subtitle">Console fictive · réseau local simulé</string>
+    <string name="ready">Prêt</string>
+    <string name="connecting">Connexion simulée…</string>
+    <string name="streaming">Session simulée active</string>
+    <string name="no_hardware">Aucun GP520 connecté</string>
+    <string name="diagnostic_title">Santé de la session</string>
+    <string name="settings_title">Préférences de lecture</string>
+</resources>
+

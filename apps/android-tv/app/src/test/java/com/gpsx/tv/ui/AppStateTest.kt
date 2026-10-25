@@ -1,0 +1,56 @@
+package com.gpsx.tv.ui
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AppStateTest {
+    @Test
+    fun `navigation changes only destination`() {
+        val initial = AppUiState(metricsVisible = false)
+        val result = reduce(initial, UiAction.Navigate(Destination.DIAGNOSTICS))
+
+        assertEquals(Destination.DIAGNOSTICS, result.destination)
+        assertFalse(result.metricsVisible)
+        assertEquals(SessionPhase.READY, result.sessionPhase)
+    }
+
+    @Test
+    fun `demo follows explicit lifecycle`() {
+        val connecting = reduce(AppUiState(), UiAction.StartDemo)
+        val streaming = reduce(connecting, UiAction.ConfirmDemoStarted)
+        val stopped = reduce(streaming, UiAction.StopDemo)
+
+        assertEquals(SessionPhase.CONNECTING, connecting.sessionPhase)
+        assertEquals(Destination.SESSION, connecting.destination)
+        assertEquals(SessionPhase.STREAMING, streaming.sessionPhase)
+        assertEquals(SessionPhase.STOPPED, stopped.sessionPhase)
+    }
+
+    @Test
+    fun `confirmation cannot start an idle session`() {
+        assertEquals(AppUiState(), reduce(AppUiState(), UiAction.ConfirmDemoStarted))
+    }
+
+    @Test
+    fun `quality cycles deterministically`() {
+        var state = AppUiState()
+        state = reduce(state, UiAction.CycleQuality)
+        assertEquals(StreamQuality.HD_720, state.quality)
+        state = reduce(state, UiAction.CycleQuality)
+        assertEquals(StreamQuality.FULL_HD_1080, state.quality)
+        state = reduce(state, UiAction.CycleQuality)
+        assertEquals(StreamQuality.AUTO, state.quality)
+    }
+
+    @Test
+    fun `settings toggles are independent`() {
+        val initial = AppUiState()
+        val result = reduce(reduce(initial, UiAction.ToggleLowLatency), UiAction.ToggleMicrophone)
+
+        assertFalse(result.lowLatency)
+        assertTrue(result.microphoneEnabled)
+        assertTrue(result.telemetryEnabled)
+    }
+}

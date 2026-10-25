@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GPSx: check all",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/powershell/check.ps1",
+      "problemMatcher": ["$rustc"],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "GPSx: Windows baseline",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/powershell/collect-windows-baseline.ps1",
+      "problemMatcher": []
+    },
+    {
+      "label": "GPSx: GP520 baseline",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/powershell/collect-gp520-baseline.ps1",
+      "problemMatcher": []
+    }
+  ]
+}
+

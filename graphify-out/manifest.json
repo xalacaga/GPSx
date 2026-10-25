@@ -1,0 +1,430 @@
+{
+  ".vscode/tasks.json": {
+    "mtime": 1792952547.4028277,
+    "seen": 1792953009.4926093,
+    "ast_hash": "ef36d2de8155085a027a6b0ce538d8b5",
+    "semantic_hash": "ef36d2de8155085a027a6b0ce538d8b5",
+    "ast_empty": true
+  },
+  "Cargo.toml": {
+    "mtime": 1792952511.5447428,
+    "seen": 1792953009.4926162,
+    "ast_hash": "ca06c85752003280b5fa9e9a4d005684",
+    "semantic_hash": "ca06c85752003280b5fa9e9a4d005684",
+    "ast_empty": true
+  },
+  "crates/gpsx-input/Cargo.toml": {
+    "mtime": 1792952511.5522616,
+    "seen": 1792953009.492619,
+    "ast_hash": "18f508c96dcf413988c69e0c23ac2bda",
+    "semantic_hash": "18f508c96dcf413988c69e0c23ac2bda"
+  },
+  "crates/gpsx-input/src/lib.rs": {
+    "mtime": 1792953998.850336,
+    "seen": 1792954360.2602184,
+    "ast_hash": "2d1c43aa42c70530ca7b10e9d32acdbd",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-model/Cargo.toml": {
+    "mtime": 1792952511.5502534,
+    "seen": 1792953009.4929502,
+    "ast_hash": "9d66064dac524df98e91aa0c35b7bbfe",
+    "semantic_hash": "9d66064dac524df98e91aa0c35b7bbfe"
+  },
+  "crates/gpsx-model/src/lib.rs": {
+    "mtime": 1792953947.9557505,
+    "seen": 1792954360.260222,
+    "ast_hash": "3beaff21f79185c3c59109714bb1f95a",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-telemetry/Cargo.toml": {
+    "mtime": 1792952511.5554125,
+    "seen": 1792953009.4932199,
+    "ast_hash": "de29a309ec5a14964d7c16895ddd3575",
+    "semantic_hash": "de29a309ec5a14964d7c16895ddd3575"
+  },
+  "crates/gpsx-telemetry/src/lib.rs": {
+    "mtime": 1792953998.8601117,
+    "seen": 1792954360.2602258,
+    "ast_hash": "4822eb8966a1bc21b4a6f91990962481",
+    "semantic_hash": ""
+  },
+  "tools/powershell/check.ps1": {
+    "mtime": 1792954221.8348527,
+    "seen": 1792954360.2602274,
+    "ast_hash": "f2b05182fb02d8b33faef7a5182ef47f",
+    "semantic_hash": ""
+  },
+  "tools/powershell/collect-gp520-baseline.ps1": {
+    "mtime": 1792954181.6196997,
+    "seen": 1792954360.260229,
+    "ast_hash": "6e46725ce88286b098658d4f78bdfc9a",
+    "semantic_hash": ""
+  },
+  "tools/powershell/collect-windows-baseline.ps1": {
+    "mtime": 1792954341.5863311,
+    "seen": 1792954360.260231,
+    "ast_hash": "39e5898667a18476e8b9d89f9f554fd9",
+    "semantic_hash": ""
+  },
+  "tools/python/gpsx_evidence/__init__.py": {
+    "mtime": 1792952547.3953087,
+    "seen": 1792953009.493879,
+    "ast_hash": "d9ba76ce96347af8fb8ad6f002db9755",
+    "semantic_hash": "d9ba76ce96347af8fb8ad6f002db9755"
+  },
+  "tools/python/gpsx_evidence/cli.py": {
+    "mtime": 1792954099.1831086,
+    "seen": 1792954360.2602339,
+    "ast_hash": "3d6ef1ab9dc07fa514227fc2022e2779",
+    "semantic_hash": ""
+  },
+  "tools/python/gpsx_evidence/manifest.py": {
+    "mtime": 1792954098.3697789,
+    "seen": 1792954360.2602355,
+    "ast_hash": "0fe1fc7377ba27797f9db9c8e5bfb32d",
+    "semantic_hash": ""
+  },
+  "tools/python/gpsx_evidence/redaction.py": {
+    "mtime": 1792954067.3378892,
+    "seen": 1792954360.260237,
+    "ast_hash": "bc2d9d280e99c96cc013815855d8255e",
+    "semantic_hash": ""
+  },
+  "tools/python/tests/test_manifest.py": {
+    "mtime": 1792954126.78942,
+    "seen": 1792954360.260239,
+    "ast_hash": "9cbc2f41f0481359ab22473819b5dbfc",
+    "semantic_hash": ""
+  },
+  "tools/python/tests/test_redaction.py": {
+    "mtime": 1792954125.98617,
+    "seen": 1792954360.26024,
+    "ast_hash": "f79f75086a82ad8bdcb711503c9c4e53",
+    "semantic_hash": ""
+  },
+  "AGENTS.fr.md": {
+    "mtime": 1792954330.5238087,
+    "seen": 1792954360.2602415,
+    "ast_hash": "0b171064d03c356bff2d351f35a2620f",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1792954329.6722085,
+    "seen": 1792954360.2602427,
+    "ast_hash": "45a16032410019bfa9345587bc00cf03",
+    "semantic_hash": ""
+  },
+  "CLAUDE.fr.md": {
+    "mtime": 1792952941.8982222,
+    "seen": 1792953073.1038313,
+    "ast_hash": "80721835711b65e71bf10a9165e7f89b",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1792951828.804145,
+    "seen": 1792953073.1038327,
+    "ast_hash": "1d3f89b4ecd6d6e13fbead7a8718ca33",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1792952911.603602,
+    "seen": 1792953073.1038342,
+    "ast_hash": "90784cbe7dc931efe19e7e533d30294a",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_TV_ARCHITECTURE.md": {
+    "mtime": 1792953647.991873,
+    "seen": 1792954360.2602525,
+    "ast_hash": "27de84949fd22ac82a0855a75f65d83d",
+    "semantic_hash": ""
+  },
+  "docs/ARCHITECTURE_AUDIT.fr.md": {
+    "mtime": 1792952977.8133006,
+    "seen": 1792953073.103837,
+    "ast_hash": "8cef873476692d2d6bc63a5100c2cb56",
+    "semantic_hash": ""
+  },
+  "docs/ARCHITECTURE_AUDIT.md": {
+    "mtime": 1792952917.7061365,
+    "seen": 1792953073.1038382,
+    "ast_hash": "72dc141089d871a79541c268c70f7c68",
+    "semantic_hash": ""
+  },
+  "docs/BASELINE_RUNBOOK.md": {
+    "mtime": 1792954337.3740392,
+    "seen": 1792954360.260259,
+    "ast_hash": "3ccd2fe03de3f528a1ac0c4318b8d6ad",
+    "semantic_hash": ""
+  },
+  "docs/CONCURRENCY.md": {
+    "mtime": 1792954331.376516,
+    "seen": 1792954360.2602625,
+    "ast_hash": "f8651ca773080f576dbcfb61d3bcec83",
+    "semantic_hash": ""
+  },
+  "docs/DUALSENSE_ANALYSIS.md": {
+    "mtime": 1792954333.0681462,
+    "seen": 1792954360.2602682,
+    "ast_hash": "6181866bf5a5f2519d8ee8f74eb90230",
+    "semantic_hash": ""
+  },
+  "docs/DUALSENSE_MAPPING.md": {
+    "mtime": 1792953422.0835373,
+    "seen": 1792953430.6226652,
+    "ast_hash": "4064fefcab856b9bf7bb9e3de0f464b8",
+    "semantic_hash": ""
+  },
+  "docs/LICENSE_AUDIT.fr.md": {
+    "mtime": 1792954354.1574976,
+    "seen": 1792954360.2602768,
+    "ast_hash": "45e3a539c1d8e2f04f6819aa44f2bd7d",
+    "semantic_hash": ""
+  },
+  "docs/LICENSE_AUDIT.md": {
+    "mtime": 1792954354.1574976,
+    "seen": 1792954360.260278,
+    "ast_hash": "866d7b1e3a74f3d2ca89b8cc344689b3",
+    "semantic_hash": ""
+  },
+  "docs/PERFORMANCE.md": {
+    "mtime": 1792952580.6220658,
+    "seen": 1792953073.1038475,
+    "ast_hash": "c40e5bde809fe50139c7ab73cd3701ff",
+    "semantic_hash": ""
+  },
+  "docs/PHASE0_REVIEW.md": {
+    "mtime": 1792953677.7898557,
+    "seen": 1792954360.2602875,
+    "ast_hash": "61dacfbf232f04dda9d7d58196e854cf",
+    "semantic_hash": ""
+  },
+  "docs/PROTOCOL.md": {
+    "mtime": 1792952580.6205564,
+    "seen": 1792953073.10385,
+    "ast_hash": "2992e38efd1f818622fb503ce720e2b3",
+    "semantic_hash": ""
+  },
+  "docs/ROADMAP.md": {
+    "mtime": 1792953626.9433334,
+    "seen": 1792954360.260294,
+    "ast_hash": "870e6aed6dbe8b7e6bd314b59e3a2ad9",
+    "semantic_hash": ""
+  },
+  "docs/TESTING.md": {
+    "mtime": 1792954334.7940583,
+    "seen": 1792954360.2602968,
+    "ast_hash": "6f8563901205f69276f8652aafd8f671",
+    "semantic_hash": ""
+  },
+  "docs/UPSTREAM_ANALYSIS.fr.md": {
+    "mtime": 1792953034.022743,
+    "seen": 1792953073.103854,
+    "ast_hash": "ea7246a1c821a364756e890f625a16b3",
+    "semantic_hash": ""
+  },
+  "docs/UPSTREAM_ANALYSIS.md": {
+    "mtime": 1792952879.9463668,
+    "seen": 1792953073.1038551,
+    "ast_hash": "39d72de45ac0318d56c64f4a3aac73cf",
+    "semantic_hash": ""
+  },
+  "docs/decisions/0001-protocol-license-strategy.md": {
+    "mtime": 1792954342.6247127,
+    "seen": 1792954360.2603061,
+    "ast_hash": "19e018223e2961a4a655c0d72e5d1b51",
+    "semantic_hash": ""
+  },
+  "docs/evidence/README.md": {
+    "mtime": 1792952547.4078379,
+    "seen": 1792953073.1038575,
+    "ast_hash": "ad783f19106c1fa218ac18e58e8e944a",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/README.md": {
+    "mtime": 1792952547.4048367,
+    "seen": 1792953073.1038585,
+    "ast_hash": "ccfe3e262a02c0548ad0b4a46f176ca9",
+    "semantic_hash": ""
+  },
+  "README.fr.md": {
+    "mtime": 1792953218.0034943,
+    "seen": 1792953430.6226413,
+    "ast_hash": "30cc0edd88a0750624e0aa4296ddaf89",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_TV_ARCHITECTURE.fr.md": {
+    "mtime": 1792953659.2217526,
+    "seen": 1792954360.2602508,
+    "ast_hash": "1b6d5147c22d7c8f48b3ad606b4730e0",
+    "semantic_hash": ""
+  },
+  "docs/BASELINE_RUNBOOK.fr.md": {
+    "mtime": 1792954339.0697675,
+    "seen": 1792954360.2602572,
+    "ast_hash": "c94eb63cae9fd28f0af37f3b8c8c8764",
+    "semantic_hash": ""
+  },
+  "docs/CONCURRENCY.fr.md": {
+    "mtime": 1792954332.2148962,
+    "seen": 1792954360.2602606,
+    "ast_hash": "b3f7a5bd0d83aee4b53acdfd4e46ec7a",
+    "semantic_hash": ""
+  },
+  "docs/CROSS_REVIEW.fr.md": {
+    "mtime": 1792953626.9523318,
+    "seen": 1792954360.260264,
+    "ast_hash": "52e880cbc0d5a9669844645416d1d55c",
+    "semantic_hash": ""
+  },
+  "docs/CROSS_REVIEW.md": {
+    "mtime": 1792953626.950331,
+    "seen": 1792954360.2602656,
+    "ast_hash": "8d0049516c0bbe6c154d5186446fea0b",
+    "semantic_hash": ""
+  },
+  "docs/DUALSENSE_ANALYSIS.fr.md": {
+    "mtime": 1792954333.9491944,
+    "seen": 1792954360.260267,
+    "ast_hash": "34377c195b28eeb4982e1b61d45c599b",
+    "semantic_hash": ""
+  },
+  "docs/DUALSENSE_MAPPING.fr.md": {
+    "mtime": 1792953422.9653177,
+    "seen": 1792953430.6226637,
+    "ast_hash": "8d06352b37460424ca39411379cca5d9",
+    "semantic_hash": ""
+  },
+  "docs/PERFORMANCE.fr.md": {
+    "mtime": 1792953218.0100136,
+    "seen": 1792953430.6226695,
+    "ast_hash": "caabef2071c111b6a128f0401794f0ba",
+    "semantic_hash": ""
+  },
+  "docs/PHASE0_REVIEW.fr.md": {
+    "mtime": 1792953677.790854,
+    "seen": 1792954360.2602859,
+    "ast_hash": "82d575516594c720aa7406f588057aa2",
+    "semantic_hash": ""
+  },
+  "docs/PROTOCOL.fr.md": {
+    "mtime": 1792953218.0090132,
+    "seen": 1792953430.6226757,
+    "ast_hash": "bd567e6aab1b6165580cfe469d41cdb2",
+    "semantic_hash": ""
+  },
+  "docs/ROADMAP.fr.md": {
+    "mtime": 1792953647.989873,
+    "seen": 1792954360.2602923,
+    "ast_hash": "b8923470ef0f928e101ab7d0c0586a05",
+    "semantic_hash": ""
+  },
+  "docs/TESTING.fr.md": {
+    "mtime": 1792954335.6505997,
+    "seen": 1792954360.2602954,
+    "ast_hash": "fb0c482b146e9e1973260840680fc230",
+    "semantic_hash": ""
+  },
+  "docs/decisions/0001-protocol-license-strategy.fr.md": {
+    "mtime": 1792954342.6247127,
+    "seen": 1792954360.2603047,
+    "ast_hash": "41c329130397062775ed35ca3482ae8d",
+    "semantic_hash": ""
+  },
+  "docs/evidence/README.fr.md": {
+    "mtime": 1792953267.474066,
+    "seen": 1792953430.622691,
+    "ast_hash": "a8a242a3f5562665840b0b4fa30affa1",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/README.fr.md": {
+    "mtime": 1792953267.474066,
+    "seen": 1792953430.6226935,
+    "ast_hash": "8fb4a53ebd1773e2493a710dc67ef46f",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/build.gradle.kts": {
+    "mtime": 1792954055.3067303,
+    "seen": 1792954360.2602015,
+    "ast_hash": "852102e7b4cb1cd214f2dde33bf89260",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
+    "mtime": 1792954055.3397257,
+    "seen": 1792954360.2602038,
+    "ast_hash": "03b0eb31c095d3427bb9f94865bfa197",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
+    "mtime": 1792954233.6263905,
+    "seen": 1792954360.2602057,
+    "ast_hash": "a1dbb6afcaef09f67a231eca2a0eba20",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
+    "mtime": 1792954233.627393,
+    "seen": 1792954360.260208,
+    "ast_hash": "46db4fa9925c96a5d662b08cda56505b",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
+    "mtime": 1792954233.6263905,
+    "seen": 1792954360.2602093,
+    "ast_hash": "943d4ea516969d05515f2a1f760499c8",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/test/java/com/gpsx/tv/ui/AppStateTest.kt": {
+    "mtime": 1792954233.629391,
+    "seen": 1792954360.2602108,
+    "ast_hash": "b4e3463a3bffc990dec2430cb37f36a9",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/build.gradle.kts": {
+    "mtime": 1792954055.3047304,
+    "seen": 1792954360.2602122,
+    "ast_hash": "25a3f2d6831e2518e0916591b1b144dd",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/settings.gradle.kts": {
+    "mtime": 1792954055.3047304,
+    "seen": 1792954360.2602136,
+    "ast_hash": "552837c4cc9ad9e33367015b98e7fb0a",
+    "semantic_hash": ""
+  },
+  "docs/FEATURE_PARITY.fr.md": {
+    "mtime": 1792954274.6898212,
+    "seen": 1792954360.2602737,
+    "ast_hash": "aa69d6866ecf6b0f40035d150f9b2eea",
+    "semantic_hash": ""
+  },
+  "docs/FEATURE_PARITY.md": {
+    "mtime": 1792954274.6868224,
+    "seen": 1792954360.2602751,
+    "ast_hash": "caed10f9c075cef3a4e5fc856fc60e9f",
+    "semantic_hash": ""
+  },
+  "docs/OFFLINE_FIRST.fr.md": {
+    "mtime": 1792953626.9583423,
+    "seen": 1792954360.2602792,
+    "ast_hash": "f7e41838118058f3679f057b17708115",
+    "semantic_hash": ""
+  },
+  "docs/OFFLINE_FIRST.md": {
+    "mtime": 1792953626.954343,
+    "seen": 1792954360.2602806,
+    "ast_hash": "92a1ddbda4fd2cb39d17bec691012ed0",
+    "semantic_hash": ""
+  },
+  "docs/UI_SPEC.fr.md": {
+    "mtime": 1792954274.690823,
+    "seen": 1792954360.260298,
+    "ast_hash": "9cdae32049f78ee8f8e93c0f3b1307be",
+    "semantic_hash": ""
+  },
+  "docs/UI_SPEC.md": {
+    "mtime": 1792954274.690823,
+    "seen": 1792954360.2602994,
+    "ast_hash": "ca747fa3f44e6964186bc04ada85fc28",
+    "semantic_hash": ""
+  }
+}
