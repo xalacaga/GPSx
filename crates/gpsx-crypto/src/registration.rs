@@ -471,6 +471,23 @@ mod tests {
         fixture.lines().any(|line| line == expected)
     }
 
+    fn fixture_has_expected_inputs_and_case_count(fixture: &str) -> bool {
+        let expected_inputs = [
+            "    \"synthetic_number\": 13374201,",
+            "    \"seed_16\": \"1337deadbeefc0ffee42636869616b69\",",
+            "    \"message\": \"475053782d726567697374726174696f6e2d6f7261636c652d73796e7468657469632d7631\",",
+            "    \"counter\": 0",
+        ];
+        expected_inputs
+            .iter()
+            .all(|expected| fixture.lines().any(|line| line == *expected))
+            && fixture
+                .lines()
+                .filter(|line| line.contains("\"profile\":"))
+                .count()
+                == 7
+    }
+
     fn assert_oracle(case: &OracleCase<'_>) {
         assert!(fixture_has_case(ORACLE_V2, case));
         let context = match case.cipher_offset {
@@ -500,6 +517,7 @@ mod tests {
 
     #[test]
     fn oracle_v2_has_independent_offsets_for_every_modern_target() {
+        assert!(fixture_has_expected_inputs_and_case_count(ORACLE_V2));
         let pre10 = OracleCase {
             target: RegistrationTarget::Ps4Pre10,
             profile: "ps4_pre10",
@@ -625,6 +643,23 @@ mod tests {
         };
         assert!(fixture_has_case(ORACLE_V2, &expected));
         assert!(!fixture_has_case(&mutated, &expected));
+    }
+
+    #[test]
+    fn oracle_v2_input_and_case_count_mutations_are_detected() {
+        let mutated_input = ORACLE_V2.replacen(
+            "\"synthetic_number\": 13374201",
+            "\"synthetic_number\": 13374202",
+            1,
+        );
+        assert!(!fixture_has_expected_inputs_and_case_count(&mutated_input));
+
+        let extra_case = ORACLE_V2.replacen(
+            "\"cases\": [",
+            "\"cases\": [\n    {\"profile\": \"extra\"},",
+            1,
+        );
+        assert!(!fixture_has_expected_inputs_and_case_count(&extra_case));
     }
 
     #[test]

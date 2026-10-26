@@ -103,6 +103,12 @@ fonctionnalités dans le lockfile du dépôt ; tout écart rouvrira la porte d�
   aucun offset.
 - Les propriétaires de secrets ne sont pas `Clone`, expurgent `Debug` et
   `Display`, et effacent leurs buffers possédés à la destruction.
+- **HYPOTHESIS / risque résiduel :** déplacer une valeur Rust possédée peut
+  laisser des copies dépendantes du compilateur de la clé ou d’octets dérivés
+  du PIN dans des emplacements de pile libérés ou des registres, car `Drop` ne
+  s’exécute que pour le propriétaire final. L’API réduit les copies explicites
+  et efface chaque propriétaire vivant, sans prétendre effacer les copies non
+  observables introduites par les déplacements ou l’optimisation.
 - Les erreurs sont des énumérations fermées à messages statiques ; elles ne
   contiennent jamais les entrées, clés dérivées, offsets, compteurs ou textes
   chiffrés.

@@ -1,17 +1,17 @@
 # Graph Report - GPSx  (2026-10-26)
 
 ## Corpus Check
-- 111 files · ~63,518 words
+- 111 files · ~63,710 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 19 file(s) not represented in the graph (top: .xml 7, (none) 5, .properties 2)
 
 ## Summary
-- 1241 nodes · 1823 edges · 121 communities (89 shown, 32 thin omitted)
+- 1243 nodes · 1825 edges · 120 communities (88 shown, 32 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 25 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `49e2569f`
+- Built from commit: `ca96dc75`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -96,7 +96,7 @@
 - HttpParseError
 - ControllerState
 - discovery.rs
-- gpsx-protocol/src/lib.rs
+- DiscoveryState
 - DiscoveryParseError
 - DiscoveryHost<'a>
 - diff
@@ -114,7 +114,7 @@
 - Plan cryptographique de l’enregistrement
 - gpsx-transport/src/lib.rs
 - gpsx-discover.rs
-- DiscoveryReport
+- .record
 - DiscoveryError
 - ConsoleGeneration
 - Windows UDP discovery transport
@@ -130,7 +130,6 @@
 - RegistrationCryptoError
 - assert_oracle
 - RegistrationTarget
-- .record
 
 ## God Nodes (most connected - your core abstractions)
 1. `MetricName` - 24 edges
@@ -163,7 +162,7 @@
 - 1-file cycle: `crates/gpsx-transport/src/bin/gpsx-discover.rs -> crates/gpsx-transport/src/bin/gpsx-discover.rs`
 - 1-file cycle: `crates/gpsx-telemetry/src/lib.rs -> crates/gpsx-telemetry/src/lib.rs`
 
-## Communities (121 total, 32 thin omitted)
+## Communities (120 total, 32 thin omitted)
 
 ### Community 0 - "redaction.py"
 Cohesion: 0.06
@@ -186,7 +185,7 @@ Cohesion: 0.11
 Nodes (18): Button, .ALL, Circle, Create, Cross, DpadDown, DpadLeft, DpadRight (+10 more)
 
 ### Community 5 - "gpsx-telemetry/src/lib.rs"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (18): EXACT_TOKENS, LatencySummary, MAX_DIAGNOSTIC_JSONL_BYTES, MAX_DIAGNOSTIC_SAMPLES, MAX_METRIC_LINE_BYTES, MAX_RUN_LINE_BYTES, MAX_SCIENTIFIC_F64_BYTES, MAX_U64_BYTES (+10 more)
 
 ### Community 10 - "Assert-GpsxProvenance"
@@ -350,7 +349,7 @@ Cohesion: 0.40
 Nodes (4): Canal de mise à jour GPSx, Mise à jour dans l’application, Première installation, Règles de sécurité
 
 ### Community 70 - "extract_diagnostic_zip"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (6): extract_diagnostic_zip(), _extract_to_staging(), _safe_relative_path(), UnsafeArchiveError, _validate_type(), SafeArchiveTests
 
 ### Community 71 - "steps"
@@ -406,12 +405,12 @@ Cohesion: 0.21
 Nodes (10): Axis, LeftX, LeftY, RightX, RightY, ControllerState, merged_analog_policy_is_max_trigger_and_greatest_axis_magnitude(), preserves_wire_exact_stick_extremes() (+2 more)
 
 ### Community 85 - "discovery.rs"
-Cohesion: 0.24
-Nodes (8): debug_and_display_redact_host_identity(), first_non_sensitive_duplicate_wins(), maps_status_codes(), parse_errors_do_not_echo_identifiers(), parse_search_response(), parses_known_headers_and_ignores_unknown_ones(), PS4_SEARCH, PS5_SEARCH
+Cohesion: 0.15
+Nodes (15): debug_and_display_redact_host_identity(), first_non_sensitive_duplicate_wins(), maps_status_codes(), parse_errors_do_not_echo_identifiers(), parse_search_response(), parses_known_headers_and_ignores_unknown_ones(), PS4_DISCOVERY_PORT, PS4_PROTOCOL_VERSION (+7 more)
 
-### Community 86 - "gpsx-protocol/src/lib.rs"
-Cohesion: 0.25
-Nodes (7): PS4_DISCOVERY_PORT, PS4_PROTOCOL_VERSION, PS5_DISCOVERY_PORT, PS5_PROTOCOL_VERSION, MAX_DATAGRAM_SIZE, MAX_HEADER_COUNT, MAX_LINE_SIZE
+### Community 86 - "DiscoveryState"
+Cohesion: 0.29
+Nodes (5): DiscoveryState, Ready, Standby, Unknown, state_label()
 
 ### Community 87 - "DiscoveryParseError"
 Cohesion: 0.27
@@ -469,12 +468,12 @@ Nodes (14): closed_loopback_port_returns_report_and_counts_windows_icmp_reset(),
 Cohesion: 0.16
 Nodes (10): arguments(), live_network_mode_requires_one_exact_argument(), main(), Mode, Help, Live, parse_mode(), print_help() (+2 more)
 
-### Community 104 - "DiscoveryReport"
-Cohesion: 0.14
-Nodes (6): DiscoveryState, Ready, Standby, Unknown, state_label(), DiscoveredConsole
+### Community 104 - ".record"
+Cohesion: 0.21
+Nodes (6): capacity_keeps_first_sixteen_unique_addresses_and_counts_drops(), connection_refused_is_non_fatal_for_portability(), debug_output_redacts_peer_address(), DiscoveredConsole, injected_icmp_error_preserves_results_and_collection_continues(), unexpected_source_ports_are_counted_without_rejecting_hints()
 
 ### Community 105 - "DiscoveryError"
-Cohesion: 0.13
+Cohesion: 0.11
 Nodes (16): error_label(), DiscoveryError, InvalidResponseWindow, Io, DiscoveryOperation, Bind, ConfigureBroadcast, ConfigureTimeout (+8 more)
 
 ### Community 106 - "ConsoleGeneration"
@@ -502,44 +501,40 @@ Cohesion: 0.67
 Nodes (4): ConsoleCard(), ControllerSlot(), HealthCard(), StatusPill()
 
 ### Community 116 - "invalid_inputs_fail_with_static_redacted_errors"
-Cohesion: 0.27
-Nodes (7): CipherTableOffset, invalid_inputs_fail_with_static_redacted_errors(), modern(), pin(), RegistrationAmbassador, RegistrationPin, upstream_registration_vectors_are_reproduced()
+Cohesion: 0.36
+Nodes (3): CipherTableOffset, RegistrationAmbassador, RegistrationPin
 
 ### Community 117 - "RegistrationCryptoError"
-Cohesion: 0.19
-Nodes (8): payload_lengths_round_trip_with_one_shot_states(), RegistrationContext, RegistrationCryptoError, CryptoInitialization, InvalidPin, InvalidTableOffset, InvalidTarget, RegistrationResponseDecryptor
+Cohesion: 0.15
+Nodes (9): payload_lengths_round_trip_with_one_shot_states(), RegistrationContext, RegistrationCryptoError, CryptoInitialization, InvalidPin, InvalidTableOffset, InvalidTarget, RegistrationMaterial (+1 more)
 
 ### Community 118 - "assert_oracle"
-Cohesion: 0.28
-Nodes (4): AeropauseTableOffset, assert_oracle(), oracle_v2_has_independent_offsets_for_every_modern_target(), RegistrationMaterial
+Cohesion: 0.33
+Nodes (7): AeropauseTableOffset, assert_oracle(), invalid_inputs_fail_with_static_redacted_errors(), modern(), oracle_v2_has_independent_offsets_for_every_modern_target(), pin(), upstream_registration_vectors_are_reproduced()
 
 ### Community 119 - "RegistrationTarget"
 Cohesion: 0.33
 Nodes (7): fixture_case_line(), fixture_has_case(), OracleCase, RegistrationTarget, Ps4Modern, Ps4Pre10, Ps5
 
-### Community 120 - ".record"
-Cohesion: 0.43
-Nodes (5): capacity_keeps_first_sixteen_unique_addresses_and_counts_drops(), connection_refused_is_non_fatal_for_portability(), debug_output_redacts_peer_address(), injected_icmp_error_preserves_results_and_collection_continues(), unexpected_source_ports_are_counted_without_rejecting_hints()
-
 ## Knowledge Gaps
 - **147 isolated node(s):** `HOME`, `CONSOLES`, `SESSION`, `CONTROLLERS`, `DIAGNOSTICS` (+142 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 739 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 741 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `MetricName` connect `MetricName` to `encode_diagnostic_jsonl`, `gpsx-telemetry/src/lib.rs`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **What connects `HOME`, `CONSOLES`, `SESSION` to the rest of the system?**
   _147 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `redaction.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.05886708626434654 - nodes in this community are weakly interconnected._
-- **Why does `DiagnosticExportError` connect `DiagnosticExportError` to `encode_diagnostic_jsonl`, `gpsx-telemetry/src/lib.rs`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
+  _Cohesion score 0.058018018018018015 - nodes in this community are weakly interconnected._
+- **Why does `DiscoveryState` connect `DiscoveryState` to `gpsx-transport/src/lib.rs`, `gpsx-discover.rs`, `.record`, `discovery.rs`, `DiscoveryParseError`?**
+  _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Should `SessionState` be split into smaller, more focused modules?**
   _Cohesion score 0.06585365853658537 - nodes in this community are weakly interconnected._
-- **Why does `DiscoveryState` connect `DiscoveryReport` to `gpsx-transport/src/lib.rs`, `gpsx-discover.rs`, `discovery.rs`, `gpsx-protocol/src/lib.rs`, `DiscoveryParseError`, `DiscoveryHost<'a>`?**
-  _High betweenness centrality (0.010) - this node is a cross-community bridge._
+- **Why does `DiagnosticExportError` connect `DiagnosticExportError` to `encode_diagnostic_jsonl`, `gpsx-telemetry/src/lib.rs`?**
+  _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **Should `Button` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._

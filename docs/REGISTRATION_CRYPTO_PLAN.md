@@ -96,6 +96,11 @@ features in the repository lockfile; any difference reopens the audit gate.
   exposes no offset.
 - Secret-bearing owners are non-`Clone`, redact `Debug` and `Display`, and
   zeroize owned buffers on drop.
+- **HYPOTHESIS / residual risk:** moving an owned Rust value may leave
+  compiler-dependent copies of key or PIN-derived bytes in vacated stack slots
+  or registers, because `Drop` runs only for the final owner. The API minimizes
+  explicit copies and zeroizes every live owner, but does not claim to erase
+  unobservable copies introduced by moves or optimization.
 - Errors are closed enums with static messages and never contain inputs,
   derived keys, offsets, counters or ciphertext.
 - The API never logs and exposes no serialization for secret-bearing types.

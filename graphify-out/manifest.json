@@ -619,21 +619,21 @@
     "semantic_hash": ""
   },
   "docs/REGISTRATION_CRYPTO_PLAN.fr.md": {
-    "mtime": 1793042293.5969775,
-    "seen": 1793042305.866753,
-    "ast_hash": "f5949942e87368aa4f3e9e5b61a7b26e",
+    "mtime": 1793043145.4940634,
+    "seen": 1793043167.480375,
+    "ast_hash": "fd20dd64099f722a9401d15894b1511a",
     "semantic_hash": ""
   },
   "docs/REGISTRATION_CRYPTO_PLAN.md": {
-    "mtime": 1793042293.5969775,
-    "seen": 1793042305.866755,
-    "ast_hash": "93da992be252f59c1e489188cb3e4b48",
+    "mtime": 1793043145.4940634,
+    "seen": 1793043167.4803765,
+    "ast_hash": "86a74751ec8aa16b1533811e66c66a57",
     "semantic_hash": ""
   },
   "tests/fixtures/manifest.json": {
-    "mtime": 1793040690.4959478,
-    "seen": 1793040855.5910668,
-    "ast_hash": "0fbfb37e9236837cc3f62d51cbaf4645",
+    "mtime": 1793043095.2373543,
+    "seen": 1793043167.4802778,
+    "ast_hash": "660c8df53e998dd70c6bbfd8e49d1746",
     "semantic_hash": ""
   },
   "tests/fixtures/provenance.json": {
@@ -661,9 +661,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/registration.rs": {
-    "mtime": 1793040788.460146,
-    "seen": 1793040855.5910428,
-    "ast_hash": "9fd4d79e9891dc397d0b0139d633b62d",
+    "mtime": 1793043145.4930642,
+    "seen": 1793043167.4802542,
+    "ast_hash": "5311303dda4a0c585af09e682c903767",
     "semantic_hash": ""
   },
   "tests/fixtures/registration_crypto_oracle_v2.json": {
