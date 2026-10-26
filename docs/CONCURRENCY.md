@@ -24,6 +24,16 @@ Status: proposed 2026-10-25 after independent review; human approval required be
 
 Windows uses the same core threads. Its adapter supplies its own decoder and audio threads; Windows thread behavior is not evidence for Android.
 
+The current `gpsx-transport` discovery call is a synchronous control-path
+operation, not a hot network thread. The caller owns the socket, the single
+65,535-byte receive allocation and the returned report. It sends one datagram,
+blocks for at most five seconds, creates no background thread and has no queue.
+The Windows probe invokes it serially for PS5 and PS4, for at most 1.5 seconds
+with default settings. A future GUI must call it from its control worker, never
+from the UI thread. ICMP connection resets/refusals are counted and do not end
+the collection; the deadline is checked before every receive, including under a
+continuous packet flood.
+
 Thread priorities: AAudio sets the callback priority. Raising the net receive and video threads' priority is a HYPOTHESIS to evaluate with measurements; never assume it.
 
 ## Queues

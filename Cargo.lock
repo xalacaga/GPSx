@@ -17,3 +17,10 @@ version = "0.1.0"
 [[package]]
 name = "gpsx-telemetry"
 version = "0.1.0"
+
+[[package]]
+name = "gpsx-transport"
+version = "0.1.0"
+dependencies = [
+ "gpsx-protocol",
+]

@@ -7,9 +7,9 @@
     "ast_empty": true
   },
   "Cargo.toml": {
-    "mtime": 1792959945.1883848,
-    "seen": 1792960184.3670986,
-    "ast_hash": "861217961635d4d71a89d7a43c2e2499",
+    "mtime": 1793035348.430853,
+    "seen": 1793035566.4919326,
+    "ast_hash": "6ef6d9e82f51c8acadfb6cd2014f2e0c",
     "semantic_hash": ""
   },
   "crates/gpsx-input/Cargo.toml": {
@@ -157,9 +157,9 @@
     "semantic_hash": ""
   },
   "docs/CONCURRENCY.md": {
-    "mtime": 1792954331.376516,
-    "seen": 1792954360.2602625,
-    "ast_hash": "f8651ca773080f576dbcfb61d3bcec83",
+    "mtime": 1793036117.7980318,
+    "seen": 1793036275.3872046,
+    "ast_hash": "9523ed42aea3cbbf4bffdd901927d93c",
     "semantic_hash": ""
   },
   "docs/DUALSENSE_ANALYSIS.md": {
@@ -199,9 +199,9 @@
     "semantic_hash": ""
   },
   "docs/PROTOCOL.md": {
-    "mtime": 1792952580.6205564,
-    "seen": 1792953073.10385,
-    "ast_hash": "2992e38efd1f818622fb503ce720e2b3",
+    "mtime": 1793036117.7869718,
+    "seen": 1793036275.3872547,
+    "ast_hash": "4c38fc30aa102e2376816424678df453",
     "semantic_hash": ""
   },
   "docs/ROADMAP.md": {
@@ -265,9 +265,9 @@
     "semantic_hash": ""
   },
   "docs/CONCURRENCY.fr.md": {
-    "mtime": 1792954332.2148962,
-    "seen": 1792954360.2602606,
-    "ast_hash": "b3f7a5bd0d83aee4b53acdfd4e46ec7a",
+    "mtime": 1793036117.8000424,
+    "seen": 1793036275.3872032,
+    "ast_hash": "e06509be9138b63b011bc06059a7285d",
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.fr.md": {
@@ -307,9 +307,9 @@
     "semantic_hash": ""
   },
   "docs/PROTOCOL.fr.md": {
-    "mtime": 1792953218.0090132,
-    "seen": 1792953430.6226757,
-    "ast_hash": "bd567e6aab1b6165580cfe469d41cdb2",
+    "mtime": 1793036117.791002,
+    "seen": 1793036275.3872535,
+    "ast_hash": "c5da627ea8fcdfeb27d1e04fbb57efcb",
     "semantic_hash": ""
   },
   "docs/ROADMAP.fr.md": {
@@ -493,9 +493,9 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1792960807.3811412,
-    "seen": 1792960832.6815143,
-    "ast_hash": "56c1275de81ce6f13ed8b910d3c1c2de",
+    "mtime": 1793035394.2418635,
+    "seen": 1793035566.4920735,
+    "ast_hash": "76c04f38fff3a7489d3842cc338cf14f",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
@@ -586,6 +586,36 @@
     "mtime": 1793034906.416803,
     "seen": 1793034927.6771338,
     "ast_hash": "d2dd7071aae9de32c127b823676d7b68",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/Cargo.toml": {
+    "mtime": 1793035348.4318638,
+    "seen": 1793035566.4919753,
+    "ast_hash": "d3a34da435b3fa7a52277c444a3fb874",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/src/bin/gpsx-discover.rs": {
+    "mtime": 1793036080.940288,
+    "seen": 1793036275.387158,
+    "ast_hash": "61725da24f46fa57ddb04118d04436ed",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/src/lib.rs": {
+    "mtime": 1793036193.4421432,
+    "seen": 1793036275.3871605,
+    "ast_hash": "ee91a77fc01abb453bb6346623cdc027",
+    "semantic_hash": ""
+  },
+  "docs/DISCOVERY_TRANSPORT.fr.md": {
+    "mtime": 1793036256.59243,
+    "seen": 1793036275.3872275,
+    "ast_hash": "0cc62740a6bf80d8ad5ef423a4fb5ef9",
+    "semantic_hash": ""
+  },
+  "docs/DISCOVERY_TRANSPORT.md": {
+    "mtime": 1793036256.5914292,
+    "seen": 1793036275.3872297,
+    "ast_hash": "ccdd34362c17f1df2ae5cd91176ac463",
     "semantic_hash": ""
   }
 }

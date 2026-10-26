@@ -28,6 +28,16 @@ remplacer par les mesures GP520.
 Windows réutilise les threads du cœur avec ses propres threads média. Ses
 résultats ne prouvent rien pour Android.
 
+L’appel de découverte actuel de `gpsx-transport` est une opération synchrone du
+chemin de contrôle, pas un thread réseau chaud. L’appelant possède la socket,
+l’unique allocation de réception de 65 535 octets et le rapport renvoyé. L’appel
+envoie un datagramme, bloque au plus cinq secondes, ne crée aucun thread de fond
+et n’utilise aucune file. La sonde Windows l’exécute en série pour PS5 puis PS4,
+soit au plus 1,5 seconde avec les réglages par défaut. Une future interface devra
+l’appeler depuis son worker de contrôle, jamais depuis le thread d’interface.
+Les resets/refus de connexion ICMP sont comptés sans terminer la collecte ;
+l’échéance est vérifiée avant chaque réception, même sous un flot continu.
+
 ## Files
 
 | File | Capacité initiale | Débordement |

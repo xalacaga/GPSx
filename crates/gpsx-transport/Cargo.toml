@@ -1,0 +1,13 @@
+[package]
+name = "gpsx-transport"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+gpsx-protocol = { path = "../gpsx-protocol" }
+
+[lints]
+workspace = true

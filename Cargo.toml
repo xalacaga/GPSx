@@ -5,6 +5,7 @@ members = [
     "crates/gpsx-model",
     "crates/gpsx-protocol",
     "crates/gpsx-telemetry",
+    "crates/gpsx-transport",
 ]
 
 [workspace.package]
