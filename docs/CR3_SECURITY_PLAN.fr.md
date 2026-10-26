@@ -98,5 +98,7 @@ compatibilité emploient seulement des vecteurs publics ou synthétiques.
 - Registre licence/avis des dépendances avant tout ajout cryptographique.
 - Fixtures synthétiques avec provenance complète et scan de secrets propre.
 
-Le GO accepté crée uniquement `gpsx-protocol`. `gpsx-transport`, `gpsx-crypto`
-et `gpsx-session` restent absentes jusqu’à une revue explicite ultérieure.
+Le GO accepté n’a créé que `gpsx-protocol`. `gpsx-transport` a ensuite reçu un
+GO séparé et existe désormais. Le lot `gpsx-crypto` limité à l’enregistrement a
+été autorisé le 2026-10-26 et attend sa revue d’implémentation ; `gpsx-session`
+reste absente en attente d’une revue explicite ultérieure.

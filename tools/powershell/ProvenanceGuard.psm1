@@ -97,14 +97,14 @@ function Assert-GpsxProvenance {
         }
     }
 
-    $approvedUpstreamPaths = @{}
+    $approvedUpstreamPaths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($line in Get-Content -LiteralPath $upstreamInventoryPath) {
         $candidate = $line.Trim()
         if ($candidate -and -not $candidate.StartsWith('#')) {
-            if ($candidate -notmatch '^(lib|gui)/' -or $candidate -match '(^|/)\.\.(/|$)') {
+            if ($candidate -cnotmatch '^(lib|gui|test)/' -or $candidate -match '(^|/)\.\.(/|$)') {
                 throw "Invalid path in pinned upstream inventory: $candidate"
             }
-            $approvedUpstreamPaths[$candidate] = $true
+            [void]$approvedUpstreamPaths.Add($candidate)
         }
     }
 
@@ -160,7 +160,7 @@ function Assert-GpsxProvenance {
             }
             $upstreamPaths = @(($cells[1] -split ';') | ForEach-Object { $_.Trim().Trim('`') })
             foreach ($upstreamPath in $upstreamPaths) {
-                if (-not $approvedUpstreamPaths.ContainsKey($upstreamPath)) {
+                if (-not $approvedUpstreamPaths.Contains($upstreamPath)) {
                     throw "Upstream path is absent from the pinned inventory: $upstreamPath"
                 }
             }

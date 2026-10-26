@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "audited_on": "2026-10-26",
+  "rust": "1.85.0",
+  "targets_checked": ["x86_64-pc-windows-msvc", "aarch64-linux-android"],
+  "tools": {
+    "cargo_audit": "0.22.2",
+    "cargo_deny": "0.20.2",
+    "advisory_database_commit": "a78282a1414d6c28cc228c4eae3570451affb0dc"
+  },
+  "scratch_lock_sha256": "d312587e656ced976d4eb20c24178a4101640f548049328b5d8ce063c161d72f",
+  "results": {
+    "cargo_check_windows": "pass",
+    "cargo_check_android_arm64": "pass",
+    "advisories": "pass",
+    "licenses": "pass",
+    "bans": "pass",
+    "sources": "pass",
+    "repository_cargo_audit": "pass",
+    "repository_crypto_graph_cargo_deny": "pass"
+  },
+  "direct_features": {
+    "aes": ["zeroize"],
+    "cfb-mode": ["zeroize"],
+    "hmac": [],
+    "sha2": [],
+    "zeroize": []
+  },
+  "packages": [
+    {"name": "aes", "version": "0.8.4", "checksum": "b169f7a6d4742236a0a00c541b845991d0ac43e546831af1249753ab4c3aa3a0"},
+    {"name": "block-buffer", "version": "0.10.4", "checksum": "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"},
+    {"name": "cfb-mode", "version": "0.8.2", "checksum": "738b8d467867f80a71351933f70461f5b56f24d5c93e0cf216e59229c968d330"},
+    {"name": "cfg-if", "version": "1.0.5", "checksum": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"},
+    {"name": "cipher", "version": "0.4.4", "checksum": "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"},
+    {"name": "cpufeatures", "version": "0.2.17", "checksum": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"},
+    {"name": "crypto-common", "version": "0.1.7", "checksum": "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"},
+    {"name": "digest", "version": "0.10.7", "checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"},
+    {"name": "generic-array", "version": "0.14.7", "checksum": "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"},
+    {"name": "hmac", "version": "0.12.1", "checksum": "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"},
+    {"name": "inout", "version": "0.1.4", "checksum": "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"},
+    {"name": "libc", "version": "0.2.191", "checksum": "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"},
+    {"name": "sha2", "version": "0.10.9", "checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"},
+    {"name": "subtle", "version": "2.6.1", "checksum": "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"},
+    {"name": "typenum", "version": "1.20.1", "checksum": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"},
+    {"name": "version_check", "version": "0.9.5", "checksum": "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"},
+    {"name": "zeroize", "version": "1.9.1", "checksum": "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"}
+  ]
+}

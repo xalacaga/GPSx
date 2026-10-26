@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "source_commit": "c8bea2642d0e95402f373af55584a3b98cd89417",
+  "source_files": ["lib/include/chiaki/rpcrypt.h", "lib/src/rpcrypt.c", "test/rpcrypt.c"],
+  "oracle_backend": {
+    "name": "Mbed TLS",
+    "commit": "8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0",
+    "scratch_safety_patch": "Expand the SHA-256 result buffer from 16 to 32 bytes before retaining the first 16 bytes."
+  },
+  "inputs": {
+    "synthetic_number": 13374201,
+    "seed_16": "1337deadbeefc0ffee42636869616b69",
+    "message": "475053782d726567697374726174696f6e2d6f7261636c652d73796e7468657469632d7631",
+    "counter": 0
+  },
+  "cases": [
+    {"profile": "ps4_pre10", "cipher_offset": null, "aeropause_offset": null, "derived_16": "3fd0d64fdcbb3ecc50baedef9734c7c9", "mix_16": "0be12fbb4c7c994a411e2d4ca419f435", "initial_vector_16": "82d04e574b5b5d30bfc0bb727b575597", "encrypted": "f6c177c1c527920e8f36e297c37b6509dd2e821527ea124a8458af648c26b48e7b976a71b3"},
+    {"profile": "ps4_10_plus", "cipher_offset": 0, "aeropause_offset": 31, "derived_16": "be218c1dee7f12e8016c4bc56a9be3e3", "mix_16": "6c2e31975a76b397ed60c4f4bfc5bd86", "initial_vector_16": "aaa8c0070ea897ccc689672eae043494", "encrypted": "3e1ad99784ef81e2d5aec4a0c86c94bc15d397872a7360a4fd084c7c6877f1c157ad797233"},
+    {"profile": "ps5", "cipher_offset": 0, "aeropause_offset": 31, "derived_16": "2406fffd78d20ce551d6b85164e2083c", "mix_16": "3eaf774537352d05dfb613ddd7bbf825", "initial_vector_16": "2507999f9d131eb1880f1481725046ec", "encrypted": "a1d7e88d2c0c5ce218fa064428269b892953cb32d962c1a839f9a5fc3d0999d2cdf04b9a09"},
+    {"profile": "ps4_10_plus", "cipher_offset": 31, "aeropause_offset": 0, "derived_16": "6a9f7c8a93e42af0838b4e004c423026", "mix_16": "048aece1060d0d0606db3fc0d3b9c019", "initial_vector_16": "aaa8c0070ea897ccc689672eae043494", "encrypted": "8f7c70e990d87bb887ae3da254377235a332f35ec42f465bffdfd5f46ed532ed525b9f1a28"},
+    {"profile": "ps5", "cipher_offset": 31, "aeropause_offset": 0, "derived_16": "175da424b619a79ce04ff17a15602643", "mix_16": "3d3ac7ed1e1048ce75eb6ed2f0dd5c0f", "initial_vector_16": "2507999f9d131eb1880f1481725046ec", "encrypted": "45386dfd2c49d07b6c15b05c8226b2798ff7ddfea9285f3fea3cef89d5726bdb0739afdb6b"},
+    {"profile": "ps4_10_plus", "cipher_offset": 7, "aeropause_offset": 22, "derived_16": "d07be0940088d17e6d81288034b854cf", "mix_16": "aecd6cb88806ba3cfc935261bea2d57c", "initial_vector_16": "aaa8c0070ea897ccc689672eae043494", "encrypted": "3fc825d538cc85fddb9b6f18350fde73db369364137ed597a61ff1534afbe7846a3d934552"},
+    {"profile": "ps5", "cipher_offset": 7, "aeropause_offset": 22, "derived_16": "7110c26fa0ad997f342fb09622de390a", "mix_16": "7bc5e816784c330573892732068ab654", "initial_vector_16": "2507999f9d131eb1880f1481725046ec", "encrypted": "301e4cf4cffcde9b001312eccd205706a06aae904114792fb2b9d01c30726ec609cf5c71f6"}
+  ]
+}

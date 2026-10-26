@@ -65,7 +65,7 @@ try {
         '-File', (Join-Path $PSScriptRoot 'test-provenance-guard.ps1')
     )
 
-    $coreCrates = @('gpsx-model', 'gpsx-input', 'gpsx-protocol', 'gpsx-telemetry')
+    $coreCrates = @('gpsx-model', 'gpsx-input', 'gpsx-protocol', 'gpsx-telemetry', 'gpsx-crypto')
 
     # CR3 authorizes gpsx-protocol only while it remains dependency-free and
     # has no build script. Cargo metadata includes normal, dev, and build deps.
@@ -86,11 +86,69 @@ try {
         throw 'gpsx-protocol must not have a build script.'
     }
 
+    $cryptoPackage = @($metadata.packages | Where-Object { $_.name -eq 'gpsx-crypto' })
+    if ($cryptoPackage.Count -ne 1) {
+        throw 'gpsx-crypto must appear exactly once in Cargo metadata.'
+    }
+    if (@($cryptoPackage[0].targets | Where-Object { $_.kind -contains 'custom-build' }).Count -ne 0 -or
+        (Test-Path -LiteralPath (Join-Path $repositoryRoot 'crates\gpsx-crypto\build.rs'))) {
+        throw 'gpsx-crypto must not have a build script.'
+    }
+    $expectedCryptoDependencies = @{
+        'aes' = @{ Requirement = '=0.8.4'; Features = @('zeroize') }
+        'cfb-mode' = @{ Requirement = '=0.8.2'; Features = @('zeroize') }
+        'hmac' = @{ Requirement = '=0.12.1'; Features = @() }
+        'sha2' = @{ Requirement = '=0.10.9'; Features = @() }
+        'zeroize' = @{ Requirement = '=1.9.1'; Features = @() }
+    }
+    $actualCryptoDependencies = @($cryptoPackage[0].dependencies | Where-Object { $_.kind -eq $null })
+    if ($actualCryptoDependencies.Count -ne $expectedCryptoDependencies.Count) {
+        throw 'gpsx-crypto dependency count differs from the reviewed graph.'
+    }
+    foreach ($dependency in $actualCryptoDependencies) {
+        if (-not $expectedCryptoDependencies.ContainsKey($dependency.name)) {
+            throw "gpsx-crypto has an unreviewed dependency: $($dependency.name)"
+        }
+        $expected = $expectedCryptoDependencies[$dependency.name]
+        if ($dependency.req -ne $expected.Requirement -or $dependency.uses_default_features -or
+            (Compare-Object @($dependency.features) @($expected.Features))) {
+            throw "gpsx-crypto dependency declaration differs from review: $($dependency.name)"
+        }
+    }
+
+    $auditFixture = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'tests\fixtures\registration_crypto_dependency_audit_v1.json') | ConvertFrom-Json
+    $expectedRegistryPackages = @($auditFixture.packages | ForEach-Object { "$($_.name)|$($_.version)|$($_.checksum)" } | Sort-Object)
+    $lockText = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Cargo.lock')
+    $readRegistryPackages = {
+        param([string]$Text)
+        @([regex]::Matches($Text, '(?ms)^\[\[package\]\]\r?\n(?<body>.*?)(?=^\[\[package\]\]|\z)') | ForEach-Object {
+        $body = $_.Groups['body'].Value
+        if ($body -notmatch '(?m)^source = "registry\+[^\"]+"\r?$') {
+            return
+        }
+        if ($body -notmatch '(?m)^name = "(?<name>[^"]+)"\r?$') { throw 'Cargo.lock registry package lacks a name.' }
+        $name = $Matches['name']
+        if ($body -notmatch '(?m)^version = "(?<version>[^"]+)"\r?$') { throw "Cargo.lock package $name lacks a version." }
+        $version = $Matches['version']
+        if ($body -notmatch '(?m)^checksum = "(?<checksum>[0-9a-f]{64})"\r?$') { throw "Cargo.lock package $name lacks a checksum." }
+        "$name|$version|$($Matches['checksum'])"
+        } | Sort-Object)
+    }
+    $actualRegistryPackages = @(& $readRegistryPackages $lockText)
+    $crlfRegistryPackages = @(& $readRegistryPackages ($lockText -replace '\r?\n', "`r`n"))
+    if ($crlfRegistryPackages.Count -ne 17 -or
+        (Compare-Object $actualRegistryPackages $crlfRegistryPackages)) {
+        throw 'Cargo.lock CRLF parser regression: expected the same 17 registry packages.'
+    }
+    if (Compare-Object $actualRegistryPackages $expectedRegistryPackages) {
+        throw 'Repository registry packages differ from the reviewed registration dependency audit fixture.'
+    }
+
     $wrapperPropertiesPath = Join-Path $repositoryRoot 'apps\android-tv\gradle\wrapper\gradle-wrapper.properties'
     $wrapperJarPath = Join-Path $repositoryRoot 'apps\android-tv\gradle\wrapper\gradle-wrapper.jar'
     $wrapperProperties = Get-Content -Raw -LiteralPath $wrapperPropertiesPath
     $expectedDistributionHash = 'bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01'
-    if ($wrapperProperties -notmatch "(?m)^distributionSha256Sum=$expectedDistributionHash$") {
+    if ($wrapperProperties -notmatch "(?m)^distributionSha256Sum=$expectedDistributionHash\r?$") {
         throw 'The Gradle distribution SHA-256 is missing or differs from the reviewed Gradle 9.6.0 checksum.'
     }
     $expectedWrapperJarHash = '497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7'

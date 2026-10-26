@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/gpsx-crypto",
     "crates/gpsx-input",
     "crates/gpsx-model",
     "crates/gpsx-protocol",

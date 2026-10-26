@@ -7,9 +7,9 @@
     "ast_empty": true
   },
   "Cargo.toml": {
-    "mtime": 1793035348.430853,
-    "seen": 1793035566.4919326,
-    "ast_hash": "6ef6d9e82f51c8acadfb6cd2014f2e0c",
+    "mtime": 1793039185.3214896,
+    "seen": 1793039804.3513536,
+    "ast_hash": "277e3af3992fb96fb57a4de16e1a1667",
     "semantic_hash": ""
   },
   "crates/gpsx-input/Cargo.toml": {
@@ -49,9 +49,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
-    "mtime": 1792963266.273866,
-    "seen": 1792963376.1883354,
-    "ast_hash": "ca67934c8bd98ca6d8b3513b281af062",
+    "mtime": 1793041376.9972606,
+    "seen": 1793041433.1904845,
+    "ast_hash": "185da2748c5c24be14165081e342f543",
     "semantic_hash": ""
   },
   "tools/powershell/collect-gp520-baseline.ps1": {
@@ -241,9 +241,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.md": {
-    "mtime": 1792952547.4048367,
-    "seen": 1792953073.1038585,
-    "ast_hash": "ccfe3e262a02c0548ad0b4a46f176ca9",
+    "mtime": 1793039428.8599286,
+    "seen": 1793039804.3516052,
+    "ast_hash": "08386d3bfa12aa4af2f77d3e31e7f741",
     "semantic_hash": ""
   },
   "README.fr.md": {
@@ -337,9 +337,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.fr.md": {
-    "mtime": 1792953267.474066,
-    "seen": 1792953430.6226935,
-    "ast_hash": "8fb4a53ebd1773e2493a710dc67ef46f",
+    "mtime": 1793039428.861434,
+    "seen": 1793039804.3516028,
+    "ast_hash": "84a9652becea87c3c6541d0d9350e392",
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
@@ -487,57 +487,57 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1792960807.3821414,
-    "seen": 1792960832.6815126,
-    "ast_hash": "fd149ef3903407832d2023fe2089673a",
+    "mtime": 1793041456.6805723,
+    "seen": 1793041477.3072734,
+    "ast_hash": "2c694e26936ec1c30c1f03c06da16a82",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793035394.2418635,
-    "seen": 1793035566.4920735,
-    "ast_hash": "76c04f38fff3a7489d3842cc338cf14f",
+    "mtime": 1793041456.6805723,
+    "seen": 1793041477.307276,
+    "ast_hash": "4af486eb78a58f4a28eb44f4333f47c5",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
-    "mtime": 1792959196.5686262,
-    "seen": 1792959283.6735797,
-    "ast_hash": "7acb3985cfe491e11c3400b619024249",
+    "mtime": 1793038192.691494,
+    "seen": 1793038498.369756,
+    "ast_hash": "f715b107e157be2770449dbd11e219d1",
     "semantic_hash": ""
   },
   "tools/powershell/test-provenance-guard.ps1": {
-    "mtime": 1792958988.651512,
-    "seen": 1792959283.6735861,
-    "ast_hash": "55fbee746e8ba387379b3e0f53230d65",
+    "mtime": 1793038192.6924934,
+    "seen": 1793038498.3697627,
+    "ast_hash": "dfc206ab1b2a9ddeec548b9e5761d30b",
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.fr.md": {
-    "mtime": 1792960485.0744157,
-    "seen": 1792960510.268736,
-    "ast_hash": "947bd6e20947c6e7b991755993d0d578",
+    "mtime": 1793039449.0787473,
+    "seen": 1793039804.3514783,
+    "ast_hash": "9a1e9a9f4813c41cf4c3a1c21f585d78",
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.md": {
-    "mtime": 1792960485.0734165,
-    "seen": 1792960510.268738,
-    "ast_hash": "b3e9a1db5601ee31d054990de701f02b",
+    "mtime": 1793039449.0787473,
+    "seen": 1793039804.3514802,
+    "ast_hash": "302db959043cc5421db824aec0bf9618",
     "semantic_hash": ""
   },
   "tools/provenance/chiaki-ng-c8bea264-paths.txt": {
-    "mtime": 1792958909.3415332,
-    "seen": 1792959283.673695,
-    "ast_hash": "40ab54b1d842348760d7d47f03ade220",
+    "mtime": 1793036838.524398,
+    "seen": 1793036899.616233,
+    "ast_hash": "f2ab9ed069cb3ce4441e428540c28c13",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.fr.md": {
-    "mtime": 1792960063.3400917,
-    "seen": 1792960184.367192,
-    "ast_hash": "18cdeaa174fa32764e6b58af4e663938",
+    "mtime": 1793039718.6970625,
+    "seen": 1793039804.351487,
+    "ast_hash": "8d10396094b2a78526052356a8538a26",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.md": {
-    "mtime": 1792960063.3400917,
-    "seen": 1792960184.3671937,
-    "ast_hash": "a759bf534cbd297601fc81700359e865",
+    "mtime": 1793039718.6970625,
+    "seen": 1793039804.35149,
+    "ast_hash": "cb9c922a496cd300ae220cb7fccc536b",
     "semantic_hash": ""
   },
   "crates/gpsx-protocol/Cargo.toml": {
@@ -616,6 +616,60 @@
     "mtime": 1793036256.5914292,
     "seen": 1793036275.3872297,
     "ast_hash": "ccdd34362c17f1df2ae5cd91176ac463",
+    "semantic_hash": ""
+  },
+  "docs/REGISTRATION_CRYPTO_PLAN.fr.md": {
+    "mtime": 1793042293.5969775,
+    "seen": 1793042305.866753,
+    "ast_hash": "f5949942e87368aa4f3e9e5b61a7b26e",
+    "semantic_hash": ""
+  },
+  "docs/REGISTRATION_CRYPTO_PLAN.md": {
+    "mtime": 1793042293.5969775,
+    "seen": 1793042305.866755,
+    "ast_hash": "93da992be252f59c1e489188cb3e4b48",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/manifest.json": {
+    "mtime": 1793040690.4959478,
+    "seen": 1793040855.5910668,
+    "ast_hash": "0fbfb37e9236837cc3f62d51cbaf4645",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/provenance.json": {
+    "mtime": 1793039734.4563773,
+    "seen": 1793039804.3514187,
+    "ast_hash": "c8834aff8f62d7e20279ec002642f7f6",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/registration_crypto_dependency_audit_v1.json": {
+    "mtime": 1793040578.5584135,
+    "seen": 1793040855.5910704,
+    "ast_hash": "646f221e82705ab4ae862f8dec022a20",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/Cargo.toml": {
+    "mtime": 1793039185.3214896,
+    "seen": 1793039804.3513832,
+    "ast_hash": "85a8241e63a11aed8387e5ddc9e400ae",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/lib.rs": {
+    "mtime": 1793040578.5574136,
+    "seen": 1793040855.5910406,
+    "ast_hash": "8d4ef6891f723d55324e96ba61940233",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/registration.rs": {
+    "mtime": 1793040788.460146,
+    "seen": 1793040855.5910428,
+    "ast_hash": "9fd4d79e9891dc397d0b0139d633b62d",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/registration_crypto_oracle_v2.json": {
+    "mtime": 1793039331.1666007,
+    "seen": 1793039804.3514223,
+    "ast_hash": "21f468d2d95b8749351b0a2b839220ce",
     "semantic_hash": ""
   }
 }

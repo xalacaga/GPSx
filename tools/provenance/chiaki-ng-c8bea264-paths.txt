@@ -2,5 +2,8 @@
 # Adding a path requires a new provenance/security review.
 lib/include/chiaki/discovery.h
 lib/include/chiaki/http.h
+lib/include/chiaki/rpcrypt.h
 lib/src/discovery.c
 lib/src/http.c
+lib/src/rpcrypt.c
+test/rpcrypt.c

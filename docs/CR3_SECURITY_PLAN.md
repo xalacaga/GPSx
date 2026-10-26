@@ -95,5 +95,7 @@ public standards vectors and synthetic protocol vectors only, never live keys.
 - Dependency license/advisory record before adding any crypto dependency.
 - Synthetic fixtures with complete manifest provenance and a clean secret scan.
 
-The accepted GO creates only `gpsx-protocol`. `gpsx-transport`, `gpsx-crypto`
-and `gpsx-session` remain absent until a later explicit review.
+The accepted GO created only `gpsx-protocol`. `gpsx-transport` later received a
+separate GO and is now present. The registration-only `gpsx-crypto` slice was
+authorized on 2026-10-26 and is awaiting implementation review;
+`gpsx-session` remains absent pending a later explicit review.

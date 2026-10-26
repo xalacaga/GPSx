@@ -17,6 +17,24 @@ The GPSx SRCH discovery formatter and response parser are behavioral Rust ports
 from `lib/include/chiaki/discovery.h`, `lib/src/discovery.c`,
 `lib/include/chiaki/http.h`, and `lib/src/http.c` at the pinned baseline.
 
+The GPSx registration-only cryptographic behavior is a Rust port from
+`lib/include/chiaki/rpcrypt.h`, `lib/src/rpcrypt.c`, and `test/rpcrypt.c` at
+the pinned baseline. It is confined to the PS4/PS5 registration key schedule,
+aeropause transformation, fixed-counter HMAC-SHA-256 IV, and AES-128-CFB.
+
+Third-party Rust cryptography dependencies
+===========================================
+
+The registration-only crate uses the following crates from the RustCrypto
+project under MIT OR Apache-2.0: aes 0.8.4, cfb-mode 0.8.2, hmac 0.12.1,
+sha2 0.10.9, cipher 0.4.4, crypto-common 0.1.7, digest 0.10.7, inout 0.1.4,
+and block-buffer 0.10.4. It also uses zeroize 1.9.1 (Apache-2.0 OR MIT),
+subtle 2.6.1 (BSD-3-Clause), cfg-if 1.0.5 (MIT OR Apache-2.0), cpufeatures
+0.2.17 (MIT OR Apache-2.0), generic-array 0.14.7 (MIT), typenum 1.20.1
+(MIT OR Apache-2.0), version_check 0.9.5 (MIT/Apache-2.0), and libc 0.2.191
+(MIT OR Apache-2.0). Their license texts and notices remain those distributed
+by their respective packages.
+
 Chiaki
 Repository: https://github.com/thestr4ng3r/chiaki
 License lineage: AGPL-3.0 with an additional OpenSSL permission
@@ -25,7 +43,7 @@ Pylux
 Repository: https://github.com/ForWard-Technologies-LLC/Pylux
 License: AGPL-3.0 with an additional OpenSSL permission
 
-As of 2026-10-25, no other Chiaki-family production source is copied or adapted.
+As of 2026-10-26, no other Chiaki-family production source is copied or adapted.
 The other listed projects remain behavioral and architectural references. Any
 future derived file must first record its original copyright notice, exact
 source path, immutable revision, modifications and applicable permission here

@@ -108,6 +108,16 @@ try {
         Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $allText } "derived identifier in .$extension"
     }
 
+    $invalidUpstreamRoot = New-TestRepository
+    $roots.Add($invalidUpstreamRoot)
+    'tests/rpcrypt.c' | Set-Content -LiteralPath (Join-Path $invalidUpstreamRoot 'tools\provenance\chiaki-ng-c8bea264-paths.txt') -Encoding UTF8
+    Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $invalidUpstreamRoot } 'unreviewed upstream inventory root'
+
+    $caseVariantUpstreamRoot = New-TestRepository
+    $roots.Add($caseVariantUpstreamRoot)
+    'LIB/src/example.c' | Set-Content -LiteralPath (Join-Path $caseVariantUpstreamRoot 'tools\provenance\chiaki-ng-c8bea264-paths.txt') -Encoding UTF8
+    Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $caseVariantUpstreamRoot } 'case-variant upstream inventory root'
+
     $wrongSpdx = New-TestRepository
     $roots.Add($wrongSpdx)
     Enable-ProtocolTestCrate -Root $wrongSpdx
@@ -123,7 +133,8 @@ try {
     $valid = New-TestRepository
     $roots.Add($valid)
     Enable-ProtocolTestCrate -Root $valid
-    Add-DerivedRow -Root $valid -Row "| crates/gpsx-protocol/src/lib.rs | lib/src/example.c | $commit | upstream | LicenseRef-AGPL-3.0-only-OpenSSL | GPSx / 2026-10-25 | Rust adaptation |"
+    @('lib/src/example.c', 'test/rpcrypt.c') | Set-Content -LiteralPath (Join-Path $valid 'tools\provenance\chiaki-ng-c8bea264-paths.txt') -Encoding UTF8
+    Add-DerivedRow -Root $valid -Row "| crates/gpsx-protocol/src/lib.rs | lib/src/example.c; test/rpcrypt.c | $commit | upstream | LicenseRef-AGPL-3.0-only-OpenSSL | GPSx / 2026-10-25 | Rust adaptation with upstream vectors |"
     Add-DerivedRow -Root $valid -Row "| crates/gpsx-protocol/Cargo.toml | N/A - GPSx-authored | $commit | GPSx | AGPL-3.0-only | GPSx / 2026-10-25 | Package manifest |"
     Assert-GpsxProvenance -RepositoryRoot $valid
     Write-Host 'PASS valid: complete ledger rows'

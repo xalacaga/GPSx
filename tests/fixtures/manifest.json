@@ -1,0 +1,27 @@
+{
+  "files": [
+    {
+      "bytes": 2963,
+      "path": "registration_crypto_dependency_audit_v1.json",
+      "provenance": {
+        "environment": "Windows x64 and aarch64-linux-android cross-check with Rust 1.85.0; repository Cargo.lock rechecked with cargo-audit 0.22.2 and cargo-deny 0.20.2",
+        "license": "AGPL-3.0-only",
+        "origin": "GPSx-authored scratch resolution of exact crates.io versions and features on 2026-10-26",
+        "redaction_review": "GPSx secret scanner and manual review, 2026-10-26"
+      },
+      "sha256": "27981f0f5d302f6fa5b86d397126be789af34e7e5310fa2208d6c791e249ed50"
+    },
+    {
+      "bytes": 2859,
+      "path": "registration_crypto_oracle_v2.json",
+      "provenance": {
+        "environment": "Windows x64 scratch build with Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0 and the documented 32-byte SHA-256 output-buffer safety repair",
+        "license": "AGPL-3.0-only with the project OpenSSL exception",
+        "origin": "Behavioral oracle built from chiaki-ng rpcrypt.c and rpcrypt.h at c8bea2642d0e95402f373af55584a3b98cd89417 with public test inputs and independent cipher/aeropause offsets; upstream test/rpcrypt.c used as the compatibility baseline",
+        "redaction_review": "Synthetic inputs only; no user, account, console, registration or session data; GPSx secret scanner and manual review, 2026-10-26"
+      },
+      "sha256": "2b0debae772c1b650b5aa04edb40f67685ad88c2fdab5b8faf7ee39c91c5b069"
+    }
+  ],
+  "schema_version": 2
+}
