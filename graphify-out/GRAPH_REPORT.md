@@ -1,17 +1,17 @@
-# Graph Report - GPSx  (2026-10-25)
+# Graph Report - GPSx  (2026-10-26)
 
 ## Corpus Check
-- 95 files · ~48,460 words
+- 97 files · ~51,937 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: .xml 7, (none) 4, .properties 2)
 
 ## Summary
-- 942 nodes · 1327 edges · 94 communities (64 shown, 30 thin omitted)
+- 1031 nodes · 1457 edges · 102 communities (72 shown, 30 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 22 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1c67b5ae`
+- Built from commit: `b56f1fe5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -76,7 +76,7 @@
 - Spécification de l’interface Android TV
 - Feature parity baseline
 - Socle de parité fonctionnelle
-- .fmt
+- DiagnosticExportError
 - Embedded diagnostic lab
 - Laboratoire de diagnostic embarqué
 - GPSx update channel
@@ -101,22 +101,30 @@
 - DiscoveryParseError
 - DiscoveryHost<'a>
 - diff
-- DiscoveryState
+- MetricName
 - gpsx-protocol
 - BoundedLines<'a>
+- encode_diagnostic_jsonl
+- DiagnosticRunKind
+- EvidenceClass
+- DiagnosticEnvironment
+- Diagnostic export
+- Export des diagnostics
+- Redacted
 - cli.py
+- DiscoveryState
 
 ## God Nodes (most connected - your core abstractions)
-1. `Button` - 22 edges
-2. `HttpParseError` - 21 edges
-3. `extract_diagnostic_zip()` - 20 edges
-4. `redact_text()` - 18 edges
-5. `SessionState` - 17 edges
-6. `AppUiState` - 16 edges
-7. `ControllerId` - 16 edges
-8. `ControllerState` - 16 edges
-9. `redact_json_value()` - 16 edges
-10. `SafeArchiveTests` - 15 edges
+1. `MetricName` - 24 edges
+2. `Button` - 22 edges
+3. `HttpParseError` - 21 edges
+4. `extract_diagnostic_zip()` - 20 edges
+5. `DiagnosticExportError` - 18 edges
+6. `redact_text()` - 18 edges
+7. `SessionState` - 17 edges
+8. `AppUiState` - 16 edges
+9. `ControllerId` - 16 edges
+10. `ControllerState` - 16 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `parse_search_response()` --calls--> `parse_http_response()`  [INFERRED]
@@ -135,7 +143,7 @@
 - 1-file cycle: `crates/gpsx-model/src/lib.rs -> crates/gpsx-model/src/lib.rs`
 - 1-file cycle: `crates/gpsx-telemetry/src/lib.rs -> crates/gpsx-telemetry/src/lib.rs`
 
-## Communities (94 total, 30 thin omitted)
+## Communities (102 total, 30 thin omitted)
 
 ### Community 0 - "redaction.py"
 Cohesion: 0.09
@@ -154,8 +162,8 @@ Cohesion: 0.11
 Nodes (18): Button, .ALL, Circle, Create, Cross, DpadDown, DpadLeft, DpadRight (+10 more)
 
 ### Community 5 - "gpsx-telemetry/src/lib.rs"
-Cohesion: 0.09
-Nodes (23): EvidenceClass, Fact, Hypothesis, Inference, NotTested, Unknown, EXACT_TOKENS, is_sensitive_key() (+15 more)
+Cohesion: 0.08
+Nodes (18): EXACT_TOKENS, LatencySummary, MAX_DIAGNOSTIC_JSONL_BYTES, MAX_DIAGNOSTIC_SAMPLES, MAX_METRIC_LINE_BYTES, MAX_RUN_LINE_BYTES, MAX_SCIENTIFIC_F64_BYTES, MAX_U64_BYTES (+10 more)
 
 ### Community 10 - "Assert-GpsxProvenance"
 Cohesion: 0.23
@@ -301,6 +309,10 @@ Nodes (3): Feature parity baseline, Product rules, Sources
 Cohesion: 0.50
 Nodes (3): Règles produit, Socle de parité fonctionnelle, Sources
 
+### Community 61 - "DiagnosticExportError"
+Cohesion: 0.12
+Nodes (13): append_bounded_line(), DiagnosticExportError, Formatting, InvalidSourceRevision, NonFiniteValue, NonMonotonicSamples, OutputTooLarge, SyntheticFactEvidence (+5 more)
+
 ### Community 65 - "Embedded diagnostic lab"
 Cohesion: 0.29
 Nodes (6): Captured signals, Comparison rules, Embedded diagnostic lab, Export bundle, Guided scenarios, Optional private GitHub path
@@ -385,33 +397,61 @@ Nodes (6): DiscoveryHost, DiscoveryParseError, Http, InvalidHostRequestPort, par
 Cohesion: 0.22
 Nodes (7): diff(), full_trigger_sweep_never_overflows_and_keeps_both_crossings(), InputTransition, press_and_release_in_one_interval_both_reach_the_queue(), QueueOverflow, TransitionBatch, .EMPTY
 
-### Community 90 - "DiscoveryState"
-Cohesion: 0.40
-Nodes (4): DiscoveryState, Ready, Standby, Unknown
+### Community 90 - "MetricName"
+Cohesion: 0.09
+Nodes (21): MetricName, AudioBufferDepth, AudioDrift, AudioRouteChanges, AudioUnderruns, InputEventInterval, InputToResponse, NetworkBitrate (+13 more)
 
-### Community 93 - "cli.py"
+### Community 93 - "encode_diagnostic_jsonl"
+Cohesion: 0.26
+Nodes (16): diagnostic_jsonl_enforces_evidence_environment_combinations(), diagnostic_jsonl_enforces_sample_and_byte_bounds(), diagnostic_jsonl_is_exact_and_deterministic(), diagnostic_jsonl_rejects_invalid_revision_without_echoing_it(), diagnostic_jsonl_requires_non_decreasing_monotonic_times(), diagnostic_jsonl_serializes_every_evidence_class(), diagnostic_jsonl_uses_closed_metric_names_and_units(), DiagnosticRunMetadata (+8 more)
+
+### Community 94 - "DiagnosticRunKind"
+Cohesion: 0.29
+Nodes (6): DiagnosticRunKind, Baseline, Candidate, Synthetic, is_sensitive_key(), key_tokens()
+
+### Community 95 - "EvidenceClass"
+Cohesion: 0.29
+Nodes (6): EvidenceClass, Fact, Hypothesis, Inference, NotTested, Unknown
+
+### Community 96 - "DiagnosticEnvironment"
+Cohesion: 0.33
+Nodes (5): DiagnosticEnvironment, AndroidEmulator, AndroidGeneric, Gp520, Windows
+
+### Community 97 - "Diagnostic export"
+Cohesion: 0.29
+Nodes (6): Bounds and failure behavior, Compatibility, Diagnostic export, JSONL v1, Metric semantics, Purpose and boundary
+
+### Community 98 - "Export des diagnostics"
+Cohesion: 0.29
+Nodes (6): Bornes et comportement en cas d'échec, Compatibilité, Export des diagnostics, JSONL v1, Objectif et frontière, Sémantique des métriques
+
+### Community 100 - "cli.py"
 Cohesion: 0.14
 Nodes (12): _load_allowed_keys(), main(), _redact_jsonl(), scan_for_secrets(), build_manifest(), fixture_paths(), _is_fixture(), _load_provenance() (+4 more)
 
+### Community 101 - "DiscoveryState"
+Cohesion: 0.40
+Nodes (4): DiscoveryState, Ready, Standby, Unknown
+
 ## Knowledge Gaps
-- **83 isolated node(s):** `HOME`, `CONSOLES`, `SESSION`, `CONTROLLERS`, `DIAGNOSTICS` (+78 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 564 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **124 isolated node(s):** `HOME`, `CONSOLES`, `SESSION`, `CONTROLLERS`, `DIAGNOSTICS` (+119 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 628 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **30 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `HttpParseError` connect `HttpParseError` to `http.rs`, `discovery.rs`, `gpsx-protocol/src/lib.rs`, `DiscoveryParseError`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Are the 2 inferred relationships involving `redact_text()` (e.g. with `_redact_auth_header()` and `_redact_url()`) actually correct?**
-  _`redact_text()` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `MetricName` connect `MetricName` to `encode_diagnostic_jsonl`, `gpsx-telemetry/src/lib.rs`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **What connects `HOME`, `CONSOLES`, `SESSION` to the rest of the system?**
-  _83 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _124 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `redaction.py` be split into smaller, more focused modules?**
   _Cohesion score 0.09176788124156546 - nodes in this community are weakly interconnected._
 - **Why does `DiscoveryState` connect `DiscoveryState` to `discovery.rs`, `gpsx-protocol/src/lib.rs`, `DiscoveryParseError`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+  _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Should `SessionState` be split into smaller, more focused modules?**
   _Cohesion score 0.06585365853658537 - nodes in this community are weakly interconnected._
-- **Why does `AppUiState` connect `AppUiState` to `GpsxApp.kt`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+- **Should `Button` be split into smaller, more focused modules?**
+  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
+- **Should `gpsx-telemetry/src/lib.rs` be split into smaller, more focused modules?**
+  _Cohesion score 0.08275862068965517 - nodes in this community are weakly interconnected._

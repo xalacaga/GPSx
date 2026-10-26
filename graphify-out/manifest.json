@@ -43,9 +43,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-telemetry/src/lib.rs": {
-    "mtime": 1792957162.7364082,
-    "seen": 1792957584.5231588,
-    "ast_hash": "67072f6fbef7a7c5d748be65ae566a44",
+    "mtime": 1793034911.1708276,
+    "seen": 1793034927.6770742,
+    "ast_hash": "377162f4fc589d9af35364c473533178",
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
@@ -187,9 +187,9 @@
     "semantic_hash": ""
   },
   "docs/PERFORMANCE.md": {
-    "mtime": 1792952580.6220658,
-    "seen": 1792953073.1038475,
-    "ast_hash": "c40e5bde809fe50139c7ab73cd3701ff",
+    "mtime": 1793034165.5829356,
+    "seen": 1793034206.9909747,
+    "ast_hash": "e653f860519ebd22fdf4ef1d74c6f5a5",
     "semantic_hash": ""
   },
   "docs/PHASE0_REVIEW.md": {
@@ -211,9 +211,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1792954334.7940583,
-    "seen": 1792954360.2602968,
-    "ast_hash": "6f8563901205f69276f8652aafd8f671",
+    "mtime": 1793034165.5839348,
+    "seen": 1793034206.990992,
+    "ast_hash": "b9f2c9913805c502a06292915fa10dc8",
     "semantic_hash": ""
   },
   "docs/UPSTREAM_ANALYSIS.fr.md": {
@@ -295,9 +295,9 @@
     "semantic_hash": ""
   },
   "docs/PERFORMANCE.fr.md": {
-    "mtime": 1792953218.0100136,
-    "seen": 1792953430.6226695,
-    "ast_hash": "caabef2071c111b6a128f0401794f0ba",
+    "mtime": 1793034165.5839348,
+    "seen": 1793034206.990973,
+    "ast_hash": "a9d5bb951ec9c00ecbad1b3ed1603fca",
     "semantic_hash": ""
   },
   "docs/PHASE0_REVIEW.fr.md": {
@@ -319,9 +319,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
-    "mtime": 1792954335.6505997,
-    "seen": 1792954360.2602954,
-    "ast_hash": "fb0c482b146e9e1973260840680fc230",
+    "mtime": 1793034165.5839348,
+    "seen": 1793034206.9909906,
+    "ast_hash": "de3e9e00443a29284378f8c2b4550fcb",
     "semantic_hash": ""
   },
   "docs/decisions/0001-protocol-license-strategy.fr.md": {
@@ -574,6 +574,18 @@
     "mtime": 1792963266.273866,
     "seen": 1792963376.1882987,
     "ast_hash": "967b7eb6f01ffd1e2d7b65c584a961d3",
+    "semantic_hash": ""
+  },
+  "docs/DIAGNOSTICS.fr.md": {
+    "mtime": 1793034906.416803,
+    "seen": 1793034927.6771324,
+    "ast_hash": "c56a14e75584f43eb4806ff3b1ab10c5",
+    "semantic_hash": ""
+  },
+  "docs/DIAGNOSTICS.md": {
+    "mtime": 1793034906.416803,
+    "seen": 1793034927.6771338,
+    "ast_hash": "d2dd7071aae9de32c127b823676d7b68",
     "semantic_hash": ""
   }
 }

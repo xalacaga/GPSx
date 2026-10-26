@@ -21,7 +21,9 @@ all-or-nothing bounded queue with overflow counting; multi-controller isolation;
 nearest-rank percentiles (n = 1, small unsorted series with duplicates, n = 100);
 `Redacted<T>` formatting; adversarial redaction cases; a key-classification
 corpus shared by Rust and Python (`tests/redaction/key_cases.tsv`); manifest
-verification and planted-secret detection.
+verification and planted-secret detection; exact deterministic diagnostic JSONL,
+closed metric/unit names, all evidence classes, sample and byte limits, and
+rejection of non-finite values, invalid revisions, and pre-Unix wall clocks.
 
 Not covered yet: float-to-`i16`/`u8` axis normalization (no mapping code exists),
 stick sign convention (UNKNOWN until verified against PS5 behavior), and

@@ -27,3 +27,9 @@ The first gate is a 10-minute run. Passing configurations proceed to 30- and
 60-minute runs. Results are reported separately for Windows, emulator, generic
 Android hardware, and the physical GP520.
 
+Diagnostic JSONL preserves this environment boundary in every run record and
+labels every metric as FACT, INFERENCE, HYPOTHESIS, UNKNOWN, or NOT_TESTED. Its
+bounded export format is documented in `DIAGNOSTICS.md`. Producing an export is
+not evidence that a configuration is faster; only comparable runs support that
+claim.
+

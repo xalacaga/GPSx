@@ -17,7 +17,10 @@ le plus proche (n = 1, petite série non triée avec doublons, n = 100) ; le
 formatage de `Redacted<T>` ; des cas d'expurgation adverses ; un corpus de
 classification des clés partagé entre Rust et Python
 (`tests/redaction/key_cases.tsv`) ; la vérification du manifeste et la détection
-d'un secret planté.
+d'un secret planté ; le JSONL diagnostique exact et déterministe, les noms de
+métriques et unités fermés, toutes les classes de preuve, les limites de nombre
+et de taille, ainsi que le rejet des nombres non finis, révisions invalides et
+temps antérieurs à Unix.
 
 Pas encore couvert : la normalisation des axes flottants vers `i16`/`u8` (aucun
 code de mapping n'existe), la convention de signe des sticks (UNKNOWN avant

@@ -15,3 +15,9 @@ connexions contrôleur et audio, résolution, fréquence, codec, débit et duré
 Le premier gate dure dix minutes, puis trente et soixante. Windows, émulateur,
 Android générique et GP520 physique restent séparés.
 
+Le JSONL diagnostique conserve cette frontière d'environnement dans chaque
+enregistrement d'exécution et classe chaque mesure comme FACT, INFERENCE,
+HYPOTHESIS, UNKNOWN ou NOT_TESTED. Son format borné est documenté dans
+`DIAGNOSTICS.fr.md`. Produire un export ne prouve aucune amélioration ; seules
+des exécutions comparables autorisent une telle conclusion.
+
