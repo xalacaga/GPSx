@@ -1,10 +1,9 @@
 # Control-channel HTTP handshake implementation contract
 
-Status: **IMPLEMENTATION CANDIDATE — EXTERNAL ORACLE AND IMPLEMENTATION REVIEW
-REQUIRED**. Findings C1–C7 and D1–D4 received independent `GO`. The portable
-Rust implementation and deterministic local tests now exist. The closed
-external oracle, exact fixture binding, mutation evidence, full gates, and an
-independent implementation re-review remain mandatory before integration.
+Status: **INTEGRATED**. Findings C1–C7, D1–D4, and the focused G1–G5
+implementation re-check received independent `GO`. The closed external oracle,
+exact fixture binding, 24-result mutation matrix, Android 20/20 evidence, and
+full gates were verified before integration in GPSx commit `3a27164`.
 
 ## Purpose and evidence
 

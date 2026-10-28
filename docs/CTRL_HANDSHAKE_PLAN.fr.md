@@ -1,11 +1,10 @@
 # Contrat d’implémentation de la négociation HTTP du canal de contrôle
 
-Statut : **CANDIDAT D’IMPLÉMENTATION — ORACLE EXTERNE ET REVUE DE
-L’IMPLÉMENTATION REQUIS**. Les constats C1–C7 et D1–D4 ont reçu un `GO`
-indépendant. L’implémentation Rust portable et les tests locaux déterministes
-existent désormais. L’oracle externe fermé, la liaison exacte de la fixture,
-les preuves de mutation, les gates complets et une contre-revue indépendante
-restent obligatoires avant intégration.
+Statut : **INTÉGRÉ**. Les constats C1–C7, D1–D4 et la contre-revue ciblée
+G1–G5 de l’implémentation ont reçu un `GO` indépendant. L’oracle externe fermé,
+la liaison exacte de la fixture, la matrice de 24 mutations, la preuve Android
+20/20 et les gates complets ont été vérifiés avant l’intégration dans le commit
+GPSx `3a27164`.
 
 ## But et preuves
 
