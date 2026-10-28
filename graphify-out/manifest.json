@@ -133,9 +133,9 @@
     "semantic_hash": ""
   },
   "docs/ANDROID_TV_ARCHITECTURE.md": {
-    "mtime": 1793216217.7182753,
-    "seen": 1793216436.0054793,
-    "ast_hash": "c76143459f93059bc7e4ef129102bee4",
+    "mtime": 1793219124.9448864,
+    "seen": 1793219145.5339208,
+    "ast_hash": "faadc718359b429d4ba4662ea892b622",
     "semantic_hash": ""
   },
   "docs/ARCHITECTURE_AUDIT.fr.md": {
@@ -253,9 +253,9 @@
     "semantic_hash": ""
   },
   "docs/ANDROID_TV_ARCHITECTURE.fr.md": {
-    "mtime": 1793216217.7192762,
-    "seen": 1793216436.005478,
-    "ast_hash": "b2f9e80a825ab70acd5ba8b6cb9ed022",
+    "mtime": 1793219124.9448864,
+    "seen": 1793219145.5339193,
+    "ast_hash": "0fbb406512322d906bca51d03f7f89c2",
     "semantic_hash": ""
   },
   "docs/BASELINE_RUNBOOK.fr.md": {
@@ -982,6 +982,18 @@
     "mtime": 1793218661.3311577,
     "seen": 1793218973.906801,
     "ast_hash": "3ae5338c74021bdc78f349c2c0d0b819",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_INPUT_ADAPTER_PLAN.fr.md": {
+    "mtime": 1793219218.226386,
+    "seen": 1793219226.903824,
+    "ast_hash": "6a88149e56e58081d77e7929ee5bf2c3",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_INPUT_ADAPTER_PLAN.md": {
+    "mtime": 1793219218.226386,
+    "seen": 1793219226.9038265,
+    "ast_hash": "8783900464159580d77487904a7b7df2",
     "semantic_hash": ""
   }
 }

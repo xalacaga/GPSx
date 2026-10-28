@@ -41,6 +41,9 @@ Le premier candidat d’implémentation limité à l’émulateur est décrit da
 `ANDROID_NATIVE_ADAPTER.fr.md`. Il utilise un adaptateur C++ limité à Android,
 construit par le NDK épinglé ; les crates Rust portables restent sans dépendance
 JNI/NDK.
+La prochaine frontière d’entrée candidate est spécifiée dans
+`ANDROID_INPUT_ADAPTER_PLAN.fr.md` ; elle requiert une revue indépendante de la
+frontière avant l’implémentation JNI.
 
 Opérations recommandées : créer/détruire le moteur, démarrer/arrêter la découverte, enregistrer, connecter/déconnecter, définir/effacer la génération de Surface, soumettre des lots d'événements d'entrée bruts, mettre à jour la route audio, et récupérer des instantanés groupés de métriques/événements.
 
