@@ -4,11 +4,12 @@ use std::fmt::{self, Write};
 
 use aes::Aes128;
 use aes::cipher::{AsyncStreamCipher, KeyIvInit, generic_array::GenericArray};
-use cfb_mode::Encryptor;
+use cfb_mode::{Decryptor, Encryptor};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use zeroize::{Zeroize, Zeroizing};
 
+use crate::control_handshake::ControlServerType;
 use crate::registration::{ECHO_B, HMAC_KEY_PS4_MODERN, HMAC_KEY_PS4_PRE10, HMAC_KEY_PS5};
 use crate::rpcrypt_tables::{KEYS_A_PS4, KEYS_A_PS5, KEYS_B_PS4, KEYS_B_PS5};
 
@@ -98,10 +99,15 @@ redacted_format!(SessionMorning, "SessionMorning");
 /// require_clone::<SessionRpcrypt>();
 /// ```
 pub struct SessionRpcrypt {
-    target: SessionTarget,
-    bright: [u8; MATERIAL_SIZE],
-    ambassador: [u8; MATERIAL_SIZE],
-    launch_spec_counter_zero_consumed: bool,
+    pub(crate) target: SessionTarget,
+    pub(crate) bright: [u8; MATERIAL_SIZE],
+    pub(crate) ambassador: [u8; MATERIAL_SIZE],
+    pub(crate) launch_spec_counter_zero_consumed: bool,
+    pub(crate) control_started: bool,
+    pub(crate) control_finished: bool,
+    pub(crate) control_server_type: Option<ControlServerType>,
+    pub(crate) control_local_counter: u64,
+    pub(crate) control_remote_counter: u64,
 }
 
 impl SessionRpcrypt {
@@ -112,6 +118,11 @@ impl SessionRpcrypt {
             bright: [0; MATERIAL_SIZE],
             ambassador: [0; MATERIAL_SIZE],
             launch_spec_counter_zero_consumed: false,
+            control_started: false,
+            control_finished: false,
+            control_server_type: None,
+            control_local_counter: 0,
+            control_remote_counter: 0,
         };
         match target {
             SessionTarget::Ps4Pre10 => value.derive_ps4_pre10(&nonce.0, &morning.0),
@@ -169,7 +180,10 @@ impl SessionRpcrypt {
         }
     }
 
-    fn counter_zero_iv(&self) -> Result<Zeroizing<[u8; MATERIAL_SIZE]>, LaunchSpecError> {
+    pub(crate) fn counter_iv(
+        &self,
+        counter: u64,
+    ) -> Result<Zeroizing<[u8; MATERIAL_SIZE]>, LaunchSpecError> {
         let key = match self.target {
             SessionTarget::Ps4Pre10 => &HMAC_KEY_PS4_PRE10,
             SessionTarget::Ps4Modern => &HMAC_KEY_PS4_MODERN,
@@ -177,6 +191,7 @@ impl SessionRpcrypt {
         };
         let mut input = Zeroizing::new([0_u8; MATERIAL_SIZE + 8]);
         input[..MATERIAL_SIZE].copy_from_slice(&self.ambassador);
+        input[MATERIAL_SIZE..].copy_from_slice(&counter.to_be_bytes());
         let mut mac = Hmac::<Sha256>::new_from_slice(key)
             .map_err(|_| LaunchSpecError::CryptoInitialization)?;
         mac.update(input.as_ref());
@@ -186,6 +201,39 @@ impl SessionRpcrypt {
         digest.zeroize();
         Ok(iv)
     }
+
+    #[cfg(test)]
+    fn counter_zero_iv(&self) -> Result<Zeroizing<[u8; MATERIAL_SIZE]>, LaunchSpecError> {
+        self.counter_iv(0)
+    }
+
+    pub(crate) fn encrypt_in_place(
+        &self,
+        counter: u64,
+        bytes: &mut [u8],
+    ) -> Result<(), LaunchSpecError> {
+        let iv = self.counter_iv(counter)?;
+        Encryptor::<Aes128>::new(
+            GenericArray::from_slice(&self.bright),
+            GenericArray::from_slice(iv.as_ref()),
+        )
+        .encrypt(bytes);
+        Ok(())
+    }
+
+    pub(crate) fn decrypt_in_place(
+        &self,
+        counter: u64,
+        bytes: &mut [u8],
+    ) -> Result<(), LaunchSpecError> {
+        let iv = self.counter_iv(counter)?;
+        Decryptor::<Aes128>::new(
+            GenericArray::from_slice(&self.bright),
+            GenericArray::from_slice(iv.as_ref()),
+        )
+        .decrypt(bytes);
+        Ok(())
+    }
 }
 
 impl Drop for SessionRpcrypt {
@@ -193,6 +241,11 @@ impl Drop for SessionRpcrypt {
         self.bright.zeroize();
         self.ambassador.zeroize();
         self.launch_spec_counter_zero_consumed = true;
+        self.control_started = true;
+        self.control_finished = true;
+        self.control_server_type = None;
+        self.control_local_counter = 0;
+        self.control_remote_counter = 0;
     }
 }
 
@@ -255,6 +308,8 @@ impl EncryptedLaunchSpecLength {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LaunchSpecError {
     AlreadyWritten,
+    ControlHandshakeNotFinished,
+    ServerClassificationMismatch,
     OutputTooSmall,
     UnsupportedCodec,
     ArithmeticOverflow,
@@ -266,6 +321,10 @@ impl fmt::Display for LaunchSpecError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::AlreadyWritten => "LaunchSpec counter-zero slot was already consumed",
+            Self::ControlHandshakeNotFinished => "control handshake must finish before LaunchSpec",
+            Self::ServerClassificationMismatch => {
+                "LaunchSpec is incompatible with the classified server"
+            }
             Self::OutputTooSmall => "LaunchSpec output buffer is too small",
             Self::UnsupportedCodec => "LaunchSpec target and codec combination is unsupported",
             Self::ArithmeticOverflow => "LaunchSpec length arithmetic overflowed",
@@ -286,7 +345,11 @@ pub(crate) fn write_encrypted_launch_spec(
     if rpcrypt.launch_spec_counter_zero_consumed {
         return Err(LaunchSpecError::AlreadyWritten);
     }
+    if !rpcrypt.control_finished {
+        return Err(LaunchSpecError::ControlHandshakeNotFinished);
+    }
     validate_codec(rpcrypt.target, spec.codec)?;
+    validate_server_classification(rpcrypt.control_server_type, rpcrypt.target, spec)?;
 
     let mut preflight = Zeroizing::new([0_u8; MAX_LAUNCH_SPEC_PLAINTEXT_SIZE]);
     let preflight_len =
@@ -316,11 +379,36 @@ fn validate_codec(target: SessionTarget, codec: SessionCodec) -> Result<(), Laun
     }
 }
 
+pub(crate) fn validate_server_classification(
+    server_type: Option<ControlServerType>,
+    target: SessionTarget,
+    spec: LaunchSpec,
+) -> Result<(), LaunchSpecError> {
+    let compatible = match server_type {
+        None => true,
+        Some(ControlServerType::Ps4) => {
+            target != SessionTarget::Ps5
+                && spec.codec == SessionCodec::Avc
+                && spec.width <= 1280
+                && spec.height <= 720
+        }
+        Some(ControlServerType::Ps4Pro) => {
+            target != SessionTarget::Ps5 && spec.codec == SessionCodec::Avc
+        }
+        Some(ControlServerType::Ps5) => target == SessionTarget::Ps5,
+    };
+    if compatible {
+        Ok(())
+    } else {
+        Err(LaunchSpecError::ServerClassificationMismatch)
+    }
+}
+
 fn encrypt_with_counter_zero_keystream(
     rpcrypt: &SessionRpcrypt,
     plaintext: &mut [u8],
 ) -> Result<(), LaunchSpecError> {
-    let iv = rpcrypt.counter_zero_iv()?;
+    let iv = rpcrypt.counter_iv(0)?;
     let mut keystream = Zeroizing::new([0_u8; MAX_LAUNCH_SPEC_PLAINTEXT_SIZE]);
     Encryptor::<Aes128>::new(
         GenericArray::from_slice(&rpcrypt.bright),
@@ -422,7 +510,7 @@ fn base64_encoded_len(input_len: usize) -> Result<usize, LaunchSpecError> {
         .ok_or(LaunchSpecError::ArithmeticOverflow)
 }
 
-fn encode_base64(input: &[u8], output: &mut [u8]) -> Result<usize, LaunchSpecError> {
+pub(crate) fn encode_base64(input: &[u8], output: &mut [u8]) -> Result<usize, LaunchSpecError> {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let required = base64_encoded_len(input.len())?;
     if output.len() < required {
@@ -643,11 +731,11 @@ mod tests {
             let outer_b64 = std::str::from_utf8(&outer[..outer_len])
                 .map_err(|_| LaunchSpecError::FormattingFailed)?;
 
-            let mut public_rpcrypt = SessionRpcrypt::new(
+            let mut public_rpcrypt = control_complete(SessionRpcrypt::new(
                 case.target,
                 SessionNonce::from_session_response_bytes(case.nonce),
                 morning(),
-            );
+            ));
             let mut public_session =
                 HandshakeSession::from_unprepared_test_vectors(HANDSHAKE_KEY, [1; 32])
                     .map_err(|_| LaunchSpecError::CryptoInitialization)?;
@@ -741,13 +829,20 @@ mod tests {
         result
     }
 
+    fn control_complete(mut rpcrypt: SessionRpcrypt) -> SessionRpcrypt {
+        rpcrypt.control_started = true;
+        rpcrypt.control_finished = true;
+        rpcrypt.control_server_type = None;
+        rpcrypt
+    }
+
     fn spec(target: SessionTarget, codec: SessionCodec) -> (SessionRpcrypt, LaunchSpec) {
         (
-            SessionRpcrypt::new(
+            control_complete(SessionRpcrypt::new(
                 target,
                 SessionNonce::from_session_response_bytes(NONCE),
                 morning(),
-            ),
+            )),
             LaunchSpec::new(1920, 1080, 60, 15_000, 1454, 4, codec),
         )
     }
@@ -909,11 +1004,11 @@ mod tests {
             SessionCodec::HevcHdr,
         );
         let mut exact = [0xa5; 1_272];
-        let mut successful = SessionRpcrypt::new(
+        let mut successful = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps5,
             SessionNonce::from_session_response_bytes(NONCE),
             morning(),
-        );
+        ));
         assert_eq!(
             write_encrypted_launch_spec(&HANDSHAKE_KEY, &mut successful, launch_spec, &mut exact,)
                 .unwrap()
@@ -923,11 +1018,11 @@ mod tests {
         assert_ne!(exact, [0xa5; 1_272]);
 
         let mut short = [0xa5; 1_271];
-        let mut rejected = SessionRpcrypt::new(
+        let mut rejected = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps5,
             SessionNonce::from_session_response_bytes(NONCE),
             morning(),
-        );
+        ));
         assert_eq!(
             write_encrypted_launch_spec(&HANDSHAKE_KEY, &mut rejected, launch_spec, &mut short,),
             Err(LaunchSpecError::OutputTooSmall)
@@ -955,11 +1050,11 @@ mod tests {
     #[test]
     fn oracle_rejects_construction_order_nul_counter_and_plaintext_mutants() {
         let launch_spec = LaunchSpec::new(1920, 1080, 60, 15_000, 1454, 4, SessionCodec::Avc);
-        let mut rpcrypt = SessionRpcrypt::new(
+        let mut rpcrypt = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps5,
             SessionNonce::from_session_response_bytes(NONCE),
             morning(),
-        );
+        ));
         let mut production = [0_u8; MAX_ENCRYPTED_LAUNCH_SPEC_SIZE];
         let production_len =
             write_encrypted_launch_spec(&HANDSHAKE_KEY, &mut rpcrypt, launch_spec, &mut production)
@@ -1168,11 +1263,11 @@ mod tests {
         let (scalar, peer) = authenticated_test_peer();
         let mut session =
             HandshakeSession::from_unprepared_test_vectors(HANDSHAKE_KEY, scalar).unwrap();
-        let mut rpcrypt = SessionRpcrypt::new(
+        let mut rpcrypt = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps5,
             SessionNonce::from_session_response_bytes(NONCE_PS5),
             morning(),
-        );
+        ));
         let launch_spec = LaunchSpec::new(3, 44, 555, 6666, 77777, 888888, SessionCodec::Avc);
         let mut output = [0_u8; MAX_ENCRYPTED_LAUNCH_SPEC_SIZE];
         session
@@ -1192,11 +1287,11 @@ mod tests {
         let (scalar, peer) = authenticated_test_peer();
         let mut rejected_session =
             HandshakeSession::from_unprepared_test_vectors(HANDSHAKE_KEY, scalar).unwrap();
-        let mut rejected_rpcrypt = SessionRpcrypt::new(
+        let mut rejected_rpcrypt = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps4Modern,
             SessionNonce::from_session_response_bytes(NONCE_PS4_MODERN),
             morning(),
-        );
+        ));
         let mut output = [0xa5; MAX_ENCRYPTED_LAUNCH_SPEC_SIZE];
         assert_eq!(
             rejected_session.write_encrypted_launch_spec(
@@ -1221,11 +1316,11 @@ mod tests {
         let (scalar, peer) = authenticated_test_peer();
         let mut retry_session =
             HandshakeSession::from_unprepared_test_vectors(HANDSHAKE_KEY, scalar).unwrap();
-        let mut retry_rpcrypt = SessionRpcrypt::new(
+        let mut retry_rpcrypt = control_complete(SessionRpcrypt::new(
             SessionTarget::Ps4Modern,
             SessionNonce::from_session_response_bytes(NONCE_PS4_MODERN),
             morning(),
-        );
+        ));
         assert_eq!(
             retry_session.write_encrypted_launch_spec(&mut retry_rpcrypt, invalid, &mut output,),
             Err(LaunchSpecError::UnsupportedCodec)

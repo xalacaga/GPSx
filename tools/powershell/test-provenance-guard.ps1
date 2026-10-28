@@ -94,11 +94,24 @@ try {
     "[workspace]`nmembers = [`"crates/gpsx-model`", `"protocol/takion`"]" | Set-Content -LiteralPath (Join-Path $outsideWorkspace 'Cargo.toml') -Encoding UTF8
     Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $outsideWorkspace } 'workspace member outside crates allow-list'
 
+    $fakeFuzz = New-TestRepository
+    $roots.Add($fakeFuzz)
+    New-Item -ItemType Directory -Path (Join-Path $fakeFuzz 'fuzz\fuzz_targets') -Force | Out-Null
+    "[package]`nname = `"fake-fuzz`"`nversion = `"0.0.0`"`n[workspace]" | Set-Content -LiteralPath (Join-Path $fakeFuzz 'fuzz\Cargo.toml') -Encoding UTF8
+    '// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL' | Set-Content -LiteralPath (Join-Path $fakeFuzz 'fuzz\fuzz_targets\target.rs') -Encoding UTF8
+    Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $fakeFuzz } 'standalone fuzz crate without cargo-fuzz metadata'
+
     $underBuild = New-TestRepository -UnderBuild
     $roots.Add($underBuild)
     New-Item -ItemType Directory -Path (Join-Path $underBuild 'tools') -Force | Out-Null
     '// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL' | Set-Content -LiteralPath (Join-Path $underBuild 'tools\takion.rs') -Encoding UTF8
     Assert-Fails { Assert-GpsxProvenance -RepositoryRoot $underBuild } 'repository located under a build directory'
+
+    $emptyFile = New-TestRepository
+    $roots.Add($emptyFile)
+    New-Item -ItemType File -Path (Join-Path $emptyFile 'empty.txt') | Out-Null
+    Assert-GpsxProvenance -RepositoryRoot $emptyFile
+    Write-Host 'PASS valid: empty non-protocol file'
 
     foreach ($extension in @('proto', 'java', 'json')) {
         $allText = New-TestRepository
@@ -138,6 +151,22 @@ try {
     Add-DerivedRow -Root $valid -Row "| crates/gpsx-protocol/Cargo.toml | N/A - GPSx-authored | $commit | GPSx | AGPL-3.0-only | GPSx / 2026-10-25 | Package manifest |"
     Assert-GpsxProvenance -RepositoryRoot $valid
     Write-Host 'PASS valid: complete ledger rows'
+
+    $validFuzz = New-TestRepository
+    $roots.Add($validFuzz)
+    New-Item -ItemType Directory -Path (Join-Path $validFuzz 'fuzz\fuzz_targets') -Force | Out-Null
+    @'
+[package]
+name = "valid-fuzz"
+version = "0.0.0"
+[package.metadata]
+cargo-fuzz = true
+[workspace]
+'@ | Set-Content -LiteralPath (Join-Path $validFuzz 'fuzz\Cargo.toml') -Encoding UTF8
+    '// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL' | Set-Content -LiteralPath (Join-Path $validFuzz 'fuzz\fuzz_targets\target.rs') -Encoding UTF8
+    Add-DerivedRow -Root $validFuzz -Row "| fuzz/fuzz_targets/target.rs | lib/src/example.c | $commit | upstream | LicenseRef-AGPL-3.0-only-OpenSSL | GPSx / 2026-10-25 | Fuzz target |"
+    Assert-GpsxProvenance -RepositoryRoot $validFuzz
+    Write-Host 'PASS valid: standalone cargo-fuzz crate'
 }
 finally {
     $temporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')

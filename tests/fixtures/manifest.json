@@ -1,6 +1,17 @@
 {
   "files": [
     {
+      "bytes": 45174,
+      "path": "control_handshake_oracle_v1.json",
+      "provenance": {
+        "environment": "Windows x64 scratch build with MSVC 19.44.35229.0 and Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0; pinned http.c and base64.c plus the labeled ctrl.c:1138-1153 transcription executed for every applicable response vector; ignored external closed manifest SHA-256 b1773ac7eec11ba85b000c4e135dda822318ac38a741067fcff40d21527b1236 records 269 source inputs and 85 compiler products; canonical Rust public-path binding is present, while targeted mutation evidence remains in ignored scratch artifacts and requires independent re-review before integration",
+        "license": "AGPL-3.0-only with the project OpenSSL exception",
+        "origin": "Implementation-candidate behavioral oracle executing chiaki-ng rpcrypt.c, http.c and base64.c at c8bea2642d0e95402f373af55584a3b98cd89417; six request profiles and 47 response vectors use only public synthetic inputs; request formatting remains non-executed while the labeled ctrl.c:1138-1153 response-loop transcription is compiled and executed with the pinned arguments",
+        "redaction_review": "Synthetic public vectors only; no user, account, console, registration, session, LAN, emulator or hardware data; GPSx secret scanner and manual review, 2026-10-28"
+      },
+      "sha256": "350d1b4e13c10b4e5ad8fb3643950b49d9aa931b8f44ec703b9facd5ba52e6d3"
+    },
+    {
       "bytes": 55602,
       "path": "launch_spec_oracle_v1.json",
       "provenance": {

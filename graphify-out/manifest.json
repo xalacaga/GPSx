@@ -49,9 +49,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
-    "mtime": 1793178721.7544405,
-    "seen": 1793178879.4448428,
-    "ast_hash": "bd68f4bbee666dbfffc80d639fab4f61",
+    "mtime": 1793209426.9856553,
+    "seen": 1793209699.8518946,
+    "ast_hash": "da7def7945c19c1bee5907cbbbf67fa0",
     "semantic_hash": ""
   },
   "tools/powershell/collect-gp520-baseline.ps1": {
@@ -175,15 +175,15 @@
     "semantic_hash": ""
   },
   "docs/LICENSE_AUDIT.fr.md": {
-    "mtime": 1793177658.038661,
-    "seen": 1793178095.470268,
-    "ast_hash": "1e0c9c5c736d5e0b77c7d4a77fe9a009",
+    "mtime": 1793203916.0468156,
+    "seen": 1793204566.6108127,
+    "ast_hash": "fff506e6810804669cc54fa33fe75ea7",
     "semantic_hash": ""
   },
   "docs/LICENSE_AUDIT.md": {
-    "mtime": 1793177658.0376604,
-    "seen": 1793178095.4702694,
-    "ast_hash": "574cf1a47869be9c5c4e1072095c9b5d",
+    "mtime": 1793203916.0463154,
+    "seen": 1793204566.6108148,
+    "ast_hash": "5196d6b4539722850f202792e32fc501",
     "semantic_hash": ""
   },
   "docs/PERFORMANCE.md": {
@@ -211,9 +211,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1793178721.756441,
-    "seen": 1793178879.4449532,
-    "ast_hash": "2dfbf9ef11f3a308502e2971c336d314",
+    "mtime": 1793211668.9470043,
+    "seen": 1793211684.4218435,
+    "ast_hash": "88eb70404db55e957053515d0cdf3c70",
     "semantic_hash": ""
   },
   "docs/UPSTREAM_ANALYSIS.fr.md": {
@@ -319,9 +319,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
-    "mtime": 1793178730.7261548,
-    "seen": 1793178879.4449515,
-    "ast_hash": "c725a1634de35867e52fc3b5a94b125d",
+    "mtime": 1793211668.9480014,
+    "seen": 1793211684.4218414,
+    "ast_hash": "e379ab50501910933d1d4a653920ebc3",
     "semantic_hash": ""
   },
   "docs/decisions/0001-protocol-license-strategy.fr.md": {
@@ -355,15 +355,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
-    "mtime": 1792957310.4977045,
-    "seen": 1792957584.5231385,
-    "ast_hash": "d9c720f391adefcdc2f988e56f3b688f",
+    "mtime": 1793200429.8592086,
+    "seen": 1793201503.4692261,
+    "ast_hash": "4a7c40f40217ca706b138c4c56d4dbf1",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1792963328.7188125,
-    "seen": 1792963376.1883066,
-    "ast_hash": "65632d789f16128f1f6c70392858b81d",
+    "mtime": 1793200430.6910553,
+    "seen": 1793201503.4692287,
+    "ast_hash": "7dca618fc41bb4b3c7bdf88fb72ef8a2",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -403,15 +403,15 @@
     "semantic_hash": ""
   },
   "docs/OFFLINE_FIRST.fr.md": {
-    "mtime": 1792953626.9583423,
-    "seen": 1792954360.2602792,
-    "ast_hash": "f7e41838118058f3679f057b17708115",
+    "mtime": 1793203675.135751,
+    "seen": 1793204566.610816,
+    "ast_hash": "909e163bdbe1ce26bedea35e9267823e",
     "semantic_hash": ""
   },
   "docs/OFFLINE_FIRST.md": {
-    "mtime": 1792953626.954343,
-    "seen": 1792954360.2602806,
-    "ast_hash": "92a1ddbda4fd2cb39d17bec691012ed0",
+    "mtime": 1793203658.8241725,
+    "seen": 1793204566.6108174,
+    "ast_hash": "f54b1f66cec029a8672a05529fb63f48",
     "semantic_hash": ""
   },
   "docs/UI_SPEC.fr.md": {
@@ -487,27 +487,27 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1793192966.1056309,
-    "seen": 1793193226.5233362,
-    "ast_hash": "6f5221430193cd906ff2425c1495874b",
+    "mtime": 1793203781.7589145,
+    "seen": 1793204566.6108294,
+    "ast_hash": "b648e76c6424fbb4470aecbf7fb47fb6",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793192966.1046295,
-    "seen": 1793193226.523338,
-    "ast_hash": "4fcd8bdf50d024ee7179f24acfeea1d4",
+    "mtime": 1793203758.9832678,
+    "seen": 1793204566.6108308,
+    "ast_hash": "898da1ad97bff92f11e145657e2da679",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
-    "mtime": 1793038192.691494,
-    "seen": 1793038498.369756,
-    "ast_hash": "f715b107e157be2770449dbd11e219d1",
+    "mtime": 1793201421.6160476,
+    "seen": 1793201503.4693038,
+    "ast_hash": "0fa0e6a3fa5158de413e8af8933b7609",
     "semantic_hash": ""
   },
   "tools/powershell/test-provenance-guard.ps1": {
-    "mtime": 1793038192.6924934,
-    "seen": 1793038498.3697627,
-    "ast_hash": "dfc206ab1b2a9ddeec548b9e5761d30b",
+    "mtime": 1793201421.6165507,
+    "seen": 1793201503.4693108,
+    "ast_hash": "2e698c87ced4b837b9f59f63d959458b",
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.fr.md": {
@@ -523,9 +523,9 @@
     "semantic_hash": ""
   },
   "tools/provenance/chiaki-ng-c8bea264-paths.txt": {
-    "mtime": 1793185427.249313,
-    "seen": 1793185451.3232393,
-    "ast_hash": "b4f04164369a36e72e906dc863391a17",
+    "mtime": 1793197034.3897433,
+    "seen": 1793199064.4247115,
+    "ast_hash": "9a3a0953d17e24c2e6490c5c8490a58f",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.fr.md": {
@@ -589,9 +589,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-transport/Cargo.toml": {
-    "mtime": 1793035348.4318638,
-    "seen": 1793035566.4919753,
-    "ast_hash": "d3a34da435b3fa7a52277c444a3fb874",
+    "mtime": 1793199502.5930333,
+    "seen": 1793199569.6052525,
+    "ast_hash": "1b0a0c440db82568b05e54fd05b1bb90",
     "semantic_hash": ""
   },
   "crates/gpsx-transport/src/bin/gpsx-discover.rs": {
@@ -631,9 +631,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/manifest.json": {
-    "mtime": 1793191856.903488,
-    "seen": 1793192121.9232683,
-    "ast_hash": "29fa4f5154f39ea477860f5d3702309f",
+    "mtime": 1793209208.397049,
+    "seen": 1793209699.851879,
+    "ast_hash": "8d3ffae46f4a43d0aaff23b87b23643f",
     "semantic_hash": ""
   },
   "tests/fixtures/provenance.json": {
@@ -655,9 +655,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/lib.rs": {
-    "mtime": 1793186130.0296037,
-    "seen": 1793187059.5818624,
-    "ast_hash": "c76f18d38691e12c6a5cfbc90e07c82e",
+    "mtime": 1793198548.566773,
+    "seen": 1793199064.424491,
+    "ast_hash": "66f584cb9c0fec84ea9c70b1964e71f8",
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/registration.rs": {
@@ -823,15 +823,15 @@
     "semantic_hash": ""
   },
   "docs/LAUNCH_SPEC_PLAN.fr.md": {
-    "mtime": 1793187549.0623755,
-    "seen": 1793192121.9233677,
-    "ast_hash": "d602e60b900f8487565de82a67891da6",
+    "mtime": 1793193718.4345195,
+    "seen": 1793199064.424626,
+    "ast_hash": "8531b68e4ac0a9995e8f82a5780f84f9",
     "semantic_hash": ""
   },
   "docs/LAUNCH_SPEC_PLAN.md": {
-    "mtime": 1793187549.0623755,
-    "seen": 1793192121.9233694,
-    "ast_hash": "68ce01a044c43855df82c1578e62ad37",
+    "mtime": 1793193718.4345195,
+    "seen": 1793199064.4246278,
+    "ast_hash": "9e75aad9326bc118961bf668cdb0b9cd",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20261028_104502_9e5e0648_is_the_gpsx_session_cryptography_slice_integrated.md": {
@@ -841,9 +841,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/launch_spec.rs": {
-    "mtime": 1793191817.100274,
-    "seen": 1793192121.9232292,
-    "ast_hash": "52da3988137688bc77d01ca9c2124513",
+    "mtime": 1793198548.5657725,
+    "seen": 1793199064.424489,
+    "ast_hash": "5c8f7fc36f66f67e91e3ff0449321508",
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/rpcrypt_tables.rs": {
@@ -856,6 +856,72 @@
     "mtime": 1793191718.0150402,
     "seen": 1793192121.9232664,
     "ast_hash": "273debee7e23041b5a7bfc791b1f61ed",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/control_handshake.rs": {
+    "mtime": 1793209264.7217453,
+    "seen": 1793209699.8518279,
+    "ast_hash": "39aa71c733ba8fcb57f3c68058151b99",
+    "semantic_hash": ""
+  },
+  "docs/CTRL_HANDSHAKE_PLAN.fr.md": {
+    "mtime": 1793209219.4854908,
+    "seen": 1793209699.8519523,
+    "ast_hash": "bea70a5e842c269155dbb34bef98a8e1",
+    "semantic_hash": ""
+  },
+  "docs/CTRL_HANDSHAKE_PLAN.md": {
+    "mtime": 1793209208.3965387,
+    "seen": 1793209699.851954,
+    "ast_hash": "01b6a4b65436947e151204b2a7c93d2d",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/tests/control_loopback.rs": {
+    "mtime": 1793203493.2697742,
+    "seen": 1793204566.6106985,
+    "ast_hash": "01ef3e1afba9e8029d81e890ab276735",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/control_handshake_oracle_tests.rs": {
+    "mtime": 1793209208.3955324,
+    "seen": 1793209699.8518307,
+    "ast_hash": "90a14233cde003122619532f2f5168f2",
+    "semantic_hash": ""
+  },
+  "fuzz/Cargo.toml": {
+    "mtime": 1793201136.978099,
+    "seen": 1793201503.4692826,
+    "ast_hash": "e8b360204772ed493f196a126b378c9a",
+    "semantic_hash": ""
+  },
+  "fuzz/fuzz_targets/control_response.rs": {
+    "mtime": 1793203607.8749995,
+    "seen": 1793204566.6107037,
+    "ast_hash": "3ca371138217e21f7c17507f5c628f72",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/control_handshake_oracle_v1.json": {
+    "mtime": 1793203716.716457,
+    "seen": 1793204566.6107056,
+    "ast_hash": "414e67ff8fffe3e993b33882b4c6cc86",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/tests/android_virtual_lan.rs": {
+    "mtime": 1793204239.4520032,
+    "seen": 1793204566.610696,
+    "ast_hash": "6ab91e3839e2350dc7f7a3a0b82ff451",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-transport/tests/support/fake_console.py": {
+    "mtime": 1793204239.4514956,
+    "seen": 1793204566.6107001,
+    "ast_hash": "40f025bd9e264beb75e1edf321cff521",
+    "semantic_hash": ""
+  },
+  "tools/powershell/test-android-simulation.ps1": {
+    "mtime": 1793209426.9866633,
+    "seen": 1793209699.8518994,
+    "ast_hash": "71fcda9b2be78a6f728ad6093880cebd",
     "semantic_hash": ""
   }
 }

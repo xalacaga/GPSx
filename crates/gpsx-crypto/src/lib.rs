@@ -8,6 +8,7 @@
 //! credential storage, wake-up, JNI, Android, Windows, or GP520 work. Platform
 //! adapters inject a CSPRNG and own all network and lifecycle behavior.
 
+mod control_handshake;
 mod launch_spec;
 mod registration;
 mod rpcrypt_tables;
@@ -17,6 +18,12 @@ pub use launch_spec::{
     EncryptedLaunchSpecLength, LaunchSpec, LaunchSpecError, MAX_ENCRYPTED_LAUNCH_SPEC_SIZE,
     MAX_LAUNCH_SPEC_PLAINTEXT_SIZE, SessionCodec, SessionMorning, SessionNonce, SessionRpcrypt,
     SessionTarget,
+};
+
+pub use control_handshake::{
+    ControlChannelCrypto, ControlEndpoint, ControlHandshake, ControlHandshakeError,
+    ControlHandshakeResponse, ControlHeaderLength, ControlProfile, ControlRegistrationKey,
+    ControlRequestLength, ControlServerType, MAX_CONTROL_HEADER_SIZE, MAX_CONTROL_REQUEST_SIZE,
 };
 
 pub use registration::{

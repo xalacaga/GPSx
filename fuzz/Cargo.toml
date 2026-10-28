@@ -1,0 +1,24 @@
+[package]
+name = "gpsx-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-only"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+gpsx-crypto = { path = "../crates/gpsx-crypto" }
+libfuzzer-sys = "=0.4.13"
+rand_core = { version = "=0.6.4", default-features = false }
+zeroize = { version = "=1.9.1", default-features = false }
+
+[[bin]]
+name = "control_response"
+path = "fuzz_targets/control_response.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

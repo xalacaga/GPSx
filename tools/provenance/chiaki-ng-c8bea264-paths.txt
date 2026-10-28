@@ -9,6 +9,9 @@ lib/include/chiaki/http.h
 lib/include/chiaki/launchspec.h
 lib/include/chiaki/regist.h
 lib/include/chiaki/rpcrypt.h
+lib/include/chiaki/session.h
+lib/src/base64.c
+lib/src/ctrl.c
 lib/src/discovery.c
 lib/src/ecdh.c
 lib/src/gkcrypt.c

@@ -18,6 +18,7 @@ Date de l'audit : 2026-10-25. Il s'agit d'une analyse de conformité d'ingénier
 | `hid-playstation.c` de Linux | GPL-2.0-or-later | Référence comportementale uniquement ; pas de copie sans revue |
 | API/artefacts Android AOSP | Licence variable ; souvent Apache-2.0 pour les sources concernées | Utilisation des API autorisée ; tout code copié doit être revu |
 | Graphify | Apache-2.0 selon la documentation du projet | Outillage uniquement ; aucune dépendance à l'exécution |
+| `libfuzzer-sys` 0.4.13 | `(MIT OR Apache-2.0) AND NCSA` | Crate de fuzzing autonome réservée aux tests ; NCSA n’est autorisée que par une exception `cargo-deny` propre à cette crate |
 
 chiaki-ng et Pylux incluent l'AGPL v3 avec une permission supplémentaire de liaison à OpenSSL et des clauses sur la source correspondante. [COPYING chiaki-ng](https://github.com/chiaki-ng/chiaki-ng/blob/main/COPYING), [COPYING Pylux](https://github.com/ForWard-Technologies-LLC/Pylux/blob/master/COPYING)
 

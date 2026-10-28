@@ -54,6 +54,7 @@ function Assert-GpsxProvenance {
     $protocolCrates = @('gpsx-protocol', 'gpsx-transport', 'gpsx-crypto', 'gpsx-session')
     $allowedCrates = @($coreCrates + $protocolCrates)
     $allowedCratePaths = @($allowedCrates | ForEach-Object { "crates/$_" })
+    $standaloneFuzzPath = 'fuzz'
     $cratesRoot = Join-Path $root 'crates'
 
     $repositoryFiles = @(Get-GpsxRepositoryFiles -Root $root)
@@ -84,9 +85,20 @@ function Assert-GpsxProvenance {
             continue
         }
         $cratePath = $relativeManifest.Substring(0, $relativeManifest.Length - '/Cargo.toml'.Length)
-        if ($allowedCratePaths -notcontains $cratePath -or $workspaceMembers -notcontains $cratePath) {
-            throw "Cargo crate is outside the reviewed workspace allow-list: $cratePath"
+        if ($allowedCratePaths -contains $cratePath -and $workspaceMembers -contains $cratePath) {
+            continue
         }
+        if ($cratePath -eq $standaloneFuzzPath -and $workspaceMembers -notcontains $cratePath) {
+            $fuzzManifest = Get-Content -Raw -LiteralPath $manifest.FullName
+            if ($fuzzManifest -notmatch '(?ms)^\[package\.metadata\]\s*(.*?)(?=^\[|\z)' -or $Matches[1] -notmatch '(?m)^\s*cargo-fuzz\s*=\s*true\s*$') {
+                throw 'The standalone fuzz crate must declare package.metadata cargo-fuzz = true.'
+            }
+            if ($fuzzManifest -notmatch '(?m)^\[workspace\]\s*$') {
+                throw 'The standalone fuzz crate must define its own empty [workspace].'
+            }
+            continue
+        }
+        throw "Cargo crate is outside the reviewed workspace allow-list: $cratePath"
     }
 
     if (Test-Path -LiteralPath $cratesRoot) {
@@ -135,7 +147,9 @@ function Assert-GpsxProvenance {
         if ($cells[2] -ne $pinnedCommit) {
             throw "Unreviewed commit for $($localPath): $($cells[2])"
         }
-        if (@($protocolCrates | Where-Object { $localPath.StartsWith("crates/$_/", [StringComparison]::Ordinal) }).Count -ne 1) {
+        $inProtocolCrate = @($protocolCrates | Where-Object { $localPath.StartsWith("crates/$_/", [StringComparison]::Ordinal) }).Count -eq 1
+        $inFuzzTargets = $localPath.StartsWith("fuzz/fuzz_targets/", [StringComparison]::Ordinal)
+        if (-not ($inProtocolCrate -xor $inFuzzTargets)) {
             throw "Derived-file entry is outside an authorized protocol crate: $localPath"
         }
         if (-not (Test-Path -LiteralPath (Join-Path $root $localPath) -PathType Leaf)) {
@@ -186,6 +200,21 @@ function Assert-GpsxProvenance {
             }
         }
     }
+    $fuzzTargetsRoot = Join-Path $root 'fuzz\fuzz_targets'
+    if (Test-Path -LiteralPath $fuzzTargetsRoot) {
+        foreach ($file in Get-ChildItem -LiteralPath $fuzzTargetsRoot -File -Recurse -Force) {
+            $relativePath = Get-GpsxRelativePath -Root $root -FullName $file.FullName
+            if (-not $entries.ContainsKey($relativePath)) {
+                throw "Fuzz target has no complete derived-file row: $relativePath"
+            }
+            if ($file.Extension -eq '.rs') {
+                $contents = Get-Content -Raw -LiteralPath $file.FullName
+                if ($contents -notmatch '(?m)^// SPDX-License-Identifier: LicenseRef-AGPL-3\.0-only-OpenSSL\s*$') {
+                    throw "Fuzz target lacks its derived-work SPDX header: $relativePath"
+                }
+            }
+        }
+    }
 
     $derivedIdentifier = 'LicenseRef-AGPL-3.0-only-OpenSSL'
     $complianceFiles = @(
@@ -198,7 +227,7 @@ function Assert-GpsxProvenance {
         $relativePath = Get-GpsxRelativePath -Root $root -FullName $source.FullName
         $authorized = @($protocolCrates | Where-Object {
             $relativePath.StartsWith("crates/$_/", [StringComparison]::Ordinal)
-        }).Count -eq 1
+        }).Count -eq 1 -or $relativePath.StartsWith('fuzz/fuzz_targets/', [StringComparison]::Ordinal)
         if ($authorized -or $source.Extension -eq '.md' -or $complianceFiles -contains $relativePath) {
             continue
         }
@@ -207,6 +236,9 @@ function Assert-GpsxProvenance {
         }
         catch {
             continue
+        }
+        if ($null -eq $contents) {
+            $contents = ''
         }
         if ($contents.IndexOf($derivedIdentifier, [StringComparison]::Ordinal) -ge 0) {
             throw "Derived-work SPDX identifier appears outside an authorized protocol crate: $relativePath"

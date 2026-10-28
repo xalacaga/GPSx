@@ -275,6 +275,8 @@ try {
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('fmt', '--all', '--check')
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings')
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('test', '--workspace')
+    Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('audit', '--file', 'fuzz/Cargo.lock')
+    Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('deny', '--manifest-path', 'fuzz/Cargo.toml', '--locked', 'check')
 
     # The portable core must never depend on platform crates (AGENTS.md).
     $corePackages = $coreCrates
