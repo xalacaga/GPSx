@@ -1,6 +1,6 @@
 # Android native adapter — first CR4 slice
 
-Status: **IMPLEMENTATION CANDIDATE — FOCUSED INDEPENDENT CR4 RE-REVIEW REQUIRED**.
+Status: **INTEGRATED — INDEPENDENT CR4 GO RECORDED 2026-10-28**.
 
 ## Scope
 
@@ -42,8 +42,8 @@ native shutdown are idempotent.
 FACT (2026-10-28): NDK 28.2.13676358 compiled the adapter with warnings denied
 for arm64-v8a, armeabi-v7a, x86 and x86_64 as part of `assembleDebug`.
 
-FACT (2026-10-28): the emulator-only wrapper executed all 13 instrumentation
-tests on the Google TV API 36 x86_64 AVD. The ten native lifecycle tests cover
+FACT (2026-10-28): the emulator-only wrapper executed all 14 instrumentation
+tests on the Google TV API 36 x86_64 AVD. The eleven native-adapter tests cover
 create/destroy ×1000, stale and failed Surface generations, live Surface-to-
 Surface replacement, AAudio start/stop and disconnect reporting with 1,000
 cycles, a substitute AAudio table invoking and joining the registered error
@@ -53,15 +53,23 @@ codec/AAudio modes, idempotent shutdown and real `SurfaceView` controller
 replacement. Every worker observes `OK` before close. Engine, worker and
 native-window counters returned to zero.
 
-FACT (2026-10-28): the same ten native lifecycle tests passed under the NDK
-AddressSanitizer profile on API 36. LeakSanitizer is unavailable on this Android
-runtime. `new_delete_type_mismatch` is disabled because the API 36 system
+FACT (2026-10-28): the same eleven native-adapter tests passed under the NDK
+AddressSanitizer profile on API 36, including a `/proc/self/maps` assertion that
+the ASan runtime was loaded. LeakSanitizer is unavailable on this Android runtime.
+`new_delete_type_mismatch` is disabled because the API 36 system
 `libsfplugin_ccodec.so` triggers it internally; other ASan errors remain fatal.
 
-FACT (2026-10-28): test-only JNI exports are compiled only with `NDK_DEBUG=1`;
-an isolated `NDK_DEBUG=0` x86_64 build has no `ForTest`, resource-count or
-window-count dynamic symbols. The instrumentation wrapper clears current Gradle
+FACT (2026-10-28): test-only JNI exports are compiled only with `NDK_DEBUG=1`.
+The independent reviewer built all four ABIs with `NDK_DEBUG=0`; none exposed
+`ForTest`, resource-count, window-count or fake-AAudio symbols, and none linked
+directly to `libaaudio`. The instrumentation wrapper clears current Gradle
 results before each run and retains separate normal and ASan XML copies.
+
+FACT (2026-10-28): independent CR4 re-review returned `GO`. Its four LOW
+observations were subsequently hardened by asserting pre-close `OK` per worker,
+checking the ASan mapping in `/proc/self/maps`, retaining run-stamped XML and
+SHA-256 summaries outside `app/build`, and starting the ADB server before parsing
+the fail-closed device list.
 
 FACT: the existing native-userspace virtual-LAN discovery and ctrl test passed
 once in the same emulator session. This remains separate protocol evidence.

@@ -1,6 +1,6 @@
 # Adaptateur Android natif — première tranche CR4
 
-Statut : **CANDIDAT D’IMPLÉMENTATION — CONTRE-REVUE CR4 INDÉPENDANTE CIBLÉE REQUISE**.
+Statut : **INTÉGRÉ — GO CR4 INDÉPENDANT ENREGISTRÉ LE 2026-10-28**.
 
 ## Périmètre
 
@@ -45,8 +45,9 @@ natif sont idempotents.
 FAIT (2026-10-28) : NDK 28.2.13676358 a compilé l’adaptateur avec warnings
 interdits pour arm64-v8a, armeabi-v7a, x86 et x86_64 dans `assembleDebug`.
 
-FAIT (2026-10-28) : le wrapper limité à l’émulateur a exécuté les 13 tests
-d’instrumentation sur l’AVD Google TV API 36 x86_64. Les dix tests natifs couvrent
+FAIT (2026-10-28) : le wrapper limité à l’émulateur a exécuté les 14 tests
+d’instrumentation sur l’AVD Google TV API 36 x86_64. Les onze tests de
+l’adaptateur natif couvrent
 create/destroy ×1000, générations Surface obsolètes et en échec, remplacement
 Surface-vers-Surface réel, start/stop AAudio et signalement de déconnexion sur
 1 000 cycles, une table AAudio substituée qui appelle puis joint le callback
@@ -56,17 +57,25 @@ et codec/AAudio réels, arrêt idempotent et remplacement réel du contrôleur
 `SurfaceView`. Chaque worker observe `OK` avant close. Les compteurs engine,
 worker et fenêtre native sont revenus à zéro.
 
-FAIT (2026-10-28) : les mêmes dix tests natifs ont réussi sous le profil
-AddressSanitizer du NDK sur API 36. LeakSanitizer n’est pas disponible sur ce
-runtime Android. `new_delete_type_mismatch` est désactivé car le
+FAIT (2026-10-28) : les mêmes onze tests de l’adaptateur natif ont réussi sous le
+profil AddressSanitizer du NDK sur API 36, y compris une assertion sur
+`/proc/self/maps` prouvant le chargement du runtime ASan. LeakSanitizer n’est pas
+disponible sur ce runtime Android. `new_delete_type_mismatch` est désactivé car le
 `libsfplugin_ccodec.so` système d’API 36 le déclenche en interne ; les autres
 erreurs ASan restent fatales.
 
 FAIT (2026-10-28) : les exports JNI de test ne sont compilés qu’avec
-`NDK_DEBUG=1` ; un build x86_64 isolé avec `NDK_DEBUG=0` ne contient aucun symbole
-dynamique `ForTest`, de comptage de ressources ou de fenêtres. Le wrapper
-d’instrumentation efface les résultats Gradle courants avant chaque run et garde
-des copies XML normales et ASan séparées.
+`NDK_DEBUG=1`. Le reviewer indépendant a compilé les quatre ABI avec
+`NDK_DEBUG=0` ; aucune n’expose de symbole `ForTest`, de comptage de ressources ou
+de fenêtres, ni de faux AAudio, et aucune ne lie directement `libaaudio`. Le
+wrapper d’instrumentation efface les résultats Gradle courants avant chaque run
+et garde des copies XML normales et ASan séparées.
+
+FAIT (2026-10-28) : la contre-revue CR4 indépendante a rendu `GO`. Ses quatre
+observations LOW ont ensuite été durcies par une assertion `OK` avant close pour
+chaque worker, la vérification du mapping ASan dans `/proc/self/maps`, la
+conservation hors `app/build` de XML horodatés et de résumés SHA-256, et le
+démarrage du serveur ADB avant l’analyse fail-closed de la liste des appareils.
 
 FAIT : le test existant de découverte et ctrl en espace utilisateur Android sur
 LAN virtuel a réussi une fois dans la même session émulateur. Cette preuve

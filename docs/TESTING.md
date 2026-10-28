@@ -140,12 +140,14 @@ Run the ten native tests under AddressSanitizer with:
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1 -Asan
 ```
 
-FACT (2026-10-28): all 13 normal instrumentation tests and all ten focused ASan
-native tests passed on the Google TV API 36 x86_64 AVD. The wrapper clears stale
-Gradle results before each run and retains both XML reports under
-`app/build/reports/gpsx-instrumentation-evidence/{normal,asan}`. This is emulator
-lifecycle evidence only. API 27/28 execution remains `NOT_TESTED` because those
-system images are not installed.
+FACT (2026-10-28): all 14 normal instrumentation tests and all eleven focused
+ASan native-adapter tests passed on the Google TV API 36 x86_64 AVD. The ASan
+suite verifies that `libclang_rt.asan` is mapped in `/proc/self/maps`. The wrapper
+clears stale Gradle results before each run, retains current XML under
+`app/build/reports/gpsx-instrumentation-evidence/{normal,asan}`, and writes each
+run to `target/android-instrumentation/<UTC>-<profile>` with a SHA-256 summary.
+This is emulator lifecycle evidence only. API 27/28 execution remains
+`NOT_TESTED` because those system images are not installed.
 
 Compilation is not hardware validation. Report these independently:
 

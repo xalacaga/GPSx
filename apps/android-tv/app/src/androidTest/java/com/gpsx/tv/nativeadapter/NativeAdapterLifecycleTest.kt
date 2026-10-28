@@ -8,12 +8,14 @@ import android.view.Surface
 import android.view.SurfaceView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.gpsx.tv.BuildConfig
 import com.gpsx.tv.MainActivity
+import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicIntegerArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -115,6 +117,14 @@ class NativeAdapterLifecycleTest {
     }
 
     @Test
+    fun asanRuntimeIsMappedWhenAsanProfileIsRequested() {
+        if (!BuildConfig.GPSX_ASAN) return
+
+        val maps = File("/proc/self/maps").readText()
+        assertTrue("ASan profile ran without a mapped ASan runtime", maps.contains("libclang_rt.asan"))
+    }
+
+    @Test
     fun codecFailureReleasesOldAndReplacementWindowsAndRecordsGeneration() {
         val texture = SurfaceTexture(0)
         val surface = Surface(texture)
@@ -177,17 +187,17 @@ class NativeAdapterLifecycleTest {
         val start = CountDownLatch(1)
         val firstRoundComplete = CountDownLatch(workerCount)
         val continueRace = CountDownLatch(1)
-        val okBeforeClose = AtomicInteger()
+        val okBeforeCloseByWorker = AtomicIntegerArray(workerCount)
         val statuses = ConcurrentLinkedQueue<NativeStatus>()
         val pool = Executors.newFixedThreadPool(workerCount + 1)
         try {
             val workers =
-                List(workerCount) {
+                List(workerCount) { workerIndex ->
                     pool.submit {
                         start.await()
                         val firstStatuses = runConcurrentRound(engine, surface)
                         statuses.addAll(firstStatuses)
-                        okBeforeClose.addAndGet(firstStatuses.count { it == NativeStatus.OK })
+                        okBeforeCloseByWorker.set(workerIndex, firstStatuses.count { it == NativeStatus.OK })
                         firstRoundComplete.countDown()
                         continueRace.await()
                         repeat(rounds - 1) {
@@ -214,7 +224,12 @@ class NativeAdapterLifecycleTest {
         }
         val allowed = setOf(NativeStatus.OK, NativeStatus.CLOSED, NativeStatus.STALE_GENERATION)
         assertTrue("unexpected concurrent status: $statuses", statuses.all { it in allowed })
-        assertTrue("every worker must observe OK before close: $okBeforeClose", okBeforeClose.get() >= workerCount)
+        repeat(workerCount) { workerIndex ->
+            assertTrue(
+                "worker $workerIndex did not observe OK before close",
+                okBeforeCloseByWorker.get(workerIndex) > 0,
+            )
+        }
         awaitReleased(engine)
     }
 

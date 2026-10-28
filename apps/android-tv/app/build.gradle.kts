@@ -50,6 +50,7 @@ android {
 
         buildConfigField("String", "SOURCE_REPOSITORY_URL", "\"https://github.com/xalacaga/GPSx\"")
         buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
+        buildConfigField("boolean", "GPSX_ASAN", gpsxAsan.get().toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

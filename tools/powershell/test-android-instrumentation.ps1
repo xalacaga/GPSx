@@ -17,6 +17,7 @@ $emulator = Join-Path $sdkRoot 'emulator\emulator.exe'
 $gradle = Join-Path $androidRoot 'gradlew.bat'
 $resultRoot = Join-Path $androidRoot 'app\build\outputs\androidTest-results\connected'
 $evidenceRoot = Join-Path $androidRoot 'app\build\reports\gpsx-instrumentation-evidence'
+$durableEvidenceRoot = Join-Path $repositoryRoot 'target\android-instrumentation'
 $startedEmulator = $false
 $emulatorProcess = $null
 $serial = $null
@@ -27,6 +28,11 @@ foreach ($required in @($adb, $emulator, $gradle)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         throw "Missing Android instrumentation prerequisite: $required"
     }
+}
+
+& $adb start-server | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "adb start-server failed ($LASTEXITCODE)."
 }
 
 function Read-AdbDevices {
@@ -101,9 +107,11 @@ try {
 
         $resultFiles = @(Get-ChildItem -LiteralPath $resultRoot -Recurse -Filter 'TEST-*.xml')
         $testCount = 0
+        $failureCount = 0
         foreach ($resultFile in $resultFiles) {
             [xml]$result = Get-Content -LiteralPath $resultFile.FullName -Raw
             $testCount += [int]$result.testsuites.tests
+            $failureCount += [int]$result.testsuites.failures
         }
         if ($resultFiles.Count -eq 0 -or $testCount -eq 0) {
             throw 'Android instrumentation produced no executed tests; refusing a false-success gate.'
@@ -117,7 +125,32 @@ try {
         foreach ($resultFile in $resultFiles) {
             Copy-Item -LiteralPath $resultFile.FullName -Destination $evidenceDestination
         }
-        Write-Host "Android instrumentation executed $testCount tests on $serial."
+
+        $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
+        $durableRunRoot = Join-Path $durableEvidenceRoot "$runId-$evidenceName"
+        New-Item -ItemType Directory -Path $durableRunRoot -Force | Out-Null
+        $retainedFiles = @()
+        foreach ($resultFile in $resultFiles) {
+            $retainedPath = Join-Path $durableRunRoot $resultFile.Name
+            Copy-Item -LiteralPath $resultFile.FullName -Destination $retainedPath
+            $retainedFiles += [pscustomobject]@{
+                name = $resultFile.Name
+                sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $retainedPath).Hash.ToLowerInvariant()
+            }
+        }
+        $summaryPath = Join-Path $durableRunRoot 'run-summary.json'
+        [pscustomobject]@{
+            schema_version = 1
+            completed_utc = (Get-Date).ToUniversalTime().ToString('o')
+            environment = 'android-emulator'
+            profile = $evidenceName
+            avd_name = $AvdName
+            adb_serial = $serial
+            tests = $testCount
+            failures = $failureCount
+            results = $retainedFiles
+        } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $summaryPath -Encoding utf8
+        Write-Host "Android instrumentation executed $testCount tests on $serial; retained hashed evidence at $summaryPath."
     }
     finally {
         $env:ANDROID_SERIAL = $priorSerial

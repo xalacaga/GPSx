@@ -143,12 +143,15 @@ Exécuter les dix tests natifs sous AddressSanitizer avec :
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1 -Asan
 ```
 
-FAIT (2026-10-28) : les 13 tests d’instrumentation normaux et les dix tests
-natifs ASan ciblés ont réussi sur l’AVD Google TV API 36 x86_64. Le wrapper efface
-les résultats Gradle obsolètes avant chaque run et conserve les deux rapports XML
-sous `app/build/reports/gpsx-instrumentation-evidence/{normal,asan}`. C’est
-uniquement une preuve de cycle de vie sur émulateur. L’exécution API 27/28 reste
-`NOT_TESTED` car ces images système ne sont pas installées.
+FAIT (2026-10-28) : les 14 tests d’instrumentation normaux et les onze tests
+ciblés ASan de l’adaptateur natif ont réussi sur l’AVD Google TV API 36 x86_64.
+La suite ASan vérifie que `libclang_rt.asan` est mappé dans `/proc/self/maps`. Le
+wrapper efface les résultats Gradle obsolètes avant chaque run, conserve les XML
+courants sous `app/build/reports/gpsx-instrumentation-evidence/{normal,asan}` et
+écrit chaque run sous `target/android-instrumentation/<UTC>-<profil>` avec un
+résumé SHA-256. C’est uniquement une preuve de cycle de vie sur émulateur.
+L’exécution API 27/28 reste `NOT_TESTED` car ces images système ne sont pas
+installées.
 
 Le gate matériel physique reste fermé dans l’attente du dossier de preuve, du
 `GO` CR4 et de la confirmation directe par le propriétaire de la date et du

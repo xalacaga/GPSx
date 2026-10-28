@@ -211,9 +211,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1793217761.9130197,
-    "seen": 1793217940.9786372,
-    "ast_hash": "53b06d9403e107bc2ffc7eeaa7f35282",
+    "mtime": 1793218897.6616485,
+    "seen": 1793218973.9069166,
+    "ast_hash": "1d35717df01aebc19ac641b78751bd07",
     "semantic_hash": ""
   },
   "docs/UPSTREAM_ANALYSIS.fr.md": {
@@ -319,9 +319,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
-    "mtime": 1793217761.9140193,
-    "seen": 1793217940.9786355,
-    "ast_hash": "ba4cc1832533e39e06d4c4e7724ee944",
+    "mtime": 1793218897.6626499,
+    "seen": 1793218973.9069154,
+    "ast_hash": "05ce2736c9236d955f61f17af75d625f",
     "semantic_hash": ""
   },
   "docs/decisions/0001-protocol-license-strategy.fr.md": {
@@ -343,9 +343,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
-    "mtime": 1793217410.8566628,
-    "seen": 1793217940.978379,
-    "ast_hash": "16625f6f2fbe5d605077b63ce99d139b",
+    "mtime": 1793218661.330157,
+    "seen": 1793218973.906693,
+    "ast_hash": "93371baf3f4b0b385e067768a4c50415",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
@@ -925,9 +925,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/nativeadapter/NativeAdapterLifecycleTest.kt": {
-    "mtime": 1793217382.3526313,
-    "seen": 1793217940.9783823,
-    "ast_hash": "abfd5c482565a144482df2162be04ca6",
+    "mtime": 1793218661.3311577,
+    "seen": 1793218973.9066958,
+    "ast_hash": "b2c28797c1dba418ad6c2509224a02be",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/cpp/native_adapter.cpp": {
@@ -949,15 +949,15 @@
     "semantic_hash": ""
   },
   "docs/ANDROID_NATIVE_ADAPTER.fr.md": {
-    "mtime": 1793217819.005448,
-    "seen": 1793217940.9785187,
-    "ast_hash": "a9ff1fc31c852eed3855fa0a9b0dfd53",
+    "mtime": 1793218897.6616485,
+    "seen": 1793218973.9068277,
+    "ast_hash": "0fb2aebfe2f21fdce8060fef01a254bf",
     "semantic_hash": ""
   },
   "docs/ANDROID_NATIVE_ADAPTER.md": {
-    "mtime": 1793217819.005448,
-    "seen": 1793217940.978521,
-    "ast_hash": "ae703e0acdec06dea6f8a6ac191fc0c9",
+    "mtime": 1793218897.6606445,
+    "seen": 1793218973.9068294,
+    "ast_hash": "0f704fe83abeaee4957284bdc79c7077",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/resources/lib/x86_64/wrap.sh": {
@@ -979,9 +979,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/test-android-instrumentation.ps1": {
-    "mtime": 1793217410.8556595,
-    "seen": 1793217940.9784899,
-    "ast_hash": "19c3cbe74c1b70a0cc35bf38d93985d2",
+    "mtime": 1793218661.3311577,
+    "seen": 1793218973.906801,
+    "ast_hash": "3ae5338c74021bdc78f349c2c0d0b819",
     "semantic_hash": ""
   }
 }
