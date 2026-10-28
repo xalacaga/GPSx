@@ -126,9 +126,9 @@ Compilation is not hardware validation. Report these independently:
 - DualSense USB and Bluetooth;
 - PS5 discovery, registration, streaming, disconnect, and reconnect.
 
-The project is offline-first with respect to the GP520. Until the user opens the
-physical-hardware gate, GP520 rows remain `NOT_TESTED`; emulator, fake-codec,
-replay, and desktop results may not promote them to PASS.
+The physical-hardware gate remains closed pending an evidence package, CR4
+`GO`, and direct owner confirmation of date and scope. Emulator, fake-codec,
+replay, and desktop results may not promote GP520 or console rows to PASS.
 
 ## Failure and security testing
 

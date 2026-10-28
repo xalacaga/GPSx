@@ -1,10 +1,15 @@
 # Développement offline-first avant accès au GP520
 
-Statut : contrainte propriétaire acceptée le 25 octobre 2026.
+Statut : contrainte propriétaire acceptée le 25 octobre 2026 ; le gate matériel
+physique reste fermé jusqu’à confirmation par le propriétaire de la date et du
+périmètre, après finalisation du dossier de preuve et de la revue CR4. Aucun
+accès physique n’a été exécuté.
 
 GPSx est d'abord développé sans connecter, sonder, installer sur ni dépendre du
 BenQ GP520. L'accès physique constitue un gate ultérieur contrôlé explicitement
-par le propriétaire. Les outils ADB existants restent inactifs jusque-là.
+par le propriétaire. Chaque essai physique exige la procédure bornée, le dossier
+de preuve et le `GO` CR4 définis ci-dessous avant que le propriétaire puisse
+ouvrir ce périmètre.
 
 ## Autorisé avant le gate matériel
 
@@ -32,7 +37,9 @@ caractérisent d'abord l'écart, puis le plus petit correctif d'adaptateur le fe
 
 ## Gate matériel physique
 
-Il ne s'ouvre qu'après accord explicite. Avant de le proposer, Codex fournit but,
-commandes exactes, champs collectés, expurgation, durée, rollback/désinstallation
-et prompt Claude Code CR4. Atteindre M3 n'autorise pas l'accès au projecteur.
+Avant de demander au propriétaire d’ouvrir un périmètre borné d’accès physique,
+Codex fournit but, commandes exactes, champs collectés, expurgation, durée,
+rollback/désinstallation et prompt Claude Code CR4. Le dossier de preuve et un
+`GO` CR4 précèdent tout accès physique. Atteindre M3 n’autorise pas à lui seul
+l’accès au projecteur.
 

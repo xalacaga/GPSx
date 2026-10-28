@@ -120,9 +120,10 @@ la cible n'est qu'une preuve de compilation, et une vraie campagne reste
 Compiler ne valide pas le matériel : Windows, émulateur, GP520, DualSense
 USB/Bluetooth et PS5 sont rapportés séparément.
 
-Le projet est offline-first vis-à-vis du GP520. Jusqu'à l'ouverture explicite du
-gate matériel, toutes ses lignes restent `NOT_TESTED` ; émulateurs, faux codecs,
-replays et résultats desktop ne peuvent jamais les passer à `PASS`.
+Le gate matériel physique reste fermé dans l’attente du dossier de preuve, du
+`GO` CR4 et de la confirmation directe par le propriétaire de la date et du
+périmètre. Les résultats d’émulateur, faux codec, replay et desktop ne peuvent
+pas promouvoir à `PASS` les lignes GP520 ou console.
 
 Les tests de panne couvrent données malformées, pertes/réordonnancement futurs,
 recréation de Surface, déconnexion manette, transitions réseau et expurgation
