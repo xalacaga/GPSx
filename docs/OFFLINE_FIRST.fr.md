@@ -43,3 +43,8 @@ rollback/désinstallation et prompt Claude Code CR4. Le dossier de preuve et un
 `GO` CR4 précèdent tout accès physique. Atteindre M3 n’autorise pas à lui seul
 l’accès au projecteur.
 
+L’autorisation par le propriétaire de mener la revue CR4 et l’autorisation
+d’accès physique sont deux décisions distinctes. La première fige et relit un
+diff d’adaptateur limité à l’émulateur ; la seconde ne peut suivre qu’un `GO` et
+nomme une date et un périmètre.
+

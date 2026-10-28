@@ -37,6 +37,11 @@ Utiliser des groupes de focus et des requesters explicites, et tester chaque éc
 
 ## Frontière JNI
 
+Le premier candidat d’implémentation limité à l’émulateur est décrit dans
+`ANDROID_NATIVE_ADAPTER.fr.md`. Il utilise un adaptateur C++ limité à Android,
+construit par le NDK épinglé ; les crates Rust portables restent sans dépendance
+JNI/NDK.
+
 Opérations recommandées : créer/détruire le moteur, démarrer/arrêter la découverte, enregistrer, connecter/déconnecter, définir/effacer la génération de Surface, soumettre des lots d'événements d'entrée bruts, mettre à jour la route audio, et récupérer des instantanés groupés de métriques/événements.
 
 - Kotlin possède le cycle de vie Activity/Service/Surface, les permissions et les objets Android.
@@ -46,6 +51,9 @@ Opérations recommandées : créer/détruire le moteur, démarrer/arrêter la d�
 - Les threads natifs qui rappellent Kotlin s'attachent une seule fois, utilisent des références globales de classe/méthode mises en cache, et livrent des événements groupés.
 - Les callbacks utilisent des exécuteurs documentés et des références globales valides.
 - L'arrêt est idempotent et joint les workers avant de libérer les callbacks et les références globales.
+- L’autorisation de revue CR4 et l’autorisation d’accès physique au GP520 sont
+  distinctes ; la seconde reste fermée jusqu’au `GO` sur un dossier de preuve
+  relu et à la confirmation par le propriétaire de la date et du périmètre.
 
 ## Vidéo
 
@@ -63,7 +71,7 @@ La latence d'affichage du projecteur (mode d'image, traitement du mouvement) éc
 
 ## Audio
 
-Garder la réception réseau et le décodage Opus indépendants de la sortie. L'adaptateur natif pilote AAudio (API 26+) ou Oboe (Apache-2.0) ; le PCM ne transite jamais par `AudioTrack` ni par la JVM. Utiliser un anneau PCM borné avec une petite profondeur cible mesurée, des métriques de sous-alimentation/débordement et la politique de dérive d'horloge de `CONCURRENCY.md`. Le mode Exclusive/MMAP peut être refusé sur le GP520 (UNKNOWN) ; consigner ce qui est accordé. Les changements de route ne recréent que les ressources audio de la plateforme, si nécessaire.
+Garder la réception réseau et le décodage Opus indépendants de la sortie. L'adaptateur natif pilote AAudio à partir d’API 27 ou Oboe (Apache-2.0) ; le PCM ne transite jamais par `AudioTrack` ni par la JVM. Utiliser un anneau PCM borné avec une petite profondeur cible mesurée, des métriques de sous-alimentation/débordement et la politique de dérive d'horloge de `CONCURRENCY.md`. Le mode Exclusive/MMAP peut être refusé sur le GP520 (UNKNOWN) ; consigner ce qui est accordé. Les changements de route ne recréent que les ressources audio de la plateforme, si nécessaire.
 
 À titre de référence, l'anneau de Pylux fait 32 × 1024 octets, soit environ 170 ms de stéréo s16 à 48 kHz (calculé à partir de valeurs FACT). C'est une borne supérieure à battre, pas une cible.
 

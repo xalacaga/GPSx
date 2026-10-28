@@ -35,6 +35,10 @@ Use explicit focus groups/requesters and test every screen by D-pad and DualSens
 
 ## JNI boundary
 
+The first emulator-only implementation candidate is documented in
+`ANDROID_NATIVE_ADAPTER.md`. It uses an Android-only C++ adapter built by the
+pinned NDK; the portable Rust crates remain free of JNI/NDK dependencies.
+
 Recommended operations: create/destroy engine, start/stop discovery, register, connect/disconnect, set/clear Surface generation, submit raw input event batches, update audio route, and snapshot batched metrics/events.
 
 - Kotlin owns Activity/Service/Surface lifecycle, permissions, and Android objects.
@@ -44,6 +48,9 @@ Recommended operations: create/destroy engine, start/stop discovery, register, c
 - Native threads that call back into Kotlin attach once, use cached global class/method references, and deliver batched events.
 - Callbacks use documented executors and valid global references.
 - Shutdown is idempotent and joins workers before callback/global-reference release.
+- CR4-review authorization and physical GP520-access authorization are separate;
+  the latter remains closed until a reviewed evidence package receives `GO` and
+  the owner confirms date and scope.
 
 ## Video
 
@@ -61,7 +68,7 @@ Projector display latency (picture mode, motion processing) is outside app contr
 
 ## Audio
 
-Keep network/Opus decode independent from output. The native adapter drives AAudio (API 26+) or Oboe (Apache-2.0); PCM never transits `AudioTrack`/JVM. Use a bounded PCM ring with a small measured target depth, underrun/overrun metrics, and the clock-drift policy in `CONCURRENCY.md`. Exclusive/MMAP mode may be denied on GP520 (UNKNOWN); record what is granted. Route changes recreate only platform audio resources when required.
+Keep network/Opus decode independent from output. The native adapter drives AAudio on API 27+ or Oboe (Apache-2.0); PCM never transits `AudioTrack`/JVM. Use a bounded PCM ring with a small measured target depth, underrun/overrun metrics, and the clock-drift policy in `CONCURRENCY.md`. Exclusive/MMAP mode may be denied on GP520 (UNKNOWN); record what is granted. Route changes recreate only platform audio resources when required.
 
 For reference, the Pylux ring is 32 × 1024 bytes, about 170 ms of 48 kHz stereo s16 (computed from FACT values). That is an upper bound to beat, not a target.
 

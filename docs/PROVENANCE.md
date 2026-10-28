@@ -69,6 +69,17 @@ notices shipped with the product. The accepted strategy is ADR-0001 Option C.
 | `fuzz/fuzz_targets/control_response.rs` | `lib/src/ctrl.c`; `lib/src/http.c`; `lib/src/base64.c`; `lib/src/rpcrypt.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | chiaki-ng contributors; GPSx contributors | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-28 | Test-only libFuzzer target driving the public prepared ctrl-response path and asserting that a successful parse reports a bounded header ending at the first terminator, with trailing bytes excluded; no I/O, live data or hardware |
 | `crates/gpsx-crypto/src/rpcrypt_tables.rs` | `lib/src/rpcrypt.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | chiaki-ng contributors; pinned Git history | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-28 | Byte-exact session-rpcrypt tables `keys_a_ps4`, `keys_a_ps5`, `keys_b_ps4`, and `keys_b_ps5`; reuses `echo_b` and HMAC keys already ported in `registration.rs`; no I/O or platform behavior |
 
+## GPSx-authored platform files
+
+The Android native adapter under `apps/android-tv/app/src/main/cpp/`, its Kotlin
+owner under `com/gpsx/tv/nativeadapter/`, and their instrumentation test are
+GPSx-authored on 2026-10-28 under `AGPL-3.0-only`, recorded in their SPDX
+headers. They reference only public
+Android SDK/NDK declarations. No Pylux, Chiaki or other implementation source was
+copied or adapted. `ANDROID_NATIVE_ADAPTER.md` records scope and evidence. These
+platform files intentionally remain outside the protocol-derived table enforced
+by ProvenanceGuard.
+
 ## CR3 planned-file entries
 
 The codec implementation and its four upstream paths were authorized and now

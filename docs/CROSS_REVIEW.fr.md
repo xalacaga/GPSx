@@ -10,7 +10,7 @@ hypothèses. Compiler ne suffit pas à franchir un gate.
 | CR1 | Avant d’accepter l’entrée en M1 | Licence A/B/C, concurrence, DualSense, sortie et report rigoureux des preuves GP520 |
 | CR2 | Avant fusion de M1 | Pureté du cœur, invariants, files bornées, transitions et CI |
 | CR3 | Avant le premier lot protocolaire | Provenance, licence, limites des parseurs, crypto, secrets, fixtures |
-| CR4 | Avant le premier streaming GP520, après accord utilisateur | JNI, Surface/codec, callback audio, arrêt, invariants `unsafe` et écarts émulateur/appareil |
+| CR4 | Avant le premier streaming GP520, après autorisation par le propriétaire du dossier de revue | Ownership JNI, cycle Surface/codec, sûreté du callback audio, arrêt, invariants de sûreté natifs et écarts émulateur/appareil |
 | CR5 | Avant une optimisation | Baselines comparables, P50/P95/P99, files, thermique et Bluetooth |
 | CR6 | Avant release | Menaces, dépendances/licences, fuzz/soak, récupération et notices |
 
@@ -18,6 +18,11 @@ Une revue supplémentaire est obligatoire pour toute crypto maison, nouveau bloc
 `unsafe`, parseur non fiable, chemin chaud non borné ou bloquant, stockage
 d’authentification, implémentation dérivée du protocole ou modification de la
 frontière JNI/média.
+
+L’autorisation de préparer ou relire CR4 n’autorise pas l’accès au matériel
+physique. Après un `GO` CR4, le propriétaire confirme séparément la date, les
+commandes et le périmètre physique borné avant toute connexion ou installation
+sur le GP520.
 
 Le dossier de revue contient le jalon, le diff pertinent, ADR et provenance,
 commandes et résultats, preuves matérielles séparées des simulations, inconnues

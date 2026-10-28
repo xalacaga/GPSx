@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -5,6 +7,7 @@ plugins {
 
 val gpsxSourceRevision = providers.gradleProperty("gpsxSourceRevision")
 val sourceRevision = gpsxSourceRevision.orNull ?: "development"
+val gpsxAsan = providers.gradleProperty("gpsxAsan").map(String::toBoolean).orElse(false)
 
 fun gitOutput(vararg arguments: String): String {
     return providers.exec {
@@ -49,6 +52,27 @@ android {
         buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += if (gpsxAsan.get()) listOf("x86_64") else listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
+
+        externalNativeBuild {
+            ndkBuild {
+                arguments += "NDK_APPLICATION_MK:=src/main/cpp/Application.mk"
+                if (gpsxAsan.get()) {
+                    arguments += "GPSX_ASAN:=1"
+                }
+            }
+        }
+    }
+
+    ndkVersion = "28.2.13676358"
+
+    externalNativeBuild {
+        ndkBuild {
+            path = file("src/main/cpp/Android.mk")
+        }
     }
 
     buildTypes {
@@ -71,11 +95,53 @@ android {
         buildConfig = true
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = gpsxAsan.get()
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+}
+
+if (!gpsxAsan.get()) {
+    android.sourceSets.getByName("main").resources.directories.clear()
+}
+
+if (gpsxAsan.get()) {
+    val localProperties = Properties().apply {
+        val propertiesFile = rootProject.file("local.properties")
+        if (propertiesFile.isFile) {
+            propertiesFile.inputStream().use(::load)
+        }
+    }
+    val sdkPath =
+        localProperties.getProperty("sdk.dir")
+            ?: providers.environmentVariable("ANDROID_SDK_ROOT").orNull
+            ?: providers.environmentVariable("ANDROID_HOME").orNull
+    val sdkDirectory = file(checkNotNull(sdkPath) { "ASan requires sdk.dir, ANDROID_SDK_ROOT or ANDROID_HOME." })
+    val asanJniLibs = layout.buildDirectory.dir("generated/asan-jni-libs")
+    val prebuiltRoot = sdkDirectory.resolve("ndk/${android.ndkVersion}/toolchains/llvm/prebuilt")
+    val asanRuntimes =
+        fileTree(prebuiltRoot) {
+            include("*/lib/clang/*/lib/linux/libclang_rt.asan-x86_64-android.so")
+        }.files
+    val asanRuntime =
+        checkNotNull(asanRuntimes.singleOrNull()) {
+            "Expected exactly one x86_64 Android ASan runtime under $prebuiltRoot; found ${asanRuntimes.size}."
+        }
+    val prepareAsanRuntime = tasks.register<Copy>("prepareAsanRuntime") {
+        from(asanRuntime)
+        into(asanJniLibs.map { it.dir("x86_64") })
+    }
+    android.sourceSets.getByName("debug").jniLibs.directories.add(asanJniLibs.get().asFile.absolutePath)
+    tasks.matching { it.name == "mergeDebugJniLibFolders" }.configureEach {
+        dependsOn(prepareAsanRuntime)
+    }
 }
 
 dependencies {

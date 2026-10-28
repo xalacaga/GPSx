@@ -118,6 +118,35 @@ a Unix-like gate.
 
 ## Hardware gates
 
+### Android native-adapter lifecycle
+
+Run only the repository wrapper from the repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1
+```
+
+It refuses installation unless exactly one ready ADB target exists and its
+serial matches `emulator-*`; physical or multiple targets fail closed. It also
+rejects a Gradle false success that reports zero executed tests. The suite covers
+handle/worker/window release after create/destroy ×1000, stale and failed Surface
+generations, live Surface replacement, idempotent shutdown, AAudio start/stop and
+disconnect reporting, concurrent calls racing close, and `SurfaceView` controller
+recreation. It does not feed compressed media or real PCM.
+
+Run the ten native tests under AddressSanitizer with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1 -Asan
+```
+
+FACT (2026-10-28): all 13 normal instrumentation tests and all ten focused ASan
+native tests passed on the Google TV API 36 x86_64 AVD. The wrapper clears stale
+Gradle results before each run and retains both XML reports under
+`app/build/reports/gpsx-instrumentation-evidence/{normal,asan}`. This is emulator
+lifecycle evidence only. API 27/28 execution remains `NOT_TESTED` because those
+system images are not installed.
+
 Compilation is not hardware validation. Report these independently:
 
 - Windows baseline client;

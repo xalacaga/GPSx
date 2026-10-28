@@ -1,17 +1,17 @@
 # Graph Report - GPSx  (2026-10-28)
 
 ## Corpus Check
-- 153 files · ~126,547 words
+- 163 files · ~132,937 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 20 file(s) not represented in the graph (top: .xml 7, (none) 5, .properties 2)
+- Unclassified: 22 file(s) not represented in the graph (top: .xml 7, (none) 5, .mk 2)
 
 ## Summary
-- 2077 nodes · 3424 edges · 174 communities (140 shown, 34 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 29 edges (avg confidence: 0.85)
+- 2354 nodes · 3942 edges · 192 communities (155 shown, 37 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 40 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3b902274`
+- Built from commit: `5013fa16`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -86,7 +86,7 @@
 - CR3 protocol security plan
 - Plan de sécurité protocolaire CR3
 - Registre prévu des dépendances cryptographiques
-- gpsx-input/src/lib.rs
+- diff
 - http.rs
 - Provenance ledger
 - Registre de provenance
@@ -94,16 +94,16 @@
 - Registre de remédiation CR1
 - ControllerId
 - InputTransitionQueue
-- HttpParseError
+- control_loopback.rs
 - ControllerState
-- discovery.rs
+- gpsx-protocol/src/lib.rs
 - Registration codec plan
-- DiscoveryParseError
+- LaunchSpecError
 - DiscoveryHost<'a>
 - diff
 - MetricName
 - gpsx-protocol
-- BoundedLines<'a>
+- HttpParseError
 - encode_diagnostic_jsonl
 - DiagnosticRunKind
 - EvidenceClass
@@ -115,7 +115,7 @@
 - Plan cryptographique de l’enregistrement
 - gpsx-transport/src/lib.rs
 - gpsx-discover.rs
-- DiscoveryState
+- NativeAdapterLifecycleTest
 - DiscoveryError
 - control_handshake_oracle_tests.rs
 - Windows UDP discovery transport
@@ -128,7 +128,7 @@
 - format_account_id_inner
 - gpsx-crypto
 - .derive
-- DiscoveryReport
+- AAudioStream
 - LaunchSpec and session-rpcrypt plan (pre-implementation)
 - Q: Implement the approved CR3 session cryptography plan after owner acceptance of the 32-bit tag residual risk
 - Plan du codec d'enregistrement
@@ -153,7 +153,7 @@
 - Plan LaunchSpec et rpcrypt de session (avant implémentation)
 - Q: Is the GPSx session-cryptography slice integrated after the independent C1 GO, and what conditions remain?
 - .verify_and_decrypt_in_place
-- ConsoleGeneration
+- write_encrypted_launch_spec
 - FailingRng
 - Q: What is the current session cryptography oracle integration status, evidence, and remaining gate?
 - gpsx-crypto/src/lib.rs
@@ -166,47 +166,65 @@
 - ControlProfile
 - Q: Did the C1 remediation make the session oracle test bind every fixture field?
 - android_virtual_lan.rs
-- ControlEndpoint
-- SessionTarget
+- Assert-SingleAndroidEmulator
+- NativeStatus
 - GpsxApp
-- StatusPill
-- ControlServerType
-- .begin_control
+- SessionRpcrypt
 - RegistrationCryptoTarget
+- AAudioApi
+- .begin_control
+- wrap.sh
+- .close
 - FailingRng
 - AppUiState
+- Engine
 - Control-channel HTTP handshake implementation contract
 - Contrat d’implémentation de la négociation HTTP du canal de contrôle
-- UiAction
+- SessionCodec
+- native_adapter.cpp
 - RegistrationCryptoError
-- .new
-- .derive
+- SessionMorning
+- RegistrationTarget
+- StreamSurfaceController
+- Direction
+- Status
+- assert_oracle
 - control_response.rs
-- LaunchSpecError
+- .attach_surface
+- NativeEngine
+- PcmRing
+- DiscoveryParseError
+- NativeAudioHealth
+- gpsx-crypto/src/lib.rs
+- .fmt
+- ControlServerType
+- ControlRegistrationKey
+- RegistrationMaterial
+- BoundedLines<'a>
 
 ## God Nodes (most connected - your core abstractions)
 1. `RegistrationCodecError` - 66 edges
 2. `SessionCryptoError` - 46 edges
-3. `ControlHandshakeError` - 37 edges
-4. `LaunchSpecError` - 29 edges
-5. `SessionRpcrypt` - 27 edges
-6. `MetricName` - 24 edges
-7. `Button` - 22 edges
-8. `HttpParseError` - 21 edges
-9. `SessionTarget` - 20 edges
-10. `RegistrationProfile` - 20 edges
+3. `Engine` - 42 edges
+4. `ControlHandshakeError` - 37 edges
+5. `AAudioApi` - 35 edges
+6. `NativeEngine` - 33 edges
+7. `LaunchSpecError` - 29 edges
+8. `SessionRpcrypt` - 27 edges
+9. `MetricName` - 24 edges
+10. `Button` - 22 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Périmètre` --references--> `MainActivity`  [INFERRED]
+  docs/ANDROID_NATIVE_ADAPTER.fr.md → apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt
+- `Scope` --references--> `MainActivity`  [INFERRED]
+  docs/ANDROID_NATIVE_ADAPTER.md → apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt
+- `Périmètre` --references--> `NativeEngine`  [INFERRED]
+  docs/ANDROID_NATIVE_ADAPTER.fr.md → apps/android-tv/app/src/main/java/com/gpsx/tv/nativeadapter/NativeEngine.kt
+- `Scope` --references--> `NativeEngine`  [INFERRED]
+  docs/ANDROID_NATIVE_ADAPTER.md → apps/android-tv/app/src/main/java/com/gpsx/tv/nativeadapter/NativeEngine.kt
 - `gpsx-fuzz` --depends_on--> `gpsx-crypto`  [EXTRACTED]
   fuzz/Cargo.toml → crates/gpsx-crypto/Cargo.toml
-- `encode_exact()` --calls--> `encode_base64()`  [INFERRED]
-  crates/gpsx-crypto/src/control_handshake.rs → crates/gpsx-protocol/src/registration.rs
-- `decoded_length_policy_and_unknown_server_bytes_are_exact()` --calls--> `encode_base64()`  [INFERRED]
-  crates/gpsx-crypto/src/control_handshake.rs → crates/gpsx-protocol/src/registration.rs
-- `encode_b64()` --calls--> `encode_base64()`  [INFERRED]
-  crates/gpsx-crypto/src/control_handshake_oracle_tests.rs → crates/gpsx-protocol/src/registration.rs
-- `generation_label()` --references--> `ConsoleGeneration`  [EXTRACTED]
-  crates/gpsx-transport/src/bin/gpsx-discover.rs → crates/gpsx-protocol/src/discovery.rs
 
 ## Import Cycles
 - 1-file cycle: `crates/gpsx-input/src/lib.rs -> crates/gpsx-input/src/lib.rs`
@@ -217,7 +235,7 @@
 - 2-file cycle: `crates/gpsx-crypto/src/launch_spec.rs -> crates/gpsx-crypto/src/session.rs -> crates/gpsx-crypto/src/launch_spec.rs`
 - 2-file cycle: `crates/gpsx-crypto/src/control_handshake.rs -> crates/gpsx-crypto/src/launch_spec.rs -> crates/gpsx-crypto/src/control_handshake.rs`
 
-## Communities (174 total, 34 thin omitted)
+## Communities (192 total, 37 thin omitted)
 
 ### Community 0 - "redaction.py"
 Cohesion: 0.05
@@ -304,8 +322,8 @@ Cohesion: 0.33
 Nodes (5): Decision, Findings, Owner constraint added after review, Phase 0 Independent Review, Still open before M1 at review time
 
 ### Community 26 - "Testing strategy"
-Cohesion: 0.25
-Nodes (7): Android virtual-LAN simulation, Automated gates, Ctrl-response fuzzing, Failure and security testing, Hardware gates, Local connection simulation, Testing strategy
+Cohesion: 0.22
+Nodes (8): Android native-adapter lifecycle, Android virtual-LAN simulation, Automated gates, Ctrl-response fuzzing, Failure and security testing, Hardware gates, Local connection simulation, Testing strategy
 
 ### Community 27 - "Performance baseline"
 Cohesion: 0.50
@@ -360,16 +378,16 @@ Cohesion: 0.50
 Nodes (3): Adaptateur de découverte UDP, Codec d’enregistrement local, Registre de preuves du protocole
 
 ### Community 50 - "TESTING.fr.md"
-Cohesion: 0.40
-Nodes (4): Fuzzing de la réponse ctrl, Simulation Android sur LAN virtuel, Simulation locale de connexion, Stratégie de test
+Cohesion: 0.33
+Nodes (5): Cycle de vie de l’adaptateur Android natif, Fuzzing de la réponse ctrl, Simulation Android sur LAN virtuel, Simulation locale de connexion, Stratégie de test
 
 ### Community 51 - "fixtures/README.fr.md"
 Cohesion: 0.29
 Nodes (6): Audit des dépendances de cryptographie de session v1, Fixtures relues, Oracle cryptographique d’enregistrement v2, Oracle de cryptographie de session v1, Oracle du codec d’enregistrement v1, Oracle LaunchSpec v1
 
 ### Community 53 - "Destination"
-Cohesion: 0.10
-Nodes (19): Destination, ABOUT, CONSOLES, CONTROLLERS, DIAGNOSTICS, HOME, SESSION, SETTINGS (+11 more)
+Cohesion: 0.07
+Nodes (29): ConfirmDemoStarted, CycleQuality, Destination, ABOUT, CONSOLES, CONTROLLERS, DIAGNOSTICS, HOME (+21 more)
 
 ### Community 55 - "Offline-first development before GP520 access"
 Cohesion: 0.33
@@ -435,21 +453,21 @@ Nodes (6): Autorisation historique — premier lot SRCH, Décision cryptographiq
 Cohesion: 0.40
 Nodes (4): Gate de sécurité et d’acceptation, Graphe d’implémentation de session — 2026-10-28, Graphe résolu limité à l’enregistrement — 2026-10-26, Registre des dépendances cryptographiques
 
-### Community 75 - "gpsx-input/src/lib.rs"
-Cohesion: 0.18
-Nodes (8): internal_button_masks_are_distinct_low_16_bits(), MAX_LOCAL_CONTROLLERS, MAX_TRANSITIONS_PER_CHANGE, merged_buttons_release_only_after_every_controller_releases(), neutral_state_releases_everything_held(), overflow_rejects_whole_batch_and_is_counted(), queue(), transitions_keep_their_controller()
+### Community 75 - "diff"
+Cohesion: 0.36
+Nodes (5): diff(), internal_button_masks_are_distinct_low_16_bits(), neutral_state_releases_everything_held(), overflow_rejects_whole_batch_and_is_counted(), transitions_keep_their_controller()
 
 ### Community 76 - "http.rs"
 Cohesion: 0.11
 Nodes (15): accepts_all_line_endings_and_final_line_without_eol(), accepts_utf8_values_and_rejects_invalid_or_control_values(), applies_strict_header_grammar(), BoundedLines, enforces_datagram_boundaries(), Header, HttpResponse, is_header_name_byte() (+7 more)
 
 ### Community 77 - "Provenance ledger"
-Cohesion: 0.25
-Nodes (7): CR3 planned-file entries, Derived-file entries, Primary derivative baseline, Provenance ledger, Reference-only projects, Reviewed fixture entries, Rules
+Cohesion: 0.22
+Nodes (8): CR3 planned-file entries, Derived-file entries, GPSx-authored platform files, Primary derivative baseline, Provenance ledger, Reference-only projects, Reviewed fixture entries, Rules
 
 ### Community 78 - "Registre de provenance"
-Cohesion: 0.25
-Nodes (7): Base dérivée principale, Entrées de fichiers dérivés, Entrées de fichiers prévues pour CR3, Entrées de fixtures relues, Projets de référence uniquement, Registre de provenance, Règles
+Cohesion: 0.22
+Nodes (8): Base dérivée principale, Entrées de fichiers dérivés, Entrées de fichiers prévues pour CR3, Entrées de fixtures relues, Fichiers plateforme écrits par GPSx, Projets de référence uniquement, Registre de provenance, Règles
 
 ### Community 79 - "CR1 remediation record"
 Cohesion: 0.40
@@ -460,36 +478,48 @@ Cohesion: 0.40
 Nodes (4): Commandes de vérification, Fermé par cette remédiation, Gates encore fermées, Registre de remédiation CR1
 
 ### Community 81 - "ControllerId"
-Cohesion: 0.24
-Nodes (11): ControllerId, ControllerSet, ControllerUpdateError, Capacity, ReservedId, keeps_controllers_separate(), MergedControllerUpdate, PAD (+3 more)
+Cohesion: 0.23
+Nodes (11): ControllerId, ControllerSet, ControllerState, ControllerUpdateError, Capacity, ReservedId, keeps_controllers_separate(), merged_buttons_release_only_after_every_controller_releases() (+3 more)
 
-### Community 83 - "HttpParseError"
-Cohesion: 0.12
-Nodes (14): HttpParseError, ControlCharacter, DatagramTooLarge, DuplicateSensitiveHeader, EmbeddedNul, EmptyHeaderValue, HeaderAfterTerminator, InvalidHeaderName (+6 more)
+### Community 82 - "InputTransitionQueue"
+Cohesion: 0.24
+Nodes (5): full_trigger_sweep_never_overflows_and_keeps_both_crossings(), InputTransitionQueue, press_and_release_in_one_interval_both_reach_the_queue(), queue(), QueueOverflow
+
+### Community 83 - "control_loopback.rs"
+Cohesion: 0.13
+Nodes (8): IO_TIMEOUT, MORNING, NONCE, PatternRng, read_bounded_response(), receive_bounded_header(), RESPONSE, simulated_tcp_peer_completes_the_control_handshake_on_loopback()
 
 ### Community 84 - "ControllerState"
-Cohesion: 0.21
-Nodes (10): Axis, LeftX, LeftY, RightX, RightY, ControllerState, merged_analog_policy_is_max_trigger_and_greatest_axis_magnitude(), preserves_wire_exact_stick_extremes() (+2 more)
+Cohesion: 0.15
+Nodes (13): Axis, LeftX, LeftY, RightX, RightY, MAX_LOCAL_CONTROLLERS, MAX_TRANSITIONS_PER_CHANGE, merged_analog_policy_is_max_trigger_and_greatest_axis_magnitude() (+5 more)
 
-### Community 85 - "discovery.rs"
-Cohesion: 0.18
+### Community 85 - "gpsx-protocol/src/lib.rs"
+Cohesion: 0.17
 Nodes (12): debug_and_display_redact_host_identity(), first_non_sensitive_duplicate_wins(), maps_status_codes(), parse_errors_do_not_echo_identifiers(), parse_search_response(), parses_known_headers_and_ignores_unknown_ones(), PS4_DISCOVERY_PORT, PS4_PROTOCOL_VERSION (+4 more)
 
 ### Community 86 - "Registration codec plan"
 Cohesion: 0.17
 Nodes (11): Decrypted response fields (C3), Deterministic evidence plan (C7), Evidence and provenance (C5), Failure contract and deferred UDP search, Layer boundary and allocation policy, Ownership and secret handling (C6), Profiles and fixed request constants (C2), Registration codec plan (+3 more)
 
-### Community 87 - "DiscoveryParseError"
-Cohesion: 0.27
-Nodes (6): DiscoveryHost, DiscoveryParseError, Http, InvalidHostRequestPort, parse_port(), set_first_known_header()
+### Community 87 - "LaunchSpecError"
+Cohesion: 0.12
+Nodes (11): encrypt_with_counter_zero_keystream(), LaunchSpecError, AlreadyWritten, ArithmeticOverflow, ControlHandshakeNotFinished, CryptoInitialization, FormattingFailed, OutputTooSmall (+3 more)
+
+### Community 88 - "DiscoveryHost<'a>"
+Cohesion: 0.12
+Nodes (6): DiscoveryHost<'a>, DiscoveryState, Ready, Standby, Unknown, state_label()
 
 ### Community 89 - "diff"
-Cohesion: 0.22
-Nodes (7): diff(), full_trigger_sweep_never_overflows_and_keeps_both_crossings(), InputTransition, press_and_release_in_one_interval_both_reach_the_queue(), QueueOverflow, TransitionBatch, .EMPTY
+Cohesion: 0.32
+Nodes (3): InputTransition, TransitionBatch, .EMPTY
 
 ### Community 90 - "MetricName"
 Cohesion: 0.09
 Nodes (21): MetricName, AudioBufferDepth, AudioDrift, AudioRouteChanges, AudioUnderruns, InputEventInterval, InputToResponse, NetworkBitrate (+13 more)
+
+### Community 92 - "HttpParseError"
+Cohesion: 0.12
+Nodes (14): HttpParseError, ControlCharacter, DatagramTooLarge, DuplicateSensitiveHeader, EmbeddedNul, EmptyHeaderValue, HeaderAfterTerminator, InvalidHeaderName (+6 more)
 
 ### Community 93 - "encode_diagnostic_jsonl"
 Cohesion: 0.26
@@ -516,8 +546,8 @@ Cohesion: 0.29
 Nodes (6): Bornes et comportement en cas d'échec, Compatibilité, Export des diagnostics, JSONL v1, Objectif et frontière, Sémantique des métriques
 
 ### Community 99 - "gpsx-crypto/src/registration.rs"
-Cohesion: 0.05
-Nodes (21): AMBASSADOR, decode(), decode_table(), ECHO_B, fixture_case_line(), fixture_has_case(), hex_nibble(), HMAC_KEY_PS4_MODERN (+13 more)
+Cohesion: 0.06
+Nodes (20): AMBASSADOR, codec_oracle_crypto_fields_are_bound_for_all_nine_cases(), decode(), decode_table(), ECHO_B, hex_nibble(), HMAC_KEY_PS4_MODERN, HMAC_KEY_PS4_PRE10 (+12 more)
 
 ### Community 100 - "Registration cryptography plan"
 Cohesion: 0.25
@@ -528,19 +558,15 @@ Cohesion: 0.25
 Nodes (7): API et invariants des secrets, Fichiers d’implémentation, Plan cryptographique de l’enregistrement, Portes ultérieures, Preuves et périmètre, Sous-ensemble de dépendances adopté, Tests exigés avant revue
 
 ### Community 102 - "gpsx-transport/src/lib.rs"
-Cohesion: 0.15
-Nodes (14): closed_loopback_port_returns_report_and_counts_windows_icmp_reset(), DEFAULT_RESPONSE_WINDOW, discover(), duplicate_responses_are_coalesced_by_generation_and_source_ip(), loopback_discovery_sends_exact_request_and_collects_response(), malformed_response_is_counted_without_stopping_collection(), MAX_DISCOVERED_CONSOLES, MAX_RESPONSE_WINDOW (+6 more)
+Cohesion: 0.13
+Nodes (20): ConsoleGeneration, Ps4, Ps5, format_search_request(), closed_loopback_port_returns_report_and_counts_windows_icmp_reset(), DEFAULT_RESPONSE_WINDOW, discover(), discover_broadcast() (+12 more)
 
 ### Community 103 - "gpsx-discover.rs"
 Cohesion: 0.15
 Nodes (11): arguments(), generation_label(), live_network_mode_requires_one_exact_argument(), main(), Mode, Help, Live, parse_mode() (+3 more)
 
-### Community 104 - "DiscoveryState"
-Cohesion: 0.13
-Nodes (6): DiscoveryState, Ready, Standby, Unknown, state_label(), DiscoveredConsole
-
 ### Community 105 - "DiscoveryError"
-Cohesion: 0.13
+Cohesion: 0.11
 Nodes (16): error_label(), DiscoveryError, InvalidResponseWindow, Io, DiscoveryOperation, Bind, ConfigureBroadcast, ConfigureTimeout (+8 more)
 
 ### Community 106 - "control_handshake_oracle_tests.rs"
@@ -568,16 +594,20 @@ Cohesion: 0.05
 Nodes (36): error_of(), RegistrationCodecError, ArithmeticOverflow, BodyLengthMismatch, BodyTooLarge, ControlCharacter, CryptoTargetMismatch, DuplicateContentLength (+28 more)
 
 ### Community 113 - "Composable"
-Cohesion: 0.26
-Nodes (20): AboutScreen(), CapabilityGrid(), ConsolesScreen(), ControllersScreen(), DiagnosticsScreen(), EvidenceBanner(), FeatureCard(), FocusButton() (+12 more)
+Cohesion: 0.19
+Nodes (26): AboutScreen(), CapabilityGrid(), ConsoleCard(), ConsolesScreen(), ControllerSlot(), ControllersScreen(), DiagnosticsScreen(), EvidenceBanner() (+18 more)
 
 ### Community 114 - "format_account_id_inner"
 Cohesion: 0.16
 Nodes (17): AccountId, AccountId<'a>, assert_codec_oracle(), checked_sum(), codec_oracle_binds_all_nine_complete_cases(), format_account_id_inner(), format_online_id_inner(), format_ps4_9_online_id_compatibility() (+9 more)
 
 ### Community 116 - ".derive"
-Cohesion: 0.17
-Nodes (14): build_session_oracle(), counter_at(), decode(), decode_vec(), derive_gmac_key(), gmac_epoch(), pinned_epoch_key_vector_matches(), pinned_traffic_derivation_and_ctr_vectors_match() (+6 more)
+Cohesion: 0.18
+Nodes (14): build_session_oracle(), counter_at(), decode(), derive_gmac_key(), gmac_epoch(), invocation_and_failure_limits_are_terminal(), pinned_traffic_derivation_and_ctr_vectors_match(), pinned_unaligned_ctr_vector_round_trips() (+6 more)
+
+### Community 117 - "AAudioStream"
+Cohesion: 0.27
+Nodes (11): test_close_stream(), test_get_state(), test_invoke_error_callback(), test_request_start(), test_request_stop(), test_stream(), test_wait_for_state_change(), TestAAudioStream (+3 more)
 
 ### Community 118 - "LaunchSpec and session-rpcrypt plan (pre-implementation)"
 Cohesion: 0.22
@@ -649,7 +679,7 @@ Nodes (4): Answer, Outcome, Q: What is the next safe project slice after the rev
 
 ### Community 136 - "session.rs"
 Cohesion: 0.05
-Nodes (21): Aes128CtrLe, Aes128Gcm16, BLOCK_SIZE, GMAC_EPOCH_IV_OFFSET, GMAC_EPOCH_POSITIONS, GMAC_TAG_SIZE, HANDSHAKE_KEY_SIZE, redacted_format! (+13 more)
+Nodes (24): Aes128CtrLe, Aes128Gcm16, AwaitingPeer, BLOCK_SIZE, decode_vec(), GMAC_EPOCH_IV_OFFSET, GMAC_EPOCH_POSITIONS, GMAC_TAG_SIZE (+16 more)
 
 ### Community 137 - ".finish"
 Cohesion: 0.12
@@ -668,20 +698,20 @@ Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: Is the GPSx session-cryptography slice integrated after the independent C1 GO, and what conditions remain?, Source Nodes
 
 ### Community 141 - ".verify_and_decrypt_in_place"
-Cohesion: 0.20
-Nodes (7): EpochUsage, InvocationState, key_state_vectors_and_half_range_edge_match(), KeyPositionReconstructor, RemoteTrafficKeys, seq32_gt(), seq32_lt()
+Cohesion: 0.16
+Nodes (10): EpochUsage, InvocationState, key_state_vectors_and_half_range_edge_match(), KeyPositionReconstructor, ReceiveOutcome, Authenticated, StaleDiscarded, RemoteTrafficKeys (+2 more)
 
-### Community 142 - "ConsoleGeneration"
-Cohesion: 0.40
-Nodes (6): ConsoleGeneration, Ps4, Ps5, format_search_request(), discover_broadcast(), discovery_port()
+### Community 142 - "write_encrypted_launch_spec"
+Cohesion: 0.21
+Nodes (10): base64_encoded_len(), build_launch_spec_oracle(), control_complete(), encode_base64(), EncryptedLaunchSpecLength, FixedWriter<'a>, format_plaintext(), oracle_rejects_construction_order_nul_counter_and_plaintext_mutants() (+2 more)
 
 ### Community 144 - "Q: What is the current session cryptography oracle integration status, evidence, and remaining gate?"
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: What is the current session cryptography oracle integration status, evidence, and remaining gate?, Source Nodes
 
 ### Community 145 - "gpsx-crypto/src/lib.rs"
-Cohesion: 0.15
-Nodes (12): MAX_ENCRYPTED_LAUNCH_SPEC_SIZE, MAX_LAUNCH_SPEC_PLAINTEXT_SIZE, AwaitingPeer, LocalTrafficKeys, outbound_allocator_never_repeats_tag_blocks(), OutboundKeyPositionAllocator, OutboundPacketPositions, ReceiveOutcome (+4 more)
+Cohesion: 0.17
+Nodes (10): local_and_remote_round_trip_and_reject_forgery(), LocalTrafficKeys, one_million_real_packets_cross_one_thousand_epochs_without_termination(), outbound_allocator_never_repeats_tag_blocks(), OutboundKeyPositionAllocator, OutboundPacketPositions, oversized_receive_packets_fail_before_gmac_and_exhaust_global_budget(), packet_ranges_and_source_structure_are_bounded() (+2 more)
 
 ### Community 146 - "Q: Fix CR3 D1 epoch boundary inconsistency"
 Cohesion: 0.40
@@ -689,63 +719,75 @@ Nodes (4): Answer, Outcome, Q: Fix CR3 D1 epoch boundary inconsistency, Source N
 
 ### Community 147 - "control_handshake.rs"
 Cohesion: 0.09
-Nodes (18): CONTROL_PORT, DID_PREFIX, DID_RANDOM_RANGE, DID_SIZE, FixedWriter, redacted_format!, MAX_CONTROL_LINE_SIZE, MAX_CONTROL_LINES (+10 more)
+Nodes (18): CONTROL_PORT, ControlChannelCrypto, DID_PREFIX, DID_RANDOM_RANGE, DID_SIZE, redacted_format!, MAX_CONTROL_LINE_SIZE, MAX_CONTROL_LINES (+10 more)
 
 ### Community 148 - ".record"
-Cohesion: 0.43
-Nodes (5): capacity_keeps_first_sixteen_unique_addresses_and_counts_drops(), connection_refused_is_non_fatal_for_portability(), debug_output_redacts_peer_address(), injected_icmp_error_preserves_results_and_collection_continues(), unexpected_source_ports_are_counted_without_rejecting_hints()
+Cohesion: 0.13
+Nodes (7): capacity_keeps_first_sixteen_unique_addresses_and_counts_drops(), connection_refused_is_non_fatal_for_portability(), debug_output_redacts_peer_address(), DiscoveredConsole, DiscoveryReport, injected_icmp_error_preserves_results_and_collection_continues(), unexpected_source_ports_are_counted_without_rejecting_hints()
 
 ### Community 149 - "ControlHandshakeError"
-Cohesion: 0.08
-Nodes (25): ControlHandshakeError, AlreadyStarted, ControlNotFinished, CryptoInitialization, DuplicateHeader, EntropyUnavailable, FormattingFailed, HeaderLineTooLong (+17 more)
+Cohesion: 0.09
+Nodes (24): ControlHandshakeError, AlreadyStarted, ControlNotFinished, CryptoInitialization, DuplicateHeader, EntropyUnavailable, FormattingFailed, HeaderLineTooLong (+16 more)
 
 ### Community 150 - "launch_spec.rs"
-Cohesion: 0.10
-Nodes (23): AUTH_TABLE_ROW_SIZE, ECHO_A, FixedWriter, HANDSHAKE_KEY, HANDSHAKE_KEY_BASE64_SIZE, LAUNCH_SPEC_ORACLE, redacted_format!, MATERIAL_SIZE (+15 more)
+Cohesion: 0.09
+Nodes (23): AUTH_TABLE_ROW_SIZE, closed_launch_spec_oracle_binds_every_field_and_rejects_mutations(), ECHO_A, FixedWriter, HANDSHAKE_KEY, HANDSHAKE_KEY_BASE64_SIZE, hex(), LAUNCH_SPEC_ORACLE (+15 more)
 
 ### Community 151 - "Q: Remediate the independent CR3 implementation review findings: outbound epoch exhaustion, full-packet GMAC versus payload encryption, SEC1 hybrid prefixes, missing tests, vendored libsecp256k1 MIT licensing, and weakened cargo-deny policy"
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: Remediate the independent CR3 implementation review findings: outbound epoch exhaustion, full-packet GMAC versus payload encryption, SEC1 hybrid prefixes, missing tests, vendored libsecp256k1 MIT licensing, and weakened cargo-deny policy, Source Nodes
 
 ### Community 152 - "ControlProfile"
-Cohesion: 0.12
-Nodes (11): ControlHandshake, ControlProfile, Ps4_10, Ps4_8, Ps4_9, Ps5, ControlRegistrationKey, ControlRequestLength (+3 more)
+Cohesion: 0.11
+Nodes (11): ControlEndpoint, ControlProfile, Ps4_10, Ps4_8, Ps4_9, Ps5, ControlRequestLength, encode_exact() (+3 more)
 
 ### Community 153 - "Q: Did the C1 remediation make the session oracle test bind every fixture field?"
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: Did the C1 remediation make the session oracle test bind every fixture field?, Source Nodes
 
 ### Community 154 - "android_virtual_lan.rs"
-Cohesion: 0.07
-Nodes (18): android_virtual_lan_discovers_and_opens_ctrl_to_fake_console(), CONTROL_PORT, DISCOVERY_PORT, IO_TIMEOUT, MORNING, NONCE, PatternRng, read_bounded_response() (+10 more)
+Cohesion: 0.13
+Nodes (10): android_virtual_lan_discovers_and_opens_ctrl_to_fake_console(), CONTROL_PORT, DISCOVERY_PORT, IO_TIMEOUT, MORNING, NONCE, PatternRng, read_bounded_response() (+2 more)
 
-### Community 155 - "ControlEndpoint"
+### Community 155 - "Assert-SingleAndroidEmulator"
+Cohesion: 0.43
+Nodes (3): Assert-SingleAndroidEmulator(), Get-AndroidDeviceEntries(), Assert-Rejected()
+
+### Community 156 - "NativeStatus"
+Cohesion: 0.18
+Nodes (8): NativeResourceCounts, NativeStatus, AUDIO_ERROR, CLOSED, CODEC_ERROR, INVALID_SURFACE, OK, STALE_GENERATION
+
+### Community 158 - "SessionRpcrypt"
 Cohesion: 0.22
-Nodes (3): ControlEndpoint, FixedWriter<'a>, format_request()
+Nodes (9): output_capacity_failure_is_atomic(), ps4_hevc_is_rejected_without_touching_output_or_consuming_slot(), rpcrypt_allows_one_launch_spec_across_handshake_sessions(), SessionRpcrypt, SessionTarget, Ps4Modern, Ps4Pre10, Ps5 (+1 more)
 
-### Community 156 - "SessionTarget"
-Cohesion: 0.11
-Nodes (23): base64_encoded_len(), canonical_maximum_lengths_match_the_reviewed_bounds(), encode_base64(), EncryptedLaunchSpecLength, FixedWriter<'a>, format_plaintext(), LaunchSpec, numeric_fields_accept_reviewed_u32_boundaries_independently() (+15 more)
-
-### Community 158 - "StatusPill"
-Cohesion: 0.39
-Nodes (6): ConsoleCard(), ControllerSlot(), HealthCard(), NavigationRail(), NavItem(), StatusPill()
-
-### Community 159 - "ControlServerType"
-Cohesion: 0.40
-Nodes (5): ControlHandshakeResponse, ControlServerType, Ps4, Ps4Pro, Ps5
-
-### Community 161 - ".begin_control"
-Cohesion: 0.22
-Nodes (13): begin_control_is_atomic_and_profile_bound(), canonical_requests_have_exact_lengths_counters_and_did_layout(), codec_and_classification_mismatches_are_rejected_before_state_changes(), ControlChannelCrypto, decoded_length_policy_and_unknown_server_bytes_are_exact(), encrypted_server_type(), one_byte_short_request_output_is_atomic(), prepare_request() (+5 more)
-
-### Community 162 - "RegistrationCryptoTarget"
+### Community 159 - "RegistrationCryptoTarget"
 Cohesion: 0.40
 Nodes (5): RegistrationCryptoTarget, Ps4Modern, Ps4Pre10, Ps5, validate_registration_crypto_target()
 
+### Community 160 - "AAudioApi"
+Cohesion: 0.08
+Nodes (19): AAudioApi, builder_delete, close_stream, create_stream_builder, get_state, library, open_stream, request_start (+11 more)
+
+### Community 161 - ".begin_control"
+Cohesion: 0.21
+Nodes (14): begin_control_is_atomic_and_profile_bound(), canonical_requests_have_exact_lengths_counters_and_did_layout(), codec_and_classification_mismatches_are_rejected_before_state_changes(), ControlHandshake, ControlHeaderLength, decoded_length_policy_and_unknown_server_bytes_are_exact(), encrypted_server_type(), one_byte_short_request_output_is_atomic() (+6 more)
+
+### Community 162 - "wrap.sh"
+Cohesion: 0.50
+Nodes (3): ASAN_OPTIONS, LD_PRELOAD, wrap.sh script
+
+### Community 163 - ".close"
+Cohesion: 0.17
+Nodes (8): Android native adapter — first CR4 slice, Evidence, Explicit limits, Adaptateur Android natif — première tranche CR4, Limites explicites, Preuves, Périmètre, Scope
+
 ### Community 165 - "AppUiState"
-Cohesion: 0.53
+Cohesion: 0.32
 Nodes (3): AppUiState, reduce(), AppStateTest
+
+### Community 166 - "Engine"
+Cohesion: 0.08
+Nodes (19): acquire_window(), Engine, aaudio_, audio_error_, audio_stream_, codec_, control_mutex_, force_codec_failure_ (+11 more)
 
 ### Community 167 - "Control-channel HTTP handshake implementation contract"
 Cohesion: 0.20
@@ -755,34 +797,70 @@ Nodes (9): Canonical request contract, Control-channel HTTP handshake implementa
 Cohesion: 0.20
 Nodes (9): But et preuves, Contrat d’implémentation de la négociation HTTP du canal de contrôle, Contrat de requête canonique, Contrat des compteurs et risque résiduel, Frontière de sources et de licence, Gate de test et d’implémentation, Oracle fermé requis, Propriété et API proposées (+1 more)
 
-### Community 169 - "UiAction"
+### Community 169 - "SessionCodec"
 Cohesion: 0.20
-Nodes (10): ConfirmDemoStarted, CycleQuality, Navigate, StartDemo, StopDemo, ToggleLowLatency, ToggleMetrics, ToggleMicrophone (+2 more)
+Nodes (11): canonical_maximum_lengths_match_the_reviewed_bounds(), LaunchSpec, numeric_fields_accept_reviewed_u32_boundaries_independently(), oracle_cases(), OracleCase, SessionCodec, Avc, Hevc (+3 more)
+
+### Community 170 - "native_adapter.cpp"
+Cohesion: 0.07
+Nodes (20): force_audio_disconnect_for_test(), set_force_codec_failure_for_test(), set_lifecycle_test_mode_for_test(), test_builder(), test_builder_delete(), test_create_stream_builder(), test_open_stream(), test_set_channel_count() (+12 more)
 
 ### Community 173 - "RegistrationCryptoError"
-Cohesion: 0.10
-Nodes (25): AeropauseTableOffset, assert_codec_oracle_crypto(), assert_oracle(), CipherTableOffset, codec_oracle_crypto_fields_are_bound_for_all_nine_cases(), invalid_inputs_fail_with_static_redacted_errors(), modern(), oracle_v2_has_independent_offsets_for_every_modern_target() (+17 more)
-
-### Community 174 - ".new"
 Cohesion: 0.19
-Nodes (14): authenticated_test_peer(), build_launch_spec_oracle(), closed_launch_spec_oracle_binds_every_field_and_rejects_mutations(), control_complete(), decode_hex(), exact_output_capacity_succeeds_and_one_byte_less_is_atomic(), failed_writes_do_not_enable_finish_and_can_be_retried(), hex() (+6 more)
+Nodes (8): payload_lengths_round_trip_with_one_shot_states(), RegistrationContext, RegistrationCryptoError, CryptoInitialization, InvalidPin, InvalidTableOffset, InvalidTarget, RegistrationResponseDecryptor
 
-### Community 177 - ".derive"
-Cohesion: 0.26
-Nodes (9): Direction, Local, Remote, invocation_and_failure_limits_are_terminal(), local_and_remote_round_trip_and_reject_forgery(), one_million_real_packets_cross_one_thousand_epochs_without_termination(), oversized_receive_packets_fail_before_gmac_and_exhaust_global_budget(), packet_ranges_and_source_structure_are_bounded() (+1 more)
+### Community 174 - "SessionMorning"
+Cohesion: 0.21
+Nodes (10): authenticated_test_peer(), decode_hex(), exact_output_capacity_succeeds_and_one_byte_less_is_atomic(), failed_writes_do_not_enable_finish_and_can_be_retried(), morning(), pinned_ps4_pre10_counter_zero_iv_is_reproduced(), secret_owners_are_redacted_and_registration_source_is_cleared(), SessionMorning (+2 more)
+
+### Community 175 - "RegistrationTarget"
+Cohesion: 0.33
+Nodes (7): fixture_case_line(), fixture_has_case(), OracleCase, RegistrationTarget, Ps4Modern, Ps4Pre10, Ps5
+
+### Community 177 - "Direction"
+Cohesion: 0.67
+Nodes (3): Direction, Local, Remote
+
+### Community 178 - "Status"
+Cohesion: 0.25
+Nodes (7): Status, kAudioError, kClosed, kCodecError, kInvalidSurface, kOk, kStaleGeneration
+
+### Community 179 - "assert_oracle"
+Cohesion: 0.39
+Nodes (7): AeropauseTableOffset, assert_codec_oracle_crypto(), assert_oracle(), invalid_inputs_fail_with_static_redacted_errors(), modern(), pin(), upstream_registration_vectors_are_reproduced()
 
 ### Community 180 - "control_response.rs"
 Cohesion: 0.18
 Nodes (3): MAX_CONTROL_HEADER_SIZE, MAX_CONTROL_REQUEST_SIZE, FixedRng
 
-### Community 181 - "LaunchSpecError"
-Cohesion: 0.16
-Nodes (12): encrypt_with_counter_zero_keystream(), LaunchSpecError, AlreadyWritten, ArithmeticOverflow, ControlHandshakeNotFinished, CryptoInitialization, FormattingFailed, OutputTooSmall (+4 more)
+### Community 181 - ".attach_surface"
+Cohesion: 0.33
+Nodes (14): find_engine(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeAttachSurface(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeAudioHealth(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeClearSurface(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeCreate(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeDestroy(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeForceAudioDisconnectForTest(), Java_com_gpsx_tv_nativeadapter_NativeEngine_nativeInstallCallbackDuringStopForTest() (+6 more)
+
+### Community 183 - "PcmRing"
+Cohesion: 0.18
+Nodes (4): PcmRing, read_index_, samples_, write_index_
+
+### Community 184 - "DiscoveryParseError"
+Cohesion: 0.27
+Nodes (6): DiscoveryHost, DiscoveryParseError, Http, InvalidHostRequestPort, parse_port(), set_first_known_header()
+
+### Community 185 - "NativeAudioHealth"
+Cohesion: 0.22
+Nodes (5): NativeAudioHealth, CLOSED, DISCONNECTED, READY, UNAVAILABLE
+
+### Community 186 - "gpsx-crypto/src/lib.rs"
+Cohesion: 0.36
+Nodes (3): CipherTableOffset, RegistrationAmbassador, RegistrationPin
+
+### Community 188 - "ControlServerType"
+Cohesion: 0.40
+Nodes (5): ControlHandshakeResponse, ControlServerType, Ps4, Ps4Pro, Ps5
 
 ## Knowledge Gaps
-- **256 isolated node(s):** `HOME`, `CONSOLES`, `SESSION`, `CONTROLLERS`, `DIAGNOSTICS` (+251 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1144 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **34 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **300 isolated node(s):** `kOk`, `kClosed`, `kStaleGeneration`, `kInvalidSurface`, `kCodecError` (+295 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1256 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Work-memory lessons
 
@@ -797,17 +875,17 @@ Nodes (12): encrypt_with_counter_zero_keystream(), LaunchSpecError, AlreadyWritt
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `RegistrationCodecError` connect `RegistrationCodecError` to `RegistrationCryptoTarget`, `gpsx-protocol/src/registration.rs`, `format_account_id_inner`, `gpsx-protocol/src/lib.rs`, `RegistrationProfile`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **What connects `HOME`, `CONSOLES`, `SESSION` to the rest of the system?**
-  _256 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `RegistrationCodecError` connect `RegistrationCodecError` to `gpsx-protocol/src/registration.rs`, `format_account_id_inner`, `gpsx-protocol/src/lib.rs`, `RegistrationProfile`, `RegistrationCryptoTarget`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **What connects `kOk`, `kClosed`, `kStaleGeneration` to the rest of the system?**
+  _300 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `redaction.py` be split into smaller, more focused modules?**
   _Cohesion score 0.05308641975308642 - nodes in this community are weakly interconnected._
-- **Why does `ControlHandshakeError` connect `ControlHandshakeError` to `.begin_control`, `gpsx-crypto/src/lib.rs`, `control_handshake.rs`, `LaunchSpecError`, `ControlProfile`, `ControlEndpoint`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
+- **Why does `Engine` connect `Engine` to `AAudioApi`, `native_adapter.cpp`, `Status`, `control_loopback.rs`, `AAudioStream`, `.attach_surface`, `PcmRing`?**
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Should `SessionState` be split into smaller, more focused modules?**
-  _Cohesion score 0.06794871794871794 - nodes in this community are weakly interconnected._
-- **Why does `MetricName` connect `MetricName` to `encode_diagnostic_jsonl`, `gpsx-telemetry/src/lib.rs`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+  _Cohesion score 0.06585365853658537 - nodes in this community are weakly interconnected._
+- **Why does `ControlHandshakeError` connect `ControlHandshakeError` to `.begin_control`, `control_handshake.rs`, `LaunchSpecError`, `ControlProfile`, `gpsx-crypto/src/lib.rs`, `.fmt`?**
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **Should `Button` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._

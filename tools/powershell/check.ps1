@@ -100,6 +100,11 @@ try {
         '-ExecutionPolicy', 'Bypass',
         '-File', (Join-Path $PSScriptRoot 'test-provenance-guard.ps1')
     )
+    Invoke-ExternalChecked -FilePath 'powershell.exe' -Arguments @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', (Join-Path $PSScriptRoot 'test-android-instrumentation-guard.ps1')
+    )
 
     $coreCrates = @('gpsx-model', 'gpsx-input', 'gpsx-protocol', 'gpsx-telemetry', 'gpsx-crypto')
 

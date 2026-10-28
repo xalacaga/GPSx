@@ -12,7 +12,7 @@ assumptions. A gate is not passed merely because code compiles.
 | CR1 | Before accepting M1 entry | License A/B/C, concurrency budgets, DualSense model, exit behavior, and sound deferral of GP520 evidence |
 | CR2 | Before merging M1 | Core purity, state invariants, bounded queues, edge preservation, tests and CI |
 | CR3 | Before merging the first protocol slice | Provenance, license, parser limits, crypto use, secret handling, fixture legality |
-| CR4 | Before the first GP520 streaming build, only after user approval | JNI ownership, Surface/codec lifecycle, audio callback safety, shutdown, `unsafe` invariants and emulator-vs-device gaps |
+| CR4 | Before the first GP520 streaming build, after the owner authorizes the review package | JNI ownership, Surface/codec lifecycle, audio callback safety, shutdown, native safety invariants and emulator-vs-device gaps |
 | CR5 | Before accepting an optimization | Comparable baselines, P50/P95/P99, queue depths, thermal and Bluetooth confounders |
 | CR6 | Before release | Threat model, dependency/license audit, fuzz/soak results, recovery, packaging and notices |
 
@@ -20,6 +20,10 @@ An extra review is mandatory whenever a change introduces custom cryptographic
 logic, a new `unsafe` block, an untrusted parser, an unbounded or blocking hot
 path, authentication storage, a protocol-derived implementation, or a change
 to the JNI/media ownership boundary.
+
+Authorization to prepare or review CR4 is not authorization to access physical
+hardware. After CR4 returns `GO`, the owner must separately confirm the date,
+commands and bounded physical scope before any GP520 connection or installation.
 
 ## Review package
 

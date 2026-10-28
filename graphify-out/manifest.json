@@ -49,9 +49,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
-    "mtime": 1793209426.9856553,
-    "seen": 1793209699.8518946,
-    "ast_hash": "da7def7945c19c1bee5907cbbbf67fa0",
+    "mtime": 1793215281.5743937,
+    "seen": 1793216436.0054414,
+    "ast_hash": "8bfad9e43c31e84f245a388d6d1c407d",
     "semantic_hash": ""
   },
   "tools/powershell/collect-gp520-baseline.ps1": {
@@ -133,9 +133,9 @@
     "semantic_hash": ""
   },
   "docs/ANDROID_TV_ARCHITECTURE.md": {
-    "mtime": 1792953647.991873,
-    "seen": 1792954360.2602525,
-    "ast_hash": "27de84949fd22ac82a0855a75f65d83d",
+    "mtime": 1793216217.7182753,
+    "seen": 1793216436.0054793,
+    "ast_hash": "c76143459f93059bc7e4ef129102bee4",
     "semantic_hash": ""
   },
   "docs/ARCHITECTURE_AUDIT.fr.md": {
@@ -211,9 +211,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1793211668.9470043,
-    "seen": 1793211684.4218435,
-    "ast_hash": "88eb70404db55e957053515d0cdf3c70",
+    "mtime": 1793217761.9130197,
+    "seen": 1793217940.9786372,
+    "ast_hash": "53b06d9403e107bc2ffc7eeaa7f35282",
     "semantic_hash": ""
   },
   "docs/UPSTREAM_ANALYSIS.fr.md": {
@@ -253,9 +253,9 @@
     "semantic_hash": ""
   },
   "docs/ANDROID_TV_ARCHITECTURE.fr.md": {
-    "mtime": 1792953659.2217526,
-    "seen": 1792954360.2602508,
-    "ast_hash": "1b6d5147c22d7c8f48b3ad606b4730e0",
+    "mtime": 1793216217.7192762,
+    "seen": 1793216436.005478,
+    "ast_hash": "b2f9e80a825ab70acd5ba8b6cb9ed022",
     "semantic_hash": ""
   },
   "docs/BASELINE_RUNBOOK.fr.md": {
@@ -271,15 +271,15 @@
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.fr.md": {
-    "mtime": 1792953626.9523318,
-    "seen": 1792954360.260264,
-    "ast_hash": "52e880cbc0d5a9669844645416d1d55c",
+    "mtime": 1793213909.827137,
+    "seen": 1793214190.4653137,
+    "ast_hash": "e9059bdb7cbd30b71ad40f30c17a3692",
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.md": {
-    "mtime": 1792953626.950331,
-    "seen": 1792954360.2602656,
-    "ast_hash": "8d0049516c0bbe6c154d5186446fea0b",
+    "mtime": 1793213909.827137,
+    "seen": 1793214190.4653153,
+    "ast_hash": "b20d83cb4a36e56d4df97b40cf8e7665",
     "semantic_hash": ""
   },
   "docs/DUALSENSE_ANALYSIS.fr.md": {
@@ -319,9 +319,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
-    "mtime": 1793211668.9480014,
-    "seen": 1793211684.4218414,
-    "ast_hash": "e379ab50501910933d1d4a653920ebc3",
+    "mtime": 1793217761.9140193,
+    "seen": 1793217940.9786355,
+    "ast_hash": "ba4cc1832533e39e06d4c4e7724ee944",
     "semantic_hash": ""
   },
   "docs/decisions/0001-protocol-license-strategy.fr.md": {
@@ -343,15 +343,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
-    "mtime": 1792959233.6293728,
-    "seen": 1792959283.6735497,
-    "ast_hash": "f54f93a0efee6f37b9df243e806240d8",
+    "mtime": 1793217410.8566628,
+    "seen": 1793217940.978379,
+    "ast_hash": "16625f6f2fbe5d605077b63ce99d139b",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
-    "mtime": 1792954055.3397257,
-    "seen": 1792954360.2602038,
-    "ast_hash": "03b0eb31c095d3427bb9f94865bfa197",
+    "mtime": 1793215141.1337273,
+    "seen": 1793216436.0053499,
+    "ast_hash": "4981efb645b99af53fab7c2d2ac1df8f",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
@@ -403,15 +403,15 @@
     "semantic_hash": ""
   },
   "docs/OFFLINE_FIRST.fr.md": {
-    "mtime": 1793203675.135751,
-    "seen": 1793204566.610816,
-    "ast_hash": "909e163bdbe1ce26bedea35e9267823e",
+    "mtime": 1793213909.8281374,
+    "seen": 1793214190.4653482,
+    "ast_hash": "28bb9afea444b2602f2d746fe955a5d5",
     "semantic_hash": ""
   },
   "docs/OFFLINE_FIRST.md": {
-    "mtime": 1793203658.8241725,
-    "seen": 1793204566.6108174,
-    "ast_hash": "f54b1f66cec029a8672a05529fb63f48",
+    "mtime": 1793213909.8281374,
+    "seen": 1793214190.4653497,
+    "ast_hash": "286f6bdcde7487e908c157380fa37837",
     "semantic_hash": ""
   },
   "docs/UI_SPEC.fr.md": {
@@ -487,15 +487,15 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1793203781.7589145,
-    "seen": 1793204566.6108294,
-    "ast_hash": "b648e76c6424fbb4470aecbf7fb47fb6",
+    "mtime": 1793216495.3846314,
+    "seen": 1793216599.837393,
+    "ast_hash": "f29665bf08891c3892d1414390f6a052",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793203758.9832678,
-    "seen": 1793204566.6108308,
-    "ast_hash": "898da1ad97bff92f11e145657e2da679",
+    "mtime": 1793216495.3836212,
+    "seen": 1793216599.8373964,
+    "ast_hash": "1ec0b37af9c957411f3e1f6fca874984",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
@@ -631,9 +631,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/manifest.json": {
-    "mtime": 1793209208.397049,
-    "seen": 1793209699.851879,
-    "ast_hash": "8d3ffae46f4a43d0aaff23b87b23643f",
+    "mtime": 1793212087.8224797,
+    "seen": 1793214190.465246,
+    "ast_hash": "623cd67bd0ddbf9fed6e5cff1480e68a",
     "semantic_hash": ""
   },
   "tests/fixtures/provenance.json": {
@@ -865,15 +865,15 @@
     "semantic_hash": ""
   },
   "docs/CTRL_HANDSHAKE_PLAN.fr.md": {
-    "mtime": 1793209219.4854908,
-    "seen": 1793209699.8519523,
-    "ast_hash": "bea70a5e842c269155dbb34bef98a8e1",
+    "mtime": 1793212041.0049067,
+    "seen": 1793214190.46532,
+    "ast_hash": "f3f3139eaf861365712364c4a4737876",
     "semantic_hash": ""
   },
   "docs/CTRL_HANDSHAKE_PLAN.md": {
-    "mtime": 1793209208.3965387,
-    "seen": 1793209699.851954,
-    "ast_hash": "01b6a4b65436947e151204b2a7c93d2d",
+    "mtime": 1793212041.0049067,
+    "seen": 1793214190.4653218,
+    "ast_hash": "cd4449a7b549c11aa8a650dbecb3ee04",
     "semantic_hash": ""
   },
   "crates/gpsx-transport/tests/control_loopback.rs": {
@@ -922,6 +922,66 @@
     "mtime": 1793209426.9866633,
     "seen": 1793209699.8518994,
     "ast_hash": "71fcda9b2be78a6f728ad6093880cebd",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/nativeadapter/NativeAdapterLifecycleTest.kt": {
+    "mtime": 1793217382.3526313,
+    "seen": 1793217940.9783823,
+    "ast_hash": "abfd5c482565a144482df2162be04ca6",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/cpp/native_adapter.cpp": {
+    "mtime": 1793217507.6750607,
+    "seen": 1793217940.9783893,
+    "ast_hash": "487849add95cd47430bb5795e12f12b4",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/nativeadapter/NativeEngine.kt": {
+    "mtime": 1793217353.842038,
+    "seen": 1793217940.9783928,
+    "ast_hash": "1aea96292d3079ed56d0b71db30a3af9",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/nativeadapter/StreamSurfaceController.kt": {
+    "mtime": 1793216495.3825567,
+    "seen": 1793216599.8369937,
+    "ast_hash": "33b496c603acf0df29fe7bbfc3da2c6a",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_NATIVE_ADAPTER.fr.md": {
+    "mtime": 1793217819.005448,
+    "seen": 1793217940.9785187,
+    "ast_hash": "a9ff1fc31c852eed3855fa0a9b0dfd53",
+    "semantic_hash": ""
+  },
+  "docs/ANDROID_NATIVE_ADAPTER.md": {
+    "mtime": 1793217819.005448,
+    "seen": 1793217940.978521,
+    "ast_hash": "ae703e0acdec06dea6f8a6ac191fc0c9",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/resources/lib/x86_64/wrap.sh": {
+    "mtime": 1793216475.0773022,
+    "seen": 1793216599.8370087,
+    "ast_hash": "b28014b2270f73dbdc8059242b8a6ab8",
+    "semantic_hash": ""
+  },
+  "tools/powershell/AndroidEmulatorGuard.psm1": {
+    "mtime": 1793217410.854658,
+    "seen": 1793217940.9784791,
+    "ast_hash": "30e47ce110af4fe2384c649596665154",
+    "semantic_hash": ""
+  },
+  "tools/powershell/test-android-instrumentation-guard.ps1": {
+    "mtime": 1793217410.8556595,
+    "seen": 1793217940.9784887,
+    "ast_hash": "faca093aca01788ba43357befef3ad18",
+    "semantic_hash": ""
+  },
+  "tools/powershell/test-android-instrumentation.ps1": {
+    "mtime": 1793217410.8556595,
+    "seen": 1793217940.9784899,
+    "ast_hash": "19c3cbe74c1b70a0cc35bf38d93985d2",
     "semantic_hash": ""
   }
 }

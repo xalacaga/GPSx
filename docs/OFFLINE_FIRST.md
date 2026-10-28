@@ -42,3 +42,7 @@ duration, rollback/uninstall steps, and a Claude Code CR4 review prompt. The
 evidence package and a CR4 `GO` must precede physical access. Merely reaching M3
 does not authorize device access.
 
+Owner authorization to conduct CR4 review and owner authorization for physical
+access are distinct decisions. The former freezes and reviews an emulator-only
+adapter diff; the latter may occur only after `GO` and names a date and scope.
+

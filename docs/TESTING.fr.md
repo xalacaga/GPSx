@@ -120,6 +120,36 @@ la cible n'est qu'une preuve de compilation, et une vraie campagne reste
 Compiler ne valide pas le matériel : Windows, émulateur, GP520, DualSense
 USB/Bluetooth et PS5 sont rapportés séparément.
 
+### Cycle de vie de l’adaptateur Android natif
+
+Exécuter uniquement le wrapper du dépôt depuis sa racine :
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1
+```
+
+Il refuse toute installation sauf si une seule cible ADB prête existe et si son
+numéro correspond à `emulator-*` ; une cible physique ou plusieurs cibles
+échouent en mode fermé. Il rejette aussi un faux succès Gradle annonçant zéro test
+exécuté. La suite couvre la libération des handles/workers/fenêtres après
+create/destroy ×1000, les générations Surface obsolètes et en échec, le
+remplacement Surface réel, l’arrêt idempotent, start/stop AAudio et le signalement
+de déconnexion, les appels concurrents face à close et la recréation du contrôleur
+`SurfaceView`. Elle n’alimente ni média compressé ni PCM réel.
+
+Exécuter les dix tests natifs sous AddressSanitizer avec :
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/powershell/test-android-instrumentation.ps1 -Asan
+```
+
+FAIT (2026-10-28) : les 13 tests d’instrumentation normaux et les dix tests
+natifs ASan ciblés ont réussi sur l’AVD Google TV API 36 x86_64. Le wrapper efface
+les résultats Gradle obsolètes avant chaque run et conserve les deux rapports XML
+sous `app/build/reports/gpsx-instrumentation-evidence/{normal,asan}`. C’est
+uniquement une preuve de cycle de vie sur émulateur. L’exécution API 27/28 reste
+`NOT_TESTED` car ces images système ne sont pas installées.
+
 Le gate matériel physique reste fermé dans l’attente du dossier de preuve, du
 `GO` CR4 et de la confirmation directe par le propriétaire de la date et du
 périmètre. Les résultats d’émulateur, faux codec, replay et desktop ne peuvent
