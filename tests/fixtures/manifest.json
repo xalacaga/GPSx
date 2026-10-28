@@ -1,6 +1,17 @@
 {
   "files": [
     {
+      "bytes": 28469,
+      "path": "registration_codec_oracle_v1.json",
+      "provenance": {
+        "environment": "Windows x64 scratch build with MSVC 19.44.35229.0 and Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0; 5 default-filler cases matched the upstream formatter and 4 custom-filler cases were assembled from upstream primitives; output SHA-256 13b3d768d861888d52d4aa9d86cb1ba2a09de701f85288534706734727064dd4, 28469 bytes, CRLF preserved by -text",
+        "license": "AGPL-3.0-only with the project OpenSSL exception",
+        "origin": "Behavioral oracle built from chiaki-ng regist.c, rpcrypt.c and base64.c, plus an exact extraction of session.c:58-73, at c8bea2642d0e95402f373af55584a3b98cd89417 with public synthetic inputs; external closed build manifest reviewed separately",
+        "redaction_review": "Synthetic inputs only; no user, account, console, registration or session data; GPSx secret scanner and manual review, 2026-10-28"
+      },
+      "sha256": "13b3d768d861888d52d4aa9d86cb1ba2a09de701f85288534706734727064dd4"
+    },
+    {
       "bytes": 2963,
       "path": "registration_crypto_dependency_audit_v1.json",
       "provenance": {

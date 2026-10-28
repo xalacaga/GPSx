@@ -199,9 +199,9 @@
     "semantic_hash": ""
   },
   "docs/PROTOCOL.md": {
-    "mtime": 1793036117.7869718,
-    "seen": 1793036275.3872547,
-    "ast_hash": "4c38fc30aa102e2376816424678df453",
+    "mtime": 1793168810.4061646,
+    "seen": 1793169536.675626,
+    "ast_hash": "4aed20ccb4cab4b3fa655f2843ddb30a",
     "semantic_hash": ""
   },
   "docs/ROADMAP.md": {
@@ -241,9 +241,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.md": {
-    "mtime": 1793039428.8599286,
-    "seen": 1793039804.3516052,
-    "ast_hash": "08386d3bfa12aa4af2f77d3e31e7f741",
+    "mtime": 1793170053.2527933,
+    "seen": 1793170100.8416948,
+    "ast_hash": "f36fdd101adc2e4eb9e8b1a00e518b1d",
     "semantic_hash": ""
   },
   "README.fr.md": {
@@ -307,9 +307,9 @@
     "semantic_hash": ""
   },
   "docs/PROTOCOL.fr.md": {
-    "mtime": 1793036117.791002,
-    "seen": 1793036275.3872535,
-    "ast_hash": "c5da627ea8fcdfeb27d1e04fbb57efcb",
+    "mtime": 1793168810.4061646,
+    "seen": 1793169536.6756244,
+    "ast_hash": "6540c8a6c13dd5a384a6007891aefbfb",
     "semantic_hash": ""
   },
   "docs/ROADMAP.fr.md": {
@@ -337,9 +337,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.fr.md": {
-    "mtime": 1793039428.861434,
-    "seen": 1793039804.3516028,
-    "ast_hash": "84a9652becea87c3c6541d0d9350e392",
+    "mtime": 1793170053.253794,
+    "seen": 1793170100.8416932,
+    "ast_hash": "e9c331e13bd425f78798d208beac8a0b",
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
@@ -487,15 +487,15 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1793041456.6805723,
-    "seen": 1793041477.3072734,
-    "ast_hash": "2c694e26936ec1c30c1f03c06da16a82",
+    "mtime": 1793170159.7349222,
+    "seen": 1793170170.564097,
+    "ast_hash": "2a5d021d2d8e6c98c737580f268aad28",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793041456.6805723,
-    "seen": 1793041477.307276,
-    "ast_hash": "4af486eb78a58f4a28eb44f4333f47c5",
+    "mtime": 1793170159.7349222,
+    "seen": 1793170170.5640993,
+    "ast_hash": "5ede8f6e69322775c5d60e570f380e29",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
@@ -511,21 +511,21 @@
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.fr.md": {
-    "mtime": 1793039449.0787473,
-    "seen": 1793039804.3514783,
-    "ast_hash": "9a1e9a9f4813c41cf4c3a1c21f585d78",
+    "mtime": 1793168818.6968994,
+    "seen": 1793169536.675583,
+    "ast_hash": "38a3af38c32050749b98f5d2d64d73dc",
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.md": {
-    "mtime": 1793039449.0787473,
-    "seen": 1793039804.3514802,
-    "ast_hash": "302db959043cc5421db824aec0bf9618",
+    "mtime": 1793168818.6959002,
+    "seen": 1793169536.6755846,
+    "ast_hash": "d7268dace03174b6fbcca0d2e13f428e",
     "semantic_hash": ""
   },
   "tools/provenance/chiaki-ng-c8bea264-paths.txt": {
-    "mtime": 1793036838.524398,
-    "seen": 1793036899.616233,
-    "ast_hash": "f2ab9ed069cb3ce4441e428540c28c13",
+    "mtime": 1793045085.984975,
+    "seen": 1793045510.8506646,
+    "ast_hash": "a40c176e4da39cb88eeb7987f68bc3f9",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.fr.md": {
@@ -559,9 +559,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-protocol/src/lib.rs": {
-    "mtime": 1792960093.059865,
-    "seen": 1792960184.367131,
-    "ast_hash": "40d93330883fc15907cd478b62dab0a8",
+    "mtime": 1793045404.4691048,
+    "seen": 1793045510.8505206,
+    "ast_hash": "0e9de8f609a667df8fef19fc32fb2784",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/RemoteNavigationTest.kt": {
@@ -631,15 +631,15 @@
     "semantic_hash": ""
   },
   "tests/fixtures/manifest.json": {
-    "mtime": 1793043095.2373543,
-    "seen": 1793043167.4802778,
-    "ast_hash": "660c8df53e998dd70c6bbfd8e49d1746",
+    "mtime": 1793170053.253794,
+    "seen": 1793170100.8415194,
+    "ast_hash": "3ae93202ff4b7d087806c21fb57d5cfd",
     "semantic_hash": ""
   },
   "tests/fixtures/provenance.json": {
-    "mtime": 1793039734.4563773,
-    "seen": 1793039804.3514187,
-    "ast_hash": "c8834aff8f62d7e20279ec002642f7f6",
+    "mtime": 1793170053.254794,
+    "seen": 1793170100.8415215,
+    "ast_hash": "9ff023c4213ab64713068d5942f87385",
     "semantic_hash": ""
   },
   "tests/fixtures/registration_crypto_dependency_audit_v1.json": {
@@ -661,15 +661,69 @@
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/registration.rs": {
-    "mtime": 1793043145.4930642,
-    "seen": 1793043167.4802542,
-    "ast_hash": "5311303dda4a0c585af09e682c903767",
+    "mtime": 1793169210.2836175,
+    "seen": 1793169536.675496,
+    "ast_hash": "3597c46ff72201e504349c58d311c758",
     "semantic_hash": ""
   },
   "tests/fixtures/registration_crypto_oracle_v2.json": {
     "mtime": 1793039331.1666007,
     "seen": 1793039804.3514223,
     "ast_hash": "21f468d2d95b8749351b0a2b839220ce",
+    "semantic_hash": ""
+  },
+  "docs/REGISTRATION_CODEC_PLAN.fr.md": {
+    "mtime": 1793168810.408677,
+    "seen": 1793169536.67563,
+    "ast_hash": "fd8720c781d1170f3097d168e2d86a83",
+    "semantic_hash": ""
+  },
+  "docs/REGISTRATION_CODEC_PLAN.md": {
+    "mtime": 1793168810.4076693,
+    "seen": 1793169536.6756315,
+    "ast_hash": "5b276daabd5dfd685f81270f8172b5c7",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-protocol/src/registration.rs": {
+    "mtime": 1793169176.9949632,
+    "seen": 1793169536.6755128,
+    "ast_hash": "e4de7c0a91eeec8852b21aee419f7af5",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261026_201231_1ca3272b_implement_the_reviewed_bounded_registration_codec.md": {
+    "mtime": 1793045551.0264668,
+    "seen": 1793046185.7480469,
+    "ast_hash": "ed97ed169baabdb0639c275162e8378d",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261026_202431_9c1b0dc7_apply_the_go_with_changes_remediation_for_codec_bl.md": {
+    "mtime": 1793046271.2090054,
+    "seen": 1793047773.29839,
+    "ast_hash": "3374fda4dd966dd7eae9f9a98f5aa2c7",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/registration_codec_oracle_v1.json": {
+    "mtime": 1793169376.0252442,
+    "seen": 1793169536.6755283,
+    "ast_hash": "e8821fb6bb714d78456c2262739e2ffb",
+    "semantic_hash": ""
+  },
+  "tests/support/registration_codec_oracle.rs": {
+    "mtime": 1793169341.245759,
+    "seen": 1793169536.675534,
+    "ast_hash": "9ee4f2ff8a7a255a172ade2b6af5d7d9",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261026_204953_2e7ca9b2_close_codec_review_findings_a1_and_a2_and_prepare.md": {
+    "mtime": 1793047793.391358,
+    "seen": 1793169536.675662,
+    "ast_hash": "757e0e3da12ed0501dd952f156240ab3",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_063927_e824cbd4_close_codec_oracle_integration_findings_b1_b4_with.md": {
+    "mtime": 1793169567.5431817,
+    "seen": 1793170100.841691,
+    "ast_hash": "2a35a122eacb5eef31408e5874ec33f1",
     "semantic_hash": ""
   }
 }

@@ -1,7 +1,7 @@
 # Protocol evidence register
 
-Status: parser and UDP loopback adapter tested; console interoperability remains
-`NOT_TESTED`.
+Status: discovery parser and UDP loopback adapter tested; registration codec
+unit-tested; console interoperability remains `NOT_TESTED`.
 
 This document deliberately contains no implementation copied or translated
 from Chiaki-family sources. It records only the externally observed behaviors
@@ -12,7 +12,7 @@ needed for the M0.5 gate.
 | Area | Current status | Required evidence |
 |---|---|---|
 | Local discovery | LOOPBACK_TESTED / console NOT_TESTED | Sanitized packet metadata and state timestamps |
-| Registration | NOT_TESTED | Outcome and error class; no registration secret |
+| Registration | CODEC_UNIT_TESTED / console NOT_TESTED | Outcome and error class; no registration secret |
 | Session setup | NOT_TESTED | State transition timeline and negotiated media metadata |
 | Video | NOT_TESTED | Codec, dimensions, FPS, loss, recovery events |
 | Audio | NOT_TESTED | Codec, route, underruns, drift observations |
@@ -27,6 +27,25 @@ needed for the M0.5 gate.
 - Prefer counts, timings, lengths, and state changes over payload contents.
 - Never retain credentials, cookies, tokens, keys, or secret-bearing URLs.
 - Mark interpretations separately as FACT, INFERENCE, or HYPOTHESIS.
+
+## Local-registration codec
+
+**FACT:** `gpsx-protocol` now contains a dependency-free, bounded codec for the
+four reviewed RP protocol targets. It formats the identity and request envelope,
+binds each profile to its crypto target, emits the compatibility HTTP request,
+and strictly parses bounded HTTP and decrypted registration responses without
+owning secret-bearing values. Unit and compile-fail tests cover exact bytes,
+profile mismatches, offsets, length/count boundaries, duplicate and wrong-case
+fields, and arbitrary inputs. The PS4_9 Online-ID compatibility formatter is
+absent from production because it is private and guarded by `#[cfg(test)]`; its
+compile-fail doctest additionally confirms that it has no public export.
+
+The codec performs no I/O and no cryptography. Its reviewed C-oracle fixture now
+binds nine complete cases in codec tests, while `gpsx-crypto` independently
+recomputes every aeropause and encrypted inner block. The external generation
+harness, stub, patch, logs, and closed build manifest remain outside the
+repository under R5 option b. **UNKNOWN:** interoperability with any real PS4 or
+PS5, including the PS4_8 and PS4_9 RP targets.
 
 ## UDP discovery adapter
 

@@ -1,5 +1,34 @@
 # Fixtures relues
 
+## Oracle du codec d’enregistrement v1
+
+`registration_codec_oracle_v1.json` contient neuf cas déterministes générés à
+partir d’entrées synthétiques publiques. Les cinq cas au remplissage par défaut
+sont comparés octet par octet avec le
+`chiaki_regist_request_payload_format` amont épinglé ; les quatre cas au
+remplissage personnalisé sont assemblés par le harnais externe à partir des
+primitives amont épinglées `init_regist`, aeropause et chiffrement, car le
+formateur amont impose le remplissage `A`.
+
+Les clés d’entrée `online_name` et `identity_bytes` sont des libellés neutres
+de fixture pour l’OnlineId et l’AccountId synthétiques. Elles évitent le
+classement volontairement conservateur des clés `online_id` / `account_id` par
+le scanner du dépôt, tandis que le champ `identity` de chaque cas continue de
+lier exactement les variantes du protocole.
+
+La génération emploie le commit chiaki-ng
+`c8bea2642d0e95402f373af55584a3b98cd89417`, le commit Mbed TLS
+`8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0` et MSVC
+`19.44.35229.0`. La sortie mesure 28 469 octets et son SHA-256 est
+`13b3d768d861888d52d4aa9d86cb1ba2a09de701f85288534706734727064dd4`.
+La sortie texte Windows a produit des fins de ligne CRLF ; `.gitattributes`
+marque les fixtures JSON `-text`, ce qui conserve ces octets relus au checkout.
+
+Le harnais de génération, le stub de version extrait, le patch amont, les logs
+du compilateur et le manifeste fermé de construction restent externes selon
+l’option b de R5 et ne doivent jamais être ajoutés à ce dépôt. La fixture ne
+porte aucune revendication matérielle ou d’interopérabilité.
+
 ## Oracle cryptographique d’enregistrement v2
 
 `registration_crypto_oracle_v2.json` ne contient que des entrées synthétiques

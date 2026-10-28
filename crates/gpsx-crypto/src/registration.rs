@@ -402,6 +402,9 @@ redacted_format!(
 mod tests {
     use super::*;
 
+    #[path = "../../../../../tests/support/registration_codec_oracle.rs"]
+    mod codec_oracle;
+
     const AMBASSADOR: [u8; 16] = [
         0x13, 0x37, 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xff, 0xee, 0x42, 0x63, 0x68, 0x69, 0x61, 0x6b,
         0x69,
@@ -432,6 +435,120 @@ mod tests {
             *value = (hex_nibble(bytes[index * 2]) << 4) | hex_nibble(bytes[index * 2 + 1]);
         }
         output
+    }
+
+    fn assert_codec_oracle_crypto(fixture: &str) {
+        let oracle = codec_oracle::parse(fixture).expect("strict codec oracle JSON");
+        assert_eq!(oracle.inputs.synthetic_number, 13_374_201);
+        assert_eq!(oracle.inputs.seed_16, "1337deadbeefc0ffee42636869616b69");
+        assert_eq!(oracle.inputs.online_id, "ChiakiNanami1337");
+        assert_eq!(oracle.inputs.account_id, "0001020304050607");
+        assert_eq!(oracle.cases.len(), 9);
+        assert_eq!(
+            oracle
+                .cases
+                .iter()
+                .map(|case| case.name)
+                .collect::<Vec<_>>(),
+            [
+                "ps4_8_online_default",
+                "ps4_9_online_compat_default",
+                "ps4_9_account_default",
+                "ps4_10_account_default",
+                "ps4_10_account_0_31",
+                "ps4_10_account_31_0",
+                "ps5_account_default",
+                "ps5_account_0_31",
+                "ps5_account_31_0",
+            ]
+        );
+
+        let ambassador: [u8; 16] = codec_oracle::decode_hex(oracle.inputs.seed_16)
+            .unwrap()
+            .try_into()
+            .unwrap();
+        for (index, case) in oracle.cases.into_iter().enumerate() {
+            assert!(matches!(case.identity, "online_id" | "account_id"));
+            assert_eq!(codec_oracle::decode_hex(case.filler).unwrap().len(), 0x1e0);
+            assert!(!case.payload.is_empty());
+            assert!(!case.outer_request.is_empty());
+            assert_eq!(case.trailing_comma, index < 8);
+            let (target, expected_numeric_target) = match case.profile {
+                "ps4_8" => (RegistrationTarget::Ps4Pre10, 800),
+                "ps4_9" => (RegistrationTarget::Ps4Pre10, 900),
+                "ps4_10_target" => (RegistrationTarget::Ps4Modern, 1_000),
+                "ps5" => (RegistrationTarget::Ps5, 1_000_100),
+                _ => panic!("unexpected codec oracle profile"),
+            };
+            assert_eq!(case.target, expected_numeric_target, "{} target", case.name);
+            let context = match case.cipher_offset {
+                Some(offset) => RegistrationContext::new_modern(
+                    target,
+                    RegistrationAmbassador::from_csprng_bytes(ambassador),
+                    pin(),
+                    CipherTableOffset::new(offset).unwrap(),
+                )
+                .unwrap(),
+                None => {
+                    assert_eq!(target, RegistrationTarget::Ps4Pre10);
+                    RegistrationContext::new_ps4_pre10(
+                        RegistrationAmbassador::from_csprng_bytes(ambassador),
+                        pin(),
+                    )
+                }
+            };
+            let aeropause = match case.aeropause_offset {
+                Some(offset) => context
+                    .aeropause(AeropauseTableOffset::new(offset).unwrap())
+                    .unwrap(),
+                None => context.aeropause_ps4_pre10().unwrap(),
+            };
+            assert_eq!(
+                aeropause.expose_for_protocol().as_slice(),
+                codec_oracle::decode_hex(case.aeropause).unwrap(),
+                "{} aeropause",
+                case.name
+            );
+
+            let mut encrypted = codec_oracle::decode_hex(case.plaintext_inner).unwrap();
+            let _response = context.encrypt_request_in_place(&mut encrypted).unwrap();
+            assert_eq!(
+                encrypted,
+                codec_oracle::decode_hex(case.encrypted_inner).unwrap(),
+                "{} encrypted inner",
+                case.name
+            );
+        }
+    }
+
+    #[test]
+    fn codec_oracle_crypto_fields_are_bound_for_all_nine_cases() {
+        assert!(codec_oracle::has_crlf_only(codec_oracle::FIXTURE));
+        assert_codec_oracle_crypto(codec_oracle::FIXTURE);
+    }
+
+    #[test]
+    fn codec_oracle_crypto_field_mutations_are_detected() {
+        let mutated_aeropause = codec_oracle::FIXTURE.replacen(
+            "75064b815c8db1e97999fe4637e35969",
+            "7999fe4637e3596975064b815c8db1e9",
+            1,
+        );
+        assert!(
+            std::panic::catch_unwind(|| assert_codec_oracle_crypto(&mutated_aeropause)).is_err()
+        );
+
+        let mutated_encrypted = codec_oracle::FIXTURE.replacen(
+            "f2fd4ddc8621da3d9f35f3df82586508",
+            "02fd4ddc8621da3d9f35f3df82586508",
+            1,
+        );
+        assert!(
+            std::panic::catch_unwind(|| assert_codec_oracle_crypto(&mutated_encrypted)).is_err()
+        );
+
+        let extra_case = codec_oracle::duplicate_first_case();
+        assert!(std::panic::catch_unwind(|| assert_codec_oracle_crypto(&extra_case)).is_err());
     }
 
     #[derive(Clone, Copy)]

@@ -1,12 +1,13 @@
 # Registre de preuves du protocole
 
-Statut : parseur et adaptateur UDP testés en boucle locale ; l’interopérabilité
-avec une console reste `NOT_TESTED`. Aucun code Chiaki n’est copié ou traduit ici.
+Statut : parseur de découverte et adaptateur UDP testés en boucle locale ; codec
+d’enregistrement testé unitairement ; l’interopérabilité avec une console reste
+`NOT_TESTED`. Aucun code Chiaki n’est copié ou traduit ici.
 
 | Domaine | Statut | Preuve requise |
 |---|---|---|
 | Découverte | LOOPBACK_TESTED / console NOT_TESTED | Métadonnées expurgées et horodatages |
-| Enregistrement | NOT_TESTED | Résultat et erreur, sans secret |
+| Enregistrement | CODEC_UNIT_TESTED / console NOT_TESTED | Résultat et erreur, sans secret |
 | Session | NOT_TESTED | Chronologie et métadonnées média |
 | Vidéo | NOT_TESTED | Codec, dimensions, FPS, pertes, récupération |
 | Audio | NOT_TESTED | Codec, route, underruns, dérive |
@@ -16,6 +17,26 @@ avec une console reste `NOT_TESTED`. Aucun code Chiaki n’est copié ou traduit
 
 Épingler la révision amont et l’environnement, préférer compteurs et durées aux
 contenus, ne garder aucun secret et séparer FACT, INFERENCE et HYPOTHESIS.
+
+## Codec d’enregistrement local
+
+**FAIT :** `gpsx-protocol` contient désormais un codec borné et sans dépendance
+pour les quatre cibles du protocole RP relues. Il formate l’identité et
+l’enveloppe de requête, lie chaque profil à sa cible crypto, émet la requête HTTP
+de compatibilité et analyse strictement les réponses HTTP et d’enregistrement
+déchiffrées bornées sans posséder les valeurs porteuses de secrets. Les tests
+unitaires et compile-fail couvrent les octets exacts, les incohérences de profil,
+les offsets, les limites de taille et de nombre, les doublons, les mauvaises
+casses et les entrées arbitraires. Le formateur de compatibilité Online-ID PS4_9
+est absent de la production parce qu’il est privé et gardé par `#[cfg(test)]` ;
+son doctest compile-fail confirme en plus qu’aucun export public n’existe.
+
+Le codec n’effectue ni E/S ni cryptographie. Sa fixture d’oracle C relue lie
+désormais neuf cas complets dans les tests du codec, tandis que `gpsx-crypto`
+recalcule indépendamment chaque aeropause et bloc interne chiffré. Le harnais,
+le stub, le patch, les logs et le manifeste fermé de construction externes
+restent hors du dépôt selon l’option b de R5. **INCONNU :** l’interopérabilité
+avec une PS4 ou PS5 réelle, y compris les cibles RP PS4_8 et PS4_9.
 
 ## Adaptateur de découverte UDP
 

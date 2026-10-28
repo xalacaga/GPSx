@@ -1,11 +1,14 @@
 # Plan de sécurité protocolaire CR3
 
-Statut : GO limité accepté le 2026-10-25 pour le seul lot SRCH pur.
+Statut historique du premier gate CR3 : GO limité accepté le 2026-10-25 pour le
+seul lot SRCH pur. Les gates ultérieurs du transport, de la cryptographie
+d’enregistrement et du codec d’enregistrement sont consignés à la fin du document.
 
-Le premier lot proposé est un formateur de découverte et un parseur de réponse
-purs, bornés en allocation, dans `gpsx-protocol`. Il ne réalise ni accès réseau,
-ni enregistrement, authentification, cryptographie, média ou accès GP520. Les
-fichiers chiaki-ng exacts sont gelés dans `PROVENANCE.md` au commit
+Le premier lot proposé à cette date était un formateur de découverte et un
+parseur de réponse purs, bornés en allocation, dans `gpsx-protocol`. Il ne
+réalisait ni accès réseau, ni enregistrement, authentification, cryptographie,
+média ou accès GP520. Les fichiers chiaki-ng exacts étaient gelés dans
+`PROVENANCE.md` au commit
 `c8bea2642d0e95402f373af55584a3b98cd89417`.
 
 ## Frontière de confiance et limites des parseurs
@@ -20,8 +23,9 @@ et la récursion interdite.
 | Datagramme UDP de découverte | 1 024 octets | Refus du datagramme entier | ACCEPTÉ CR3 |
 | Nombre d’en-têtes de découverte | 32 | Refus du datagramme entier | ACCEPTÉ CR3 |
 | Ligne de découverte | 512 octets | Refus du datagramme entier | ACCEPTÉ CR3 |
-| Futurs en-têtes HTTP d’enregistrement | 32 Kio / 128 champs | Fermer l’essai ; aucun secret partiel conservé | PRÉVU, hors premier lot |
-| Futur corps d’enregistrement | 1 Mio | Fermer l’essai ; effacer les secrets partiels | PRÉVU, hors premier lot |
+| Bloc d’en-têtes HTTP d’enregistrement | 1 024 octets | Fermer l’essai ; aucun résultat partiel conservé | IMPLÉMENTÉ ; revue de remédiation en attente |
+| Corps / bloc de champs déchiffré | 1 024 octets / 128 champs | Fermer l’essai ; effacer les tampons secrets de l’appelant | IMPLÉMENTÉ ; revue de remédiation en attente |
+| Réponse d’enregistrement complète | 1 500 octets pour en-tête plus corps | Fermer l’essai | IMPLÉMENTÉ ; revue de remédiation en attente |
 | Futur datagramme UDP chiffré | 2 048 octets | Abandon et erreur classée comptabilisée | PRÉVU, hors premier lot |
 | Futur ensemble de fragments média | 64 fragments / 4 Mio agrégés | Abandon de l’image et demande de récupération si disponible | PRÉVU, hors premier lot |
 | Future fenêtre de réordonnancement | 128 paquets / 250 ms | Éviction du plus ancien et perte bornée enregistrée | PRÉVU, hors premier lot |
@@ -33,13 +37,16 @@ octets finaux non analysés, et ne journalise jamais les datagrammes ou
 identifiants bruts. Un NUL terminal unique est accepté et retiré par précaution
 d’interopérabilité explicite.
 
-## Comportement SRCH autorisé
+## Autorisation historique — premier lot SRCH
 
-Seuls `gpsx-protocol` et ses quatre lignes de provenance sont autorisés. La
-crate ne possède aucune dépendance ni script de build, interdit le code unsafe et
-n’effectue aucune E/S. WAKEUP, identifiants, sockets, enregistrement,
-authentification, cryptographie, sessions, Takion, médias, JNI, protocole Kotlin,
-captures réelles et travaux GP520 restent interdits.
+Lors de ce premier gate, seuls `gpsx-protocol` et ses quatre lignes de provenance
+de l’époque étaient autorisés. La crate ne possédait aucune dépendance ni script
+de build, interdisait le code unsafe et n’effectuait aucune E/S. WAKEUP,
+identifiants, sockets, enregistrement, authentification, cryptographie, sessions,
+Takion, médias, JNI, protocole Kotlin, captures réelles et travaux GP520 étaient
+hors de cette autorisation. Il s’agit d’un périmètre historique, pas de la
+frontière actuelle du projet ; les décisions ultérieures sur le transport, la
+cryptographie d’enregistrement et le codec sont résumées à la fin du document.
 
 Le parseur accepte les fins de ligne CRLF, LF et CR ainsi qu’une dernière ligne
 complète sans fin de ligne. Il retire exactement un espace facultatif après les
@@ -100,5 +107,12 @@ compatibilité emploient seulement des vecteurs publics ou synthétiques.
 
 Le GO accepté n’a créé que `gpsx-protocol`. `gpsx-transport` a ensuite reçu un
 GO séparé et existe désormais. Le lot `gpsx-crypto` limité à l’enregistrement a
-été autorisé le 2026-10-26 et attend sa revue d’implémentation ; `gpsx-session`
-reste absente en attente d’une revue explicite ultérieure.
+franchi sa revue de remédiation. Le codec d’enregistrement borné a reçu `GO WITH
+CHANGES` ; sa remédiation requise des tests et de la documentation est
+implémentée et attend sa revue de clôture. R5 a autorisé la génération de son
+oracle C uniquement dans un arbre scratch externe. La revue d’intégration
+séparée a rendu `GO WITH CHANGES` ; B1-B4 sont implémentés mais restent non
+commités jusqu’à leur contrôle indépendant requis. Le harnais, le stub, le
+patch, les logs et le manifeste fermé de construction restent définitivement
+externes. `gpsx-session` reste absente en attente d’une revue explicite
+ultérieure.
