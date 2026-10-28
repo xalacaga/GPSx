@@ -49,9 +49,9 @@
     "semantic_hash": ""
   },
   "tools/powershell/check.ps1": {
-    "mtime": 1793041376.9972606,
-    "seen": 1793041433.1904845,
-    "ast_hash": "185da2748c5c24be14165081e342f543",
+    "mtime": 1793178721.7544405,
+    "seen": 1793178879.4448428,
+    "ast_hash": "bd68f4bbee666dbfffc80d639fab4f61",
     "semantic_hash": ""
   },
   "tools/powershell/collect-gp520-baseline.ps1": {
@@ -175,15 +175,15 @@
     "semantic_hash": ""
   },
   "docs/LICENSE_AUDIT.fr.md": {
-    "mtime": 1792954354.1574976,
-    "seen": 1792954360.2602768,
-    "ast_hash": "45e3a539c1d8e2f04f6819aa44f2bd7d",
+    "mtime": 1793177658.038661,
+    "seen": 1793178095.470268,
+    "ast_hash": "1e0c9c5c736d5e0b77c7d4a77fe9a009",
     "semantic_hash": ""
   },
   "docs/LICENSE_AUDIT.md": {
-    "mtime": 1792954354.1574976,
-    "seen": 1792954360.260278,
-    "ast_hash": "866d7b1e3a74f3d2ca89b8cc344689b3",
+    "mtime": 1793177658.0376604,
+    "seen": 1793178095.4702694,
+    "ast_hash": "574cf1a47869be9c5c4e1072095c9b5d",
     "semantic_hash": ""
   },
   "docs/PERFORMANCE.md": {
@@ -211,9 +211,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
-    "mtime": 1793034165.5839348,
-    "seen": 1793034206.990992,
-    "ast_hash": "b9f2c9913805c502a06292915fa10dc8",
+    "mtime": 1793178721.756441,
+    "seen": 1793178879.4449532,
+    "ast_hash": "2dfbf9ef11f3a308502e2971c336d314",
     "semantic_hash": ""
   },
   "docs/UPSTREAM_ANALYSIS.fr.md": {
@@ -241,9 +241,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.md": {
-    "mtime": 1793170053.2527933,
-    "seen": 1793170100.8416948,
-    "ast_hash": "f36fdd101adc2e4eb9e8b1a00e518b1d",
+    "mtime": 1793192966.1036313,
+    "seen": 1793193226.523403,
+    "ast_hash": "d985072c67342ec907509d1d1fedbbf0",
     "semantic_hash": ""
   },
   "README.fr.md": {
@@ -319,9 +319,9 @@
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
-    "mtime": 1793034165.5839348,
-    "seen": 1793034206.9909906,
-    "ast_hash": "de3e9e00443a29284378f8c2b4550fcb",
+    "mtime": 1793178730.7261548,
+    "seen": 1793178879.4449515,
+    "ast_hash": "c725a1634de35867e52fc3b5a94b125d",
     "semantic_hash": ""
   },
   "docs/decisions/0001-protocol-license-strategy.fr.md": {
@@ -337,9 +337,9 @@
     "semantic_hash": ""
   },
   "tests/fixtures/README.fr.md": {
-    "mtime": 1793170053.253794,
-    "seen": 1793170100.8416932,
-    "ast_hash": "e9c331e13bd425f78798d208beac8a0b",
+    "mtime": 1793192966.1046295,
+    "seen": 1793193226.5234017,
+    "ast_hash": "5728714662b8f44d49303d11b97ccb67",
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
@@ -487,15 +487,15 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1793170159.7349222,
-    "seen": 1793170170.564097,
-    "ast_hash": "2a5d021d2d8e6c98c737580f268aad28",
+    "mtime": 1793192966.1056309,
+    "seen": 1793193226.5233362,
+    "ast_hash": "6f5221430193cd906ff2425c1495874b",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793170159.7349222,
-    "seen": 1793170170.5640993,
-    "ast_hash": "5ede8f6e69322775c5d60e570f380e29",
+    "mtime": 1793192966.1046295,
+    "seen": 1793193226.523338,
+    "ast_hash": "4fcd8bdf50d024ee7179f24acfeea1d4",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
@@ -511,33 +511,33 @@
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.fr.md": {
-    "mtime": 1793168818.6968994,
-    "seen": 1793169536.675583,
-    "ast_hash": "38a3af38c32050749b98f5d2d64d73dc",
+    "mtime": 1793184238.1314094,
+    "seen": 1793184286.791814,
+    "ast_hash": "9b21a1d6be3bd706bdade8a18cbcfdc7",
     "semantic_hash": ""
   },
   "docs/CR3_SECURITY_PLAN.md": {
-    "mtime": 1793168818.6959002,
-    "seen": 1793169536.6755846,
-    "ast_hash": "d7268dace03174b6fbcca0d2e13f428e",
+    "mtime": 1793184238.1314094,
+    "seen": 1793184286.7918167,
+    "ast_hash": "15609de4b66c8fbc33184710b7a95b55",
     "semantic_hash": ""
   },
   "tools/provenance/chiaki-ng-c8bea264-paths.txt": {
-    "mtime": 1793045085.984975,
-    "seen": 1793045510.8506646,
-    "ast_hash": "a40c176e4da39cb88eeb7987f68bc3f9",
+    "mtime": 1793185427.249313,
+    "seen": 1793185451.3232393,
+    "ast_hash": "b4f04164369a36e72e906dc863391a17",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.fr.md": {
-    "mtime": 1793039718.6970625,
-    "seen": 1793039804.351487,
-    "ast_hash": "8d10396094b2a78526052356a8538a26",
+    "mtime": 1793184140.8469856,
+    "seen": 1793184286.7918215,
+    "ast_hash": "2d4e7494bfc3d59a4921383a4e27d217",
     "semantic_hash": ""
   },
   "docs/CRYPTO_DEPENDENCIES.md": {
-    "mtime": 1793039718.6970625,
-    "seen": 1793039804.35149,
-    "ast_hash": "cb9c922a496cd300ae220cb7fccc536b",
+    "mtime": 1793184126.6304035,
+    "seen": 1793184286.7918231,
+    "ast_hash": "ce82c1e36cb7c3e2b68a96f419d444ed",
     "semantic_hash": ""
   },
   "crates/gpsx-protocol/Cargo.toml": {
@@ -631,15 +631,15 @@
     "semantic_hash": ""
   },
   "tests/fixtures/manifest.json": {
-    "mtime": 1793170053.253794,
-    "seen": 1793170100.8415194,
-    "ast_hash": "3ae93202ff4b7d087806c21fb57d5cfd",
+    "mtime": 1793191856.903488,
+    "seen": 1793192121.9232683,
+    "ast_hash": "29fa4f5154f39ea477860f5d3702309f",
     "semantic_hash": ""
   },
   "tests/fixtures/provenance.json": {
-    "mtime": 1793170053.254794,
-    "seen": 1793170100.8415215,
-    "ast_hash": "9ff023c4213ab64713068d5942f87385",
+    "mtime": 1793191856.9044886,
+    "seen": 1793192121.92327,
+    "ast_hash": "893a43e502fde516b34daf3e59f03149",
     "semantic_hash": ""
   },
   "tests/fixtures/registration_crypto_dependency_audit_v1.json": {
@@ -649,21 +649,21 @@
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/Cargo.toml": {
-    "mtime": 1793039185.3214896,
-    "seen": 1793039804.3513832,
-    "ast_hash": "85a8241e63a11aed8387e5ddc9e400ae",
+    "mtime": 1793175643.3883755,
+    "seen": 1793176468.2776487,
+    "ast_hash": "81d2b9e5b829a0f099805d1821720f34",
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/lib.rs": {
-    "mtime": 1793040578.5574136,
-    "seen": 1793040855.5910406,
-    "ast_hash": "8d4ef6891f723d55324e96ba61940233",
+    "mtime": 1793186130.0296037,
+    "seen": 1793187059.5818624,
+    "ast_hash": "c76f18d38691e12c6a5cfbc90e07c82e",
     "semantic_hash": ""
   },
   "crates/gpsx-crypto/src/registration.rs": {
-    "mtime": 1793169210.2836175,
-    "seen": 1793169536.675496,
-    "ast_hash": "3597c46ff72201e504349c58d311c758",
+    "mtime": 1793185998.894672,
+    "seen": 1793187059.5818646,
+    "ast_hash": "5b072be1d58781d5a06120fef5af582d",
     "semantic_hash": ""
   },
   "tests/fixtures/registration_crypto_oracle_v2.json": {
@@ -685,9 +685,9 @@
     "semantic_hash": ""
   },
   "crates/gpsx-protocol/src/registration.rs": {
-    "mtime": 1793169176.9949632,
-    "seen": 1793169536.6755128,
-    "ast_hash": "e4de7c0a91eeec8852b21aee419f7af5",
+    "mtime": 1793176369.8450248,
+    "seen": 1793176468.2776723,
+    "ast_hash": "cd72e806784f2a313b8dc436a76c4582",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20261026_201231_1ca3272b_implement_the_reviewed_bounded_registration_codec.md": {
@@ -724,6 +724,138 @@
     "mtime": 1793169567.5431817,
     "seen": 1793170100.841691,
     "ast_hash": "2a35a122eacb5eef31408e5874ec33f1",
+    "semantic_hash": ""
+  },
+  "docs/SESSION_CRYPTO_PLAN.fr.md": {
+    "mtime": 1793187521.746424,
+    "seen": 1793187540.2897515,
+    "ast_hash": "afff8967ba929107b12b95c3c4f3d935",
+    "semantic_hash": ""
+  },
+  "docs/SESSION_CRYPTO_PLAN.md": {
+    "mtime": 1793187521.7454257,
+    "seen": 1793187540.2897542,
+    "ast_hash": "039ded42e5c3bd7594ba22ecca3c0c17",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_065049_bec5b90e_apply_the_independent_go_verdict_for_codec_oracle.md": {
+    "mtime": 1793170249.138936,
+    "seen": 1793170752.632271,
+    "ast_hash": "e50072796f1dc28d005a7d3a2c2236e7",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_070009_d5040385_what_is_the_next_safe_project_slice_after_the_revi.md": {
+    "mtime": 1793170809.7679448,
+    "seen": 1793172417.6329558,
+    "ast_hash": "36d8091d3419c258c91c24e62289f0e8",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_074249_c92df1b1_remediate_the_independent_cr3_follow_up_findings_b.md": {
+    "mtime": 1793173369.5309095,
+    "seen": 1793173954.7110486,
+    "ast_hash": "ca3f763a32a701550737b8ec42c5d97c",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_074756_774639c4_o\u00f9_en_est_le_projet_et_le_test_r\u00e9el_avec_la_simula.md": {
+    "mtime": 1793173676.9173317,
+    "seen": 1793173954.7110515,
+    "ast_hash": "32d6d4150541fa2be05d3ead3fe7b0f3",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_075310_c8bf784c_remediate_cr3_follow_up_blocker_c1_for_handshakeke.md": {
+    "mtime": 1793173990.1762745,
+    "seen": 1793174214.9562438,
+    "ast_hash": "48ef122be82c74209380d323961e9db3",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/session.rs": {
+    "mtime": 1793186202.1156862,
+    "seen": 1793187059.5818677,
+    "ast_hash": "043daf35297de29e20c797798275fce9",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/session_crypto_dependency_audit_v1.json": {
+    "mtime": 1793178721.755442,
+    "seen": 1793178879.4448369,
+    "ast_hash": "d9c2d7fb31ced13cc39514013a073efa",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_075723_94fd4bde_fix_cr3_d1_epoch_boundary_inconsistency.md": {
+    "mtime": 1793174243.0865457,
+    "seen": 1793176468.2778401,
+    "ast_hash": "e91e833d9fd223f4d1570c468df3b7f9",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_083447_cd202a77_implement_the_approved_cr3_session_cryptography_pl.md": {
+    "mtime": 1793176487.1227636,
+    "seen": 1793178095.4703388,
+    "ast_hash": "3422a7dcc8ce87124653b11546345c62",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_090250_933df322_remediate_the_independent_cr3_implementation_revie.md": {
+    "mtime": 1793178170.0077713,
+    "seen": 1793178879.4449928,
+    "ast_hash": "2fcdc387ca12a580ed0c0e86ca69f310",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/session_crypto_oracle_v1.json": {
+    "mtime": 1793180228.0203736,
+    "seen": 1793181020.3432572,
+    "ast_hash": "4264e6136b282ff26c620cac654aa5e2",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_091500_834e762b_remediate_the_cr3_session_crypto_implementation_re.md": {
+    "mtime": 1793178900.5863256,
+    "seen": 1793181020.3435342,
+    "ast_hash": "33156c165b5ee224830d8a71c74d2d84",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_095059_bc50929d_what_is_the_current_session_cryptography_oracle_in.md": {
+    "mtime": 1793181059.7760527,
+    "seen": 1793181860.1069715,
+    "ast_hash": "3094582c4b1ee95ebb8eac7ce66a32c7",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_100444_108d8e33_did_the_c1_remediation_make_the_session_oracle_tes.md": {
+    "mtime": 1793181884.5355155,
+    "seen": 1793184286.791918,
+    "ast_hash": "6c7e7c977c7b01c76a66c3b8f1df14d4",
+    "semantic_hash": ""
+  },
+  "docs/LAUNCH_SPEC_PLAN.fr.md": {
+    "mtime": 1793187549.0623755,
+    "seen": 1793192121.9233677,
+    "ast_hash": "d602e60b900f8487565de82a67891da6",
+    "semantic_hash": ""
+  },
+  "docs/LAUNCH_SPEC_PLAN.md": {
+    "mtime": 1793187549.0623755,
+    "seen": 1793192121.9233694,
+    "ast_hash": "68ce01a044c43855df82c1578e62ad37",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261028_104502_9e5e0648_is_the_gpsx_session_cryptography_slice_integrated.md": {
+    "mtime": 1793184302.7107143,
+    "seen": 1793184785.4864607,
+    "ast_hash": "9684560cc92bcf4e0848166f0fd6ac24",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/launch_spec.rs": {
+    "mtime": 1793191817.100274,
+    "seen": 1793192121.9232292,
+    "ast_hash": "52da3988137688bc77d01ca9c2124513",
+    "semantic_hash": ""
+  },
+  "crates/gpsx-crypto/src/rpcrypt_tables.rs": {
+    "mtime": 1793186130.0381172,
+    "seen": 1793187059.581866,
+    "ast_hash": "220391d4633c419fb55514f6888f2c28",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/launch_spec_oracle_v1.json": {
+    "mtime": 1793191718.0150402,
+    "seen": 1793192121.9232664,
+    "ast_hash": "273debee7e23041b5a7bfc791b1f61ed",
     "semantic_hash": ""
   }
 }

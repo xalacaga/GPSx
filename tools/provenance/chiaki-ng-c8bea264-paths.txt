@@ -1,13 +1,25 @@
 # Verified with git ls-tree at c8bea2642d0e95402f373af55584a3b98cd89417.
 # Adding a path requires a new provenance/security review.
 lib/include/chiaki/discovery.h
+lib/include/chiaki/common.h
+lib/include/chiaki/ecdh.h
+lib/include/chiaki/gkcrypt.h
+lib/include/chiaki/seqnum.h
 lib/include/chiaki/http.h
+lib/include/chiaki/launchspec.h
 lib/include/chiaki/regist.h
 lib/include/chiaki/rpcrypt.h
 lib/src/discovery.c
+lib/src/ecdh.c
+lib/src/gkcrypt.c
 lib/src/http.c
+lib/src/launchspec.c
 lib/src/regist.c
 lib/src/rpcrypt.c
 lib/src/session.c
+lib/src/streamconnection.c
+lib/src/takion.c
+test/gkcrypt.c
+test/keystate.c
 test/regist.c
 test/rpcrypt.c

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "audited_on": "2026-10-28",
+  "rust": "1.85.0",
+  "targets_checked": ["x86_64-pc-windows-msvc", "aarch64-linux-android"],
+  "android_ndk": "28.2.13676358",
+  "android_api": 24,
+  "android_c_compiler": "aarch64-linux-android24-clang",
+  "tools": {
+    "cargo_audit": "0.22.2",
+    "cargo_deny": "0.20.2",
+    "advisory_database_commit": "40f5be6fb12ed93fc591bf4ab23b7d793b3f2239"
+  },
+  "results": {
+    "cargo_check_windows": "pass",
+    "cargo_check_android_arm64": "pass",
+    "cargo_clippy_windows": "pass",
+    "cargo_fmt": "pass",
+    "advisories": "pass",
+    "licenses": "pass",
+    "bans": "pass",
+    "sources": "pass",
+    "duplicate_aes_cipher_digest_generations": 0
+  },
+  "rejected_resolution": {
+    "crate": "k256",
+    "version": "0.13.4",
+    "reason": "RUSTSEC-2026-0387 affects its crypto-bigint 0.5.5 dependency; the corrected k256 0.14 dependency chain requires Rust 1.87"
+  },
+  "vendored_c": {
+    "component": "libsecp256k1",
+    "container": "secp256k1-sys 0.14.1",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2013 Pieter Wuille",
+    "modification": "distributed with the secp256k1-sys patch set",
+    "notice": "NOTICE"
+  },
+  "direct_features": {
+    "aes": ["zeroize"],
+    "aes-gcm": ["aes", "zeroize"],
+    "cfb-mode": ["zeroize"],
+    "ctr": ["zeroize"],
+    "hmac": [],
+    "rand_core": [],
+    "secp256k1": ["alloc"],
+    "sha2": [],
+    "subtle": [],
+    "zeroize": []
+  },
+  "packages": [
+    {"name": "aead", "version": "0.5.2", "checksum": "d122413f284cf2d62fb1b7db97e02edb8cda96d769b16e443a4f6195e35662b0"},
+    {"name": "aes", "version": "0.8.4", "checksum": "b169f7a6d4742236a0a00c541b845991d0ac43e546831af1249753ab4c3aa3a0"},
+    {"name": "aes-gcm", "version": "0.10.3", "checksum": "831010a0f742e1209b3bcea8fab6a8e149051ba6099432c8cb2cc117dec3ead1"},
+    {"name": "block-buffer", "version": "0.10.4", "checksum": "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"},
+    {"name": "cc", "version": "1.10.0", "checksum": "86e055fa6e3e40ad6187ba25b6855eeb635d5271f8e0f0e1e9a5826b8d75bea0"},
+    {"name": "cfb-mode", "version": "0.8.2", "checksum": "738b8d467867f80a71351933f70461f5b56f24d5c93e0cf216e59229c968d330"},
+    {"name": "cfg-if", "version": "1.0.5", "checksum": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"},
+    {"name": "cipher", "version": "0.4.4", "checksum": "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"},
+    {"name": "cpufeatures", "version": "0.2.17", "checksum": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"},
+    {"name": "crypto-common", "version": "0.1.7", "checksum": "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"},
+    {"name": "ctr", "version": "0.9.2", "checksum": "0369ee1ad671834580515889b80f2ea915f23b8be8d0daa4bbaf2ac5c7590835"},
+    {"name": "digest", "version": "0.10.7", "checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"},
+    {"name": "find-msvc-tools", "version": "0.1.15", "checksum": "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"},
+    {"name": "generic-array", "version": "0.14.7", "checksum": "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"},
+    {"name": "ghash", "version": "0.5.1", "checksum": "f0d8a4362ccb29cb0b265253fb0a2728f592895ee6854fd9bc13f2ffda266ff1"},
+    {"name": "hmac", "version": "0.12.1", "checksum": "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"},
+    {"name": "inout", "version": "0.1.4", "checksum": "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"},
+    {"name": "libc", "version": "0.2.191", "checksum": "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"},
+    {"name": "opaque-debug", "version": "0.3.1", "checksum": "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"},
+    {"name": "polyval", "version": "0.6.2", "checksum": "9d1fe60d06143b2430aa532c94cfe9e29783047f06c0d7fd359a9a51b729fa25"},
+    {"name": "rand_core", "version": "0.6.4", "checksum": "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"},
+    {"name": "secp256k1", "version": "0.33.1", "checksum": "d7f404a8dab7a7a5a631e741d8699aa9c8e1d689fc26ccf897c7187565490b69"},
+    {"name": "secp256k1-sys", "version": "0.14.1", "checksum": "f6b2992d4a3cd244539a7d5d0966aadbe5ca7fb868a5d7e38c29499b9e709bbd"},
+    {"name": "sha2", "version": "0.10.9", "checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"},
+    {"name": "shlex", "version": "2.0.1", "checksum": "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"},
+    {"name": "subtle", "version": "2.6.1", "checksum": "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"},
+    {"name": "typenum", "version": "1.20.1", "checksum": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"},
+    {"name": "universal-hash", "version": "0.5.1", "checksum": "fc1de2c688dc15305988b563c3854064043356019f97a4b46276fe734c4f07ea"},
+    {"name": "version_check", "version": "0.9.5", "checksum": "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"},
+    {"name": "zeroize", "version": "1.9.1", "checksum": "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"}
+  ]
+}

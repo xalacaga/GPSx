@@ -20,6 +20,42 @@ function Invoke-ExternalChecked {
     }
 }
 
+function Resolve-PinnedAndroidNdk {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Version,
+        [Parameter(Mandatory)]
+        [string[]]$Candidates
+    )
+
+    foreach ($candidate in @($Candidates | Select-Object -Unique)) {
+        $propertiesPath = Join-Path $candidate 'source.properties'
+        if (-not (Test-Path -LiteralPath $propertiesPath)) {
+            continue
+        }
+        $properties = Get-Content -Raw -LiteralPath $propertiesPath
+        if ($properties -match "(?m)^Pkg\.Revision\s*=\s*$([regex]::Escape($Version))\s*$") {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+    return $null
+}
+
+function Get-PinnedAndroidNdk {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Version,
+        [Parameter(Mandatory)]
+        [string[]]$Candidates
+    )
+
+    $resolved = Resolve-PinnedAndroidNdk -Version $Version -Candidates $Candidates
+    if (-not $resolved) {
+        throw "Android NDK $Version was not found. Set ANDROID_NDK_HOME to that exact NDK or install it under ANDROID_SDK_ROOT/ndk/$Version (repository-local .tools/android-sdk is also checked)."
+    }
+    return $resolved
+}
+
 $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $pythonTools = Join-Path $repositoryRoot 'tools\python'
 $cargoCommand = Get-Command cargo -ErrorAction SilentlyContinue
@@ -96,9 +132,14 @@ try {
     }
     $expectedCryptoDependencies = @{
         'aes' = @{ Requirement = '=0.8.4'; Features = @('zeroize') }
+        'aes-gcm' = @{ Requirement = '=0.10.3'; Features = @('aes', 'zeroize') }
         'cfb-mode' = @{ Requirement = '=0.8.2'; Features = @('zeroize') }
+        'ctr' = @{ Requirement = '=0.9.2'; Features = @('zeroize') }
         'hmac' = @{ Requirement = '=0.12.1'; Features = @() }
+        'rand_core' = @{ Requirement = '=0.6.4'; Features = @() }
+        'secp256k1' = @{ Requirement = '=0.33.1'; Features = @('alloc') }
         'sha2' = @{ Requirement = '=0.10.9'; Features = @() }
+        'subtle' = @{ Requirement = '=2.6.1'; Features = @() }
         'zeroize' = @{ Requirement = '=1.9.1'; Features = @() }
     }
     $actualCryptoDependencies = @($cryptoPackage[0].dependencies | Where-Object { $_.kind -eq $null })
@@ -116,8 +157,10 @@ try {
         }
     }
 
-    $auditFixture = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'tests\fixtures\registration_crypto_dependency_audit_v1.json') | ConvertFrom-Json
+    $registrationAuditFixture = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'tests\fixtures\registration_crypto_dependency_audit_v1.json') | ConvertFrom-Json
+    $auditFixture = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'tests\fixtures\session_crypto_dependency_audit_v1.json') | ConvertFrom-Json
     $expectedRegistryPackages = @($auditFixture.packages | ForEach-Object { "$($_.name)|$($_.version)|$($_.checksum)" } | Sort-Object)
+    $registrationRegistryPackages = @($registrationAuditFixture.packages | ForEach-Object { "$($_.name)|$($_.version)|$($_.checksum)" } | Sort-Object)
     $lockText = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Cargo.lock')
     $readRegistryPackages = {
         param([string]$Text)
@@ -136,12 +179,39 @@ try {
     }
     $actualRegistryPackages = @(& $readRegistryPackages $lockText)
     $crlfRegistryPackages = @(& $readRegistryPackages ($lockText -replace '\r?\n', "`r`n"))
-    if ($crlfRegistryPackages.Count -ne 17 -or
+    if ($crlfRegistryPackages.Count -ne $expectedRegistryPackages.Count -or
         (Compare-Object $actualRegistryPackages $crlfRegistryPackages)) {
-        throw 'Cargo.lock CRLF parser regression: expected the same 17 registry packages.'
+        throw "Cargo.lock CRLF parser regression: expected the same $($expectedRegistryPackages.Count) registry packages."
     }
     if (Compare-Object $actualRegistryPackages $expectedRegistryPackages) {
-        throw 'Repository registry packages differ from the reviewed registration dependency audit fixture.'
+        throw 'Repository registry packages differ from the reviewed session dependency audit fixture.'
+    }
+    foreach ($registrationPackage in $registrationRegistryPackages) {
+        if ($actualRegistryPackages -notcontains $registrationPackage) {
+            throw "The reviewed registration dependency disappeared or changed: $registrationPackage"
+        }
+    }
+
+    $denyConfigPath = Join-Path $repositoryRoot 'deny.toml'
+    $assertDenyWildcardPolicy = {
+        param([string]$Text)
+        if ($Text -notmatch '(?m)^wildcards\s*=\s*"deny"\s*$' -or
+            $Text -notmatch '(?m)^allow-wildcard-paths\s*=\s*true\s*$') {
+            throw 'cargo-deny must reject registry wildcards while allowing workspace path wildcards.'
+        }
+    }
+    $denyConfig = Get-Content -Raw -LiteralPath $denyConfigPath
+    & $assertDenyWildcardPolicy $denyConfig
+    $hostileDenyConfig = $denyConfig -replace '(?m)^wildcards\s*=\s*"deny"\s*$', 'wildcards = "allow"'
+    $hostileDenyRejected = $false
+    try {
+        & $assertDenyWildcardPolicy $hostileDenyConfig
+    }
+    catch {
+        $hostileDenyRejected = $true
+    }
+    if (-not $hostileDenyRejected) {
+        throw 'Hostile cargo-deny wildcard-policy self-test was not rejected.'
     }
 
     $wrapperPropertiesPath = Join-Path $repositoryRoot 'apps\android-tv\gradle\wrapper\gradle-wrapper.properties'
@@ -218,13 +288,87 @@ try {
         throw "Portable core depends on platform crates: $($forbidden -join ', ')"
     }
 
+    $findReviewedCryptoDuplicates = {
+        param([string[]]$Lines)
+        $reviewedFamilies = @('aes', 'cipher', 'digest')
+        foreach ($family in $reviewedFamilies) {
+            $versions = @($Lines | ForEach-Object {
+                if ($_ -match "^$([regex]::Escape($family))\s+v(?<version>[^\s]+)") {
+                    $Matches['version']
+                }
+            } | Sort-Object -Unique)
+            if ($versions.Count -gt 1) {
+                "$family|$($versions -join ',')"
+            }
+        }
+    }
+    $hostileDuplicates = @(& $findReviewedCryptoDuplicates @('cipher v0.4.4', 'cipher v0.5.0'))
+    if ($hostileDuplicates.Count -ne 1 -or $hostileDuplicates[0] -ne 'cipher|0.4.4,0.5.0') {
+        throw 'Hostile duplicate-cipher self-test did not detect the simulated split generation.'
+    }
+    $duplicateTree = & $cargoPath tree -p gpsx-crypto -d --prefix none --locked
+    if ($LASTEXITCODE -ne 0) {
+        throw "cargo tree duplicate check failed ($LASTEXITCODE)."
+    }
+    $reviewedDuplicates = @(& $findReviewedCryptoDuplicates @($duplicateTree))
+    if ($reviewedDuplicates.Count -gt 0) {
+        throw "gpsx-crypto has a forbidden duplicate generation: $($reviewedDuplicates -join '; ')"
+    }
+
     # The core must also build for Android. The target needs a one-time `rustup target add`.
     $androidTarget = 'aarch64-linux-android'
     $rustupCommand = Get-Command rustup -ErrorAction SilentlyContinue
     $rustupPath = if ($rustupCommand) { $rustupCommand.Source } else { Join-Path $env:USERPROFILE '.cargo\bin\rustup.exe' }
     $installedTargets = if (Test-Path -LiteralPath $rustupPath) { & $rustupPath target list --installed } else { @() }
     if ($installedTargets -contains $androidTarget) {
-        Invoke-ExternalChecked -FilePath $cargoPath -Arguments (@('check', '--target', $androidTarget) + ($corePackages | ForEach-Object { '-p', $_ }))
+        $pinnedNdkVersion = '28.2.13676358'
+        $androidApi = 24
+        if ($auditFixture.android_ndk -ne $pinnedNdkVersion -or
+            [int]$auditFixture.android_api -ne $androidApi -or
+            $auditFixture.android_c_compiler -ne "aarch64-linux-android$androidApi-clang") {
+            throw 'The Android NDK/API/compiler selection differs from the reviewed session dependency audit fixture.'
+        }
+        $ndkCandidates = @()
+        if ($env:ANDROID_NDK_HOME) {
+            $ndkCandidates += $env:ANDROID_NDK_HOME
+        }
+        if ($env:ANDROID_NDK_ROOT) {
+            $ndkCandidates += $env:ANDROID_NDK_ROOT
+        }
+        foreach ($sdkRoot in @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME, (Join-Path $repositoryRoot '.tools\android-sdk'))) {
+            if ($sdkRoot) {
+                $ndkCandidates += Join-Path $sdkRoot "ndk\$pinnedNdkVersion"
+            }
+        }
+
+        $missingNdkRejected = $false
+        try {
+            Get-PinnedAndroidNdk -Version $pinnedNdkVersion -Candidates @(
+                (Join-Path $repositoryRoot '.missing-ndk-self-test')
+            ) | Out-Null
+        }
+        catch {
+            if ($_.Exception.Message -notlike "Android NDK $pinnedNdkVersion was not found.*") {
+                throw
+            }
+            $missingNdkRejected = $true
+        }
+        if (-not $missingNdkRejected) {
+            throw 'Android NDK missing-installation self-test did not fail.'
+        }
+
+        $ndkRoot = Get-PinnedAndroidNdk -Version $pinnedNdkVersion -Candidates $ndkCandidates
+
+        $llvmBin = Join-Path $ndkRoot 'toolchains\llvm\prebuilt\windows-x86_64\bin'
+        $clangPath = Join-Path $llvmBin "aarch64-linux-android$androidApi-clang.cmd"
+        $arPath = Join-Path $llvmBin 'llvm-ar.exe'
+        if (-not (Test-Path -LiteralPath $clangPath) -or -not (Test-Path -LiteralPath $arPath)) {
+            throw "Android NDK $pinnedNdkVersion is incomplete: expected $clangPath and $arPath."
+        }
+        $env:CC_aarch64_linux_android = $clangPath
+        $env:AR_aarch64_linux_android = $arPath
+        Write-Host "Android NDK: version=$pinnedNdkVersion api=$androidApi path=$ndkRoot"
+        Invoke-ExternalChecked -FilePath $cargoPath -Arguments (@('check', '--locked', '--target', $androidTarget) + ($corePackages | ForEach-Object { '-p', $_ }))
     }
     elseif ($RequireAndroid) {
         throw "Target $androidTarget is not installed; run: rustup target add $androidTarget"

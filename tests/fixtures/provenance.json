@@ -1,4 +1,10 @@
 {
+  "launch_spec_oracle_v1.json": {
+    "origin": "Behavioral oracle executing chiaki-ng launchspec.c, rpcrypt.c and base64.c at c8bea2642d0e95402f373af55584a3b98cd89417; the zero-buffer, NUL, CFB-keystream and XOR sequence is GPSx harness code transcribed from streamconnection.c:1027-1036, not executed upstream code; six public synthetic cases cover PS4 pre-10, PS4 modern and PS5 AVC/HEVC/HDR",
+    "license": "AGPL-3.0-only with the project OpenSSL exception",
+    "environment": "Windows x64 scratch build with MSVC 19.44.35229.0 and Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0; the pinned rpcrypt.c SHA-256 output buffer received the documented scratch-only 16-to-32-byte safety repair; external closed build record retained under ignored target/launchspec-audit",
+    "redaction_review": "Synthetic public vectors only; no user, account, console, registration, session, LAN, emulator or hardware data; GPSx secret scanner and manual review, 2026-10-28"
+  },
   "registration_codec_oracle_v1.json": {
     "origin": "Behavioral oracle built from chiaki-ng regist.c, rpcrypt.c and base64.c, plus an exact extraction of session.c:58-73, at c8bea2642d0e95402f373af55584a3b98cd89417 with public synthetic inputs; external closed build manifest reviewed separately",
     "license": "AGPL-3.0-only with the project OpenSSL exception",
@@ -16,5 +22,17 @@
     "license": "AGPL-3.0-only with the project OpenSSL exception",
     "environment": "Windows x64 scratch build with Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0 and the documented 32-byte SHA-256 output-buffer safety repair",
     "redaction_review": "Synthetic inputs only; no user, account, console, registration or session data; GPSx secret scanner and manual review, 2026-10-26"
+  },
+  "session_crypto_dependency_audit_v1.json": {
+    "origin": "GPSx-authored exact dependency resolution and audit for the session cryptography implementation on 2026-10-28",
+    "license": "AGPL-3.0-only",
+    "environment": "Rust/Cargo 1.85.0 on Windows x64 and aarch64-linux-android API 24 with NDK 28.2.13676358; cargo-audit 0.22.2 and cargo-deny 0.20.2; exact 30-package crates.io graph including the audited secp256k1 replacement and the vendored patched libsecp256k1 MIT license distinction",
+    "redaction_review": "Dependency metadata only; no user, account, console, registration, session, LAN or hardware data; GPSx secret scanner and manual review, 2026-10-28"
+  },
+  "session_crypto_oracle_v1.json": {
+    "origin": "Behavioral oracle from chiaki-ng test/gkcrypt.c, test/keystate.c, lib/src/gkcrypt.c and lib/src/ecdh.c at c8bea2642d0e95402f373af55584a3b98cd89417, with public synthetic inputs and full AES-GCM tags from pinned Mbed TLS; the incompatible deterministic Mbed TLS ECDH setter path is explicitly excluded, not repaired",
+    "license": "AGPL-3.0-only with the project OpenSSL exception",
+    "environment": "Windows x64 scratch build with MSVC 19.44.35229.0 and Mbed TLS at 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0; pinned upstream gkcrypt/keystate execution plus independent GPSx-authored secp256k1 affine arithmetic and Python stdlib HMAC-SHA-256; external closed build manifest retains 81 translation units and 313 observed headers",
+    "redaction_review": "Synthetic public vectors only; no user, account, console, registration, session, LAN, emulator or hardware data; GPSx secret scanner and manual review, 2026-10-28"
   }
 }

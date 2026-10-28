@@ -3,10 +3,17 @@
 `tools/powershell/check.ps1` exécute formatage, Clippy avec avertissements
 interdits, tests Rust du workspace, contrôle de pureté des dépendances du cœur
 (`cargo tree` : ni `jni`, `ndk`, `android*`, `windows*`, `winapi`),
-`cargo check --target aarch64-linux-android` si la cible est installée (sinon
+`cargo check --locked --target aarch64-linux-android` si la cible est installée (sinon
 avertissement `NOT_TESTED` ; `-RequireAndroid` le rend bloquant), contrôle de
 Python 3.12+, tests Python des outils de preuve, scan de secrets de
 `tests/fixtures/` et vérification du manifeste (empreintes et provenance complète).
+
+Le gate Android épingle le NDK `28.2.13676358` et l’API 24. Il découvre ce NDK
+exact via `ANDROID_NDK_HOME`, `ANDROID_NDK_ROOT`, un SDK nommé par
+`ANDROID_SDK_ROOT`/`ANDROID_HOME`, ou `.tools/android-sdk` dans le dépôt, puis
+configure `aarch64-linux-android24-clang` et `llvm-ar` pour Cargo. La version,
+l’API et le chemin retenus sont journalisés. `-RequireAndroid` échoue avec un
+message dédié si la cible Rust ou le NDK épinglé manque.
 
 La couverture déterministe porte sur : la table exhaustive 9 × 9 des transitions
 de session et l'arrêt idempotent ; l'unicité des bits de boutons internes ; la

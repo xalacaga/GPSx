@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[advisories]
+ignore = []
+
+[licenses]
+allow = [
+    "AGPL-3.0-only",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "MIT",
+]
+confidence-threshold = 0.8
+exceptions = [
+    { allow = ["CC0-1.0"], crate = "secp256k1" },
+    { allow = ["CC0-1.0"], crate = "secp256k1-sys" },
+]
+
+[bans]
+multiple-versions = "warn"
+# Registry wildcard requirements are forbidden. Workspace path dependencies
+# intentionally inherit the workspace package version.
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

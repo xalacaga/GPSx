@@ -21,10 +21,10 @@ allocation or indexing. Checked arithmetic is mandatory; recursion is forbidden.
 | Discovery UDP datagram | 1,024 bytes | Reject entire datagram | ACCEPTED CR3 |
 | Discovery header count | 32 | Reject entire datagram | ACCEPTED CR3 |
 | Discovery line | 512 bytes | Reject entire datagram | ACCEPTED CR3 |
-| Registration HTTP header block | 1,024 bytes | Close attempt; retain no partial result | IMPLEMENTED; remediation review pending |
-| Registration body / decrypted field block | 1,024 bytes / 128 fields | Close attempt; zeroize caller-owned secret buffers | IMPLEMENTED; remediation review pending |
-| Complete registration response | 1,500 bytes for header plus body | Close attempt | IMPLEMENTED; remediation review pending |
-| Future encrypted UDP datagram | 2,048 bytes | Drop and count classified error | PLANNED, outside first slice |
+| Registration HTTP header block | 1,024 bytes | Close attempt; retain no partial result | IMPLEMENTED; remediation `GO` |
+| Registration body / decrypted field block | 1,024 bytes / 128 fields | Close attempt; zeroize caller-owned secret buffers | IMPLEMENTED; remediation `GO` |
+| Complete registration response | 1,500 bytes for header plus body | Close attempt | IMPLEMENTED; remediation `GO` |
+| Future encrypted UDP datagram | 2,048 bytes | Drop and count classified error | CRYPTO INTEGRATED; transport outside slice |
 | Future media fragment set | 64 fragments / 4 MiB aggregate | Drop frame and request recovery when supported | PLANNED, outside first slice |
 | Future reorder window | 128 packets / 250 ms | Evict oldest and record bounded loss | PLANNED, outside first slice |
 
@@ -62,13 +62,41 @@ by data, and port whitespace.
 
 GPSx will not implement AES, CFB mode, AES-GCM/GHASH, SHA-256, HMAC, secp256k1
 ECDH, key derivation, random generation, constant-time comparison, or
-zeroization primitives itself. The candidate register covers `aes`, `cfb-mode`,
-`hmac`, `sha2`, `subtle`, `zeroize`, `secrecy`, platform-backed `getrandom`, and
-unresolved maintained families for AES-GCM/GHASH and secp256k1 ECDH. Candidate versions,
-licenses, MSRV evidence and the unresolved advisory gate are recorded in
-`CRYPTO_DEPENDENCIES.md`. Exact checksums must be pinned and audited before `gpsx-crypto` is created. If the
+zeroization primitives itself. The integrated register covers `aes`,
+`cfb-mode`, `hmac`, `sha2`, `subtle`, `zeroize`, `secp256k1` 0.33.1, `ctr`
+0.9.2, and `aes-gcm` 0.10.3. `k256` was rejected because its Rust-1.85
+resolution is affected by `RUSTSEC-2026-0387`; `secrecy` and direct `getrandom`
+were not selected. Exact versions, licenses, MSRV evidence and completed gates
+are recorded in `CRYPTO_DEPENDENCIES.md`; session-specific invariants are in
+`SESSION_CRYPTO_PLAN.md`. If the
 required protocol mode cannot be represented safely by maintained libraries,
 implementation stops for another security review; no custom fallback is allowed.
+
+The session protocol's 32-bit GMAC is a documented residual risk. GPSx accepts
+at most 2,048 authenticated bytes per packet, claims SP 800-38D Table 1 conformance only
+through 1,024 bytes, limits authenticated-decryption invocations to 2,048 per
+remote GMAC epoch key, and keeps
+direction/session-global failure budgets. A 4 MiB forward resynchronization
+ceiling permits one direct target-epoch derivation; farther-forward input is
+rejected before cryptography, and stale input below the backward window is
+discarded without consuming the authentication-failure budget. Exact limits,
+bounded epoch-counter state, owner sign-off, silent-discard policy, and no-reset
+rules are normative in `SESSION_CRYPTO_PLAN.md`; implementation and closed
+external oracle integration received independent `GO` on 2026-10-28.
+
+The session handshake is a consuming state chain: one `HandshakeSession` owns
+the handshake key and fallibly generated ephemeral scalar, verifies the peer,
+performs ECDH, and derives both directions without exposing an independently
+rebindable authenticated-key or shared-secret value. Production entropy uses
+`try_fill_bytes` plus at most eight unbiased `secp256k1::SecretKey` validation attempts;
+fixed-scalar construction exists only under `#[cfg(test)]`.
+
+Exactly one public egress writes the handshake key into a caller-owned
+`Zeroizing<[u8; 16]>` for the future reviewed LaunchSpec/rpcrypt builder. There
+is no production import-from-bytes path. Confidentiality still depends on that
+future slice base64-encoding the key and rpcrypt-encrypting the complete
+LaunchSpec before network I/O; this remains a design assumption, not current
+implementation evidence.
 
 Secrets use dedicated non-`Clone`, redacted wrappers, are zeroized on drop where
 the dependency supports it, never cross logging/telemetry APIs, and are excluded
@@ -100,13 +128,10 @@ public standards vectors and synthetic protocol vectors only, never live keys.
 - Dependency license/advisory record before adding any crypto dependency.
 - Synthetic fixtures with complete manifest provenance and a clean secret scan.
 
-The accepted GO created only `gpsx-protocol`. `gpsx-transport` later received a
-separate GO and is now present. The registration-only `gpsx-crypto` slice passed
-its remediation review. The bounded registration codec received `GO WITH
-CHANGES`; its required test and documentation remediation is implemented and
-awaits closure review. R5 authorized generation of its C oracle only in an
-external scratch tree. The separate integration review returned `GO WITH
-CHANGES`; B1-B4 are implemented but remain uncommitted until their required
-independent check. The harness, stub, patch, logs, and closed build manifest
-remain permanently external. `gpsx-session` remains absent pending a later
-explicit review.
+The accepted GO first created `gpsx-protocol`; `gpsx-transport` then received a
+separate GO. The registration cryptography and bounded codec remediations, the
+registration oracle integration, and the session-cryptography implementation
+and oracle have now all received their required independent `GO` reviews. The
+external harnesses, stubs, patches, logs, and closed build manifests remain
+permanently outside the repository. Portable session cryptography is integrated
+in `gpsx-crypto`; no separate `gpsx-session` crate was introduced.

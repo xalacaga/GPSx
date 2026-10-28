@@ -1,0 +1,403 @@
+{
+  "schema_version": 1,
+  "upstream_commit": "c8bea2642d0e95402f373af55584a3b98cd89417",
+  "mbedtls_commit": "8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0",
+  "generation": {
+    "ecdh": "GPSx-authored scratch-only secp256k1 affine arithmetic plus Python stdlib HMAC-SHA-256",
+    "traffic": "pinned upstream gkcrypt.c executed with pinned Mbed TLS",
+    "gmac_full_tag": "pinned Mbed TLS AES-GCM full tag; MSB32 checked against upstream chiaki_gkcrypt_gmac",
+    "upstream_test_coverage": [
+      "gkcrypt/ecdh",
+      "gkcrypt/key_stream",
+      "gkcrypt/endecrypt",
+      "gkcrypt/gmac",
+      "gkcrypt/gen_gmac_key",
+      "gkcrypt/gmac_split",
+      "gkcrypt/gmac_multiple_of_key_refresh",
+      "keystate/key_state",
+      "keystate/key_state_nocommit"
+    ],
+    "mbedtls_ecdh_exclusion": "pinned chiaki Mbed TLS set_local_key regenerates the supplied scalar; its deterministic test path is excluded and recorded, not repaired"
+  },
+  "ecdh": {
+    "handshake_key": "fc5d4ba03a353abb6a7fac791b17bb34",
+    "local_public_key": "04f40af135a4889436cee52b5c73a33ec5ad0be0952f57f4f0ed0c80b0beda7ca643789393a5947e9faa3f6795c9aa09a96325dfe850bfc3f1db62a50abfb0fff7",
+    "local_public_key_tag": "99b5cbb537180bfc55da437f4476a817c937fe561b8abe0c4112ab71f5a68d29",
+    "remote_public_key": "04dfef08bba856f2b44b8a0e4f44203f8e493feed43ce93afe5c64677720157c5910156794ae5f024aad0ccefa14150aabee080b141276ea3ec0d565f46877a3ca",
+    "remote_public_key_tag": "13c589e23b728524a99f968003a181305968f1bbb64dc4a76ccef6794ceb2d98",
+    "local_scalar_32": "16e75dcbda9855fb6befdd8aa5f16e7f46fde1d2279703601872d84b1538d900",
+    "shared_x_32": "b81c6146e749738c9630ca13ff71e59b3bf94198d467a5a2bc7804928143ec1d"
+  },
+  "keystate": {
+    "commit": [
+      {
+        "low": 0,
+        "expected": 0
+      },
+      {
+        "low": 4919,
+        "expected": 4919
+      },
+      {
+        "low": 4294901760,
+        "expected": 4294901760
+      },
+      {
+        "low": 4919,
+        "expected": 4294972215
+      },
+      {
+        "low": 4294906679,
+        "expected": 4294906679
+      },
+      {
+        "low": 1342177280,
+        "expected": 5637144576
+      },
+      {
+        "low": 2952790016,
+        "expected": 7247757312
+      },
+      {
+        "low": 0,
+        "expected": 8589934592
+      }
+    ],
+    "no_commit": [
+      {
+        "low": 0,
+        "expected": 0
+      },
+      {
+        "low": 4919,
+        "expected": 4919
+      },
+      {
+        "low": 4294901760,
+        "expected": 4294901760
+      },
+      {
+        "low": 4919,
+        "expected": 4919
+      },
+      {
+        "low": 4294906679,
+        "expected": 4294906679
+      },
+      {
+        "low": 1342177280,
+        "expected": 1342177280
+      },
+      {
+        "low": 2952790016,
+        "expected": 2952790016
+      },
+      {
+        "low": 0,
+        "expected": 0
+      }
+    ],
+    "rfc1982_half_range": {
+      "previous": 0,
+      "low": 2147483648,
+      "expected": 2147483648,
+      "less": false,
+      "greater": false
+    }
+  },
+  "directions": [
+    {
+      "name": "local",
+      "index": 2,
+      "positions": [
+        {
+          "position": 0,
+          "epoch": 0,
+          "encryption_position": 16,
+          "current_epoch": 0,
+          "epoch_key": "ff6de26851dea26f73288d34c3e01b4a",
+          "ciphertext": "c127281b51656202db8743c7a7dc71020c96255418a6a57af9752cb46422e4e6",
+          "tag_full": "9c37f48b8e41c6a2a2a785938751810d",
+          "tag_msb32": "9c37f48b"
+        },
+        {
+          "position": 1,
+          "epoch": 0,
+          "encryption_position": 17,
+          "current_epoch": 0,
+          "epoch_key": "ff6de26851dea26f73288d34c3e01b4a",
+          "ciphertext": "302b30043b7414db9d45c6e49e6c110e992c1c57abbf61f3703fbf3079a3d7ee",
+          "tag_full": "d4a97fb94b132ac3e27bdfc79b7d5077",
+          "tag_msb32": "d4a97fb9"
+        },
+        {
+          "position": 44999,
+          "epoch": 0,
+          "encryption_position": 45015,
+          "current_epoch": 0,
+          "epoch_key": "ff6de26851dea26f73288d34c3e01b4a",
+          "ciphertext": "97fb842dd34f793be24ebeb6639b4e055e75db8cec262c3c60d9cbe68cf3ec53",
+          "tag_full": "066cde72c9f065065c95492a2cffa98c",
+          "tag_msb32": "066cde72"
+        },
+        {
+          "position": 45000,
+          "epoch": 0,
+          "encryption_position": 45016,
+          "current_epoch": 0,
+          "epoch_key": "ff6de26851dea26f73288d34c3e01b4a",
+          "ciphertext": "ec870686116f2de254b8b720d953165c7ad2c4a32b36276adcd8edd8a8ab6265",
+          "tag_full": "67b7b6b870efb4e1c8a837fbb1e83ab3",
+          "tag_msb32": "67b7b6b8"
+        },
+        {
+          "position": 45001,
+          "epoch": 1,
+          "encryption_position": 45017,
+          "current_epoch": 1,
+          "epoch_key": "9021f98a067ac18ea1a2b3b99b3fc0a8",
+          "ciphertext": "9005ad44313bf454a2b1219a110b4f78ddcdeb643b3d71d6ddfed3fcf025540d",
+          "tag_full": "106f1dec34e063c2d5f97c341c550ab2",
+          "tag_msb32": "106f1dec"
+        },
+        {
+          "position": 90000,
+          "epoch": 1,
+          "encryption_position": 90016,
+          "current_epoch": 1,
+          "epoch_key": "9021f98a067ac18ea1a2b3b99b3fc0a8",
+          "ciphertext": "e6e10f46d57af2dd6ee97ce47dc8da7fe0d46dfe6d370cd5feeb02549a5a9d54",
+          "tag_full": "2d3ffc8a87ce083610af9fc062e5a405",
+          "tag_msb32": "2d3ffc8a"
+        },
+        {
+          "position": 90001,
+          "epoch": 2,
+          "encryption_position": 90017,
+          "current_epoch": 2,
+          "epoch_key": "4e400d4c9fe89e73e0e367d7ba962351",
+          "ciphertext": "f60c6d8024e4cb6ef37ae53e8ac76ce2db64b6223a16cef4ee115fce01da6573",
+          "tag_full": "89579068eaf318b5e6e8c6943c5b5e4f",
+          "tag_msb32": "89579068"
+        },
+        {
+          "position": 4294968352,
+          "epoch": 95443,
+          "encryption_position": 4294968368,
+          "current_epoch": 95443,
+          "epoch_key": "a04d00932f9af38d7c4d96177dd6f93a",
+          "ciphertext": "bc4e8939e8d21c944348e4a37c7611ecfc0a66e8882c99e42613ca6ce6a5aa64",
+          "tag_full": "0675f6c6f061a4f85d5fee338a9feb3c",
+          "tag_msb32": "0675f6c6"
+        },
+        {
+          "position": 7020000,
+          "epoch": 155,
+          "encryption_position": 7020016,
+          "current_epoch": 95443,
+          "epoch_key": "7d550732a0d8d3b3e0aa6b16c69fa67b",
+          "ciphertext": "d7d8f6b4e71171326b0e0fc618191ce38deb305992a739a2d11baea5e5f75d8c",
+          "tag_full": "2e384c4f338060f0540428d68ce9990d",
+          "tag_msb32": "2e384c4f"
+        }
+      ],
+      "key_base": "0d62d1faa5c09109decf0c06bbc11407",
+      "iv": "4b33277afdb3c138e7225b4d7e8d4860",
+      "key_gmac_base": "ff6de26851dea26f73288d34c3e01b4a",
+      "packet": "475053782d73657373696f6e2d6f7261636c652d626f756e646172792d763100",
+      "fold_xor": {
+        "epoch": 1,
+        "multiplier": 44910,
+        "advanced_iv": "b9e2277afdb3c138e7225b4d7e8d4860",
+        "sha256_left": "17455488a0b9d71a516dc66413c89b5a",
+        "sha256_right": "8764ad02a6c31694f0cf75dd88f75bf2",
+        "folded_key": "9021f98a067ac18ea1a2b3b99b3fc0a8"
+      }
+    },
+    {
+      "name": "remote",
+      "index": 3,
+      "positions": [
+        {
+          "position": 0,
+          "epoch": 0,
+          "encryption_position": 16,
+          "current_epoch": 0,
+          "epoch_key": "451a9036ae9aed1e700e6e368972a079",
+          "ciphertext": "feb02086a6f8ac87a00403d6d207c9d167114cc6ef85b7272bf7c89f4918213e",
+          "tag_full": "ab02d8bc6493feb72650c9ab966e24ad",
+          "tag_msb32": "ab02d8bc"
+        },
+        {
+          "position": 1,
+          "epoch": 0,
+          "encryption_position": 17,
+          "current_epoch": 0,
+          "epoch_key": "451a9036ae9aed1e700e6e368972a079",
+          "ciphertext": "a723adf3a6ba91a01e05d79145d4c2651e458ea088ad3c21f2db941d43660f07",
+          "tag_full": "680f70553c23cbc4d2dae59c773f4208",
+          "tag_msb32": "680f7055"
+        },
+        {
+          "position": 44999,
+          "epoch": 0,
+          "encryption_position": 45015,
+          "current_epoch": 0,
+          "epoch_key": "451a9036ae9aed1e700e6e368972a079",
+          "ciphertext": "1bbca5261abf47c13fce133ded7f9d80eced5278544be8d568fc2598bcb8cdc6",
+          "tag_full": "54833ad185e613ccc0627d60d8b30095",
+          "tag_msb32": "54833ad1"
+        },
+        {
+          "position": 45000,
+          "epoch": 0,
+          "encryption_position": 45016,
+          "current_epoch": 0,
+          "epoch_key": "451a9036ae9aed1e700e6e368972a079",
+          "ciphertext": "aba60d4fe151d73fd4153cae3d8093eee25b301b46f2ce62f93693e8e38af710",
+          "tag_full": "7de3f4c03091bf9b5643d960cc408462",
+          "tag_msb32": "7de3f4c0"
+        },
+        {
+          "position": 45001,
+          "epoch": 1,
+          "encryption_position": 45017,
+          "current_epoch": 1,
+          "epoch_key": "29789bcb14fe01acb4392f4bfb349ea2",
+          "ciphertext": "b10e64b40fc129d40f3aaf7ec28efde054395309ffd479f33380e3b7d1b0219a",
+          "tag_full": "7ab4b92d0c256ad26f78dcae3f921103",
+          "tag_msb32": "7ab4b92d"
+        },
+        {
+          "position": 90000,
+          "epoch": 1,
+          "encryption_position": 90016,
+          "current_epoch": 1,
+          "epoch_key": "29789bcb14fe01acb4392f4bfb349ea2",
+          "ciphertext": "43817245487db7219c072206887a2fc4ffd286c1215f7feeb6ec91179f9e98ac",
+          "tag_full": "d4c09d52fd8ae95add0cb2fc65be7b77",
+          "tag_msb32": "d4c09d52"
+        },
+        {
+          "position": 90001,
+          "epoch": 2,
+          "encryption_position": 90017,
+          "current_epoch": 2,
+          "epoch_key": "5f08e3e8e046a226acc628be7e5d7289",
+          "ciphertext": "96716e1d23a1379c1d2407cb3832d7fddd8f896e5265f5bce9821ccbc5df9d1f",
+          "tag_full": "964d8725104fd2913dc6ee47567321e5",
+          "tag_msb32": "964d8725"
+        },
+        {
+          "position": 4294968352,
+          "epoch": 95443,
+          "encryption_position": 4294968368,
+          "current_epoch": 95443,
+          "epoch_key": "66e0a5e0be6b42e8c910e27d775487c5",
+          "ciphertext": "da5d26b7e5e367ea949792239572dbb287e88dd2713f213012c9eebb55110034",
+          "tag_full": "87a04977813474d0ec1e32be41c9c942",
+          "tag_msb32": "87a04977"
+        },
+        {
+          "position": 7020000,
+          "epoch": 155,
+          "encryption_position": 7020016,
+          "current_epoch": 95443,
+          "epoch_key": "a8d389fb214fe7293e117048bbb463fa",
+          "ciphertext": "daecb645ba6bfa05b7986115ce3cb0193dafb2513f582d043bfc32d33fa45513",
+          "tag_full": "97dbb38edfe5865abc10307cc2f9971f",
+          "tag_msb32": "97dbb38e"
+        }
+      ],
+      "key_base": "374c6ca1395d2e0036bc22cb6e9ce345",
+      "iv": "c7e84527683b0a404732bb35a669c32c",
+      "key_gmac_base": "451a9036ae9aed1e700e6e368972a079",
+      "packet": "475053782d73657373696f6e2d6f7261636c652d626f756e646172792d763100",
+      "fold_xor": {
+        "epoch": 1,
+        "multiplier": 44910,
+        "advanced_iv": "35984627683b0a404732bb35a669c32c",
+        "sha256_left": "40dea90583eebb486843f10a7977c5de",
+        "sha256_right": "69a632ce9710bae4dc7ade4182435b7c",
+        "folded_key": "29789bcb14fe01acb4392f4bfb349ea2"
+      }
+    }
+  ],
+  "arithmetic": {
+    "epoch_boundaries": [
+      {
+        "position": 0,
+        "epoch": 0
+      },
+      {
+        "position": 1,
+        "epoch": 0
+      },
+      {
+        "position": 44999,
+        "epoch": 0
+      },
+      {
+        "position": 45000,
+        "epoch": 0
+      },
+      {
+        "position": 45001,
+        "epoch": 1
+      },
+      {
+        "position": 90000,
+        "epoch": 1
+      },
+      {
+        "position": 90001,
+        "epoch": 2
+      }
+    ],
+    "counter_cases": [
+      {
+        "base_le": "feffffffffffffffffffffffffffffff",
+        "offset": 1,
+        "result_le": "ffffffffffffffffffffffffffffffff"
+      },
+      {
+        "base_le": "ffffffffffffffffffffffffffffffff",
+        "offset": 1,
+        "error": "position_overflow"
+      }
+    ],
+    "epoch_multiplier": {
+      "multiplier": 44910,
+      "largest_valid_epoch": 410749144371176,
+      "first_overflow_epoch": 410749144371177
+    }
+  },
+  "policy": {
+    "forward_window_bytes": 4194304,
+    "backward_window_bytes": 262144,
+    "simulated_forward_gaps": [
+      {
+        "bytes": 65536,
+        "accepted": true
+      },
+      {
+        "bytes": 262144,
+        "accepted": true
+      },
+      {
+        "bytes": 1048576,
+        "accepted": true
+      },
+      {
+        "bytes": 4194304,
+        "accepted": true
+      },
+      {
+        "bytes": 4194305,
+        "accepted": false
+      }
+    ],
+    "per_epoch_invocation_limit": 2048,
+    "global_failure_limit": 32
+  }
+}

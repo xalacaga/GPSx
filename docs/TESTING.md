@@ -8,11 +8,19 @@
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace`
 4. core dependency purity (`cargo tree`: no `jni`, `ndk`, `android*`, `windows*`, `winapi`)
-5. `cargo check --target aarch64-linux-android` on the core when the target is
-   installed; otherwise a `NOT_TESTED` warning (`-RequireAndroid` makes it fatal)
+5. `cargo check --locked --target aarch64-linux-android` on the core when the
+   target is installed; otherwise a `NOT_TESTED` warning (`-RequireAndroid`
+   makes it fatal)
 6. Python 3.12+ check and `unittest` discovery for evidence tooling
 7. secret scan of `tests/fixtures/` and fixture manifest verification
    (checksums plus complete provenance)
+
+The Android gate pins NDK `28.2.13676358` and API 24. It discovers that exact
+NDK through `ANDROID_NDK_HOME`, `ANDROID_NDK_ROOT`, an SDK named by
+`ANDROID_SDK_ROOT`/`ANDROID_HOME`, or `.tools/android-sdk` in the repository,
+then configures `aarch64-linux-android24-clang` and `llvm-ar` for Cargo. The
+selected version, API, and path are logged. `-RequireAndroid` fails with a
+dedicated message when either the Rust target or pinned NDK is absent.
 
 Current deterministic coverage: an exhaustive 9 × 9 session transition table and
 idempotent stop; internal button-mask uniqueness; edge derivation (press and

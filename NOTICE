@@ -25,15 +25,44 @@ aeropause transformation, fixed-counter HMAC-SHA-256 IV, and AES-128-CFB.
 Third-party Rust cryptography dependencies
 ===========================================
 
-The registration-only crate uses the following crates from the RustCrypto
-project under MIT OR Apache-2.0: aes 0.8.4, cfb-mode 0.8.2, hmac 0.12.1,
-sha2 0.10.9, cipher 0.4.4, crypto-common 0.1.7, digest 0.10.7, inout 0.1.4,
-and block-buffer 0.10.4. It also uses zeroize 1.9.1 (Apache-2.0 OR MIT),
+The `gpsx-crypto` crate uses the following crates from the RustCrypto project
+under MIT OR Apache-2.0: aead 0.5.2, aes 0.8.4, aes-gcm 0.10.3, cfb-mode
+0.8.2, ctr 0.9.2, ghash 0.5.1, hmac 0.12.1, opaque-debug 0.3.1, polyval
+0.6.2, sha2 0.10.9, universal-hash 0.5.1, cipher 0.4.4, crypto-common
+0.1.7, digest 0.10.7, inout 0.1.4, and block-buffer 0.10.4. It also uses
+rand_core 0.6.4 and zeroize 1.9.1 (Apache-2.0 OR MIT),
 subtle 2.6.1 (BSD-3-Clause), cfg-if 1.0.5 (MIT OR Apache-2.0), cpufeatures
 0.2.17 (MIT OR Apache-2.0), generic-array 0.14.7 (MIT), typenum 1.20.1
 (MIT OR Apache-2.0), version_check 0.9.5 (MIT/Apache-2.0), and libc 0.2.191
 (MIT OR Apache-2.0). Their license texts and notices remain those distributed
 by their respective packages.
+
+libsecp256k1 vendored by secp256k1-sys 0.14.1
+================================================
+
+The secp256k1 and secp256k1-sys crate metadata is CC0-1.0. The
+secp256k1-sys package vendors a patched copy of libsecp256k1 under the
+following MIT notice:
+
+Copyright (c) 2013 Pieter Wuille
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 Chiaki
 Repository: https://github.com/thestr4ng3r/chiaki

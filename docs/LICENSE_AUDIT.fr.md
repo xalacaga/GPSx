@@ -85,6 +85,7 @@ Signalements d'ingénierie uniquement, pas un avis juridique ; pas encore évalu
 | Oboe | Apache-2.0 | Compatible avec GPLv3/AGPLv3 (FACT, liste de compatibilité de la FSF) |
 | libopus | BSD-3-Clause | Compatible |
 | Crates RustCrypto | MIT/Apache-2.0 | Compatible |
+| crates rust-secp256k1 / libsecp256k1 vendue | Métadonnées des crates : CC0-1.0 ; bibliothèque C vendue et patchée : MIT, Copyright (c) 2013 Pieter Wuille | Permissive ; la mention MIT figure maintenant dans `NOTICE`, tandis que le bundle complet de licences tierces/SBOM N1 reste requis avant toute distribution binaire |
 
 Chacun doit encore figurer dans le registre de provenance et le SBOM avant adoption.
 

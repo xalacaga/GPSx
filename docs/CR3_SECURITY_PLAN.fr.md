@@ -23,10 +23,10 @@ et la récursion interdite.
 | Datagramme UDP de découverte | 1 024 octets | Refus du datagramme entier | ACCEPTÉ CR3 |
 | Nombre d’en-têtes de découverte | 32 | Refus du datagramme entier | ACCEPTÉ CR3 |
 | Ligne de découverte | 512 octets | Refus du datagramme entier | ACCEPTÉ CR3 |
-| Bloc d’en-têtes HTTP d’enregistrement | 1 024 octets | Fermer l’essai ; aucun résultat partiel conservé | IMPLÉMENTÉ ; revue de remédiation en attente |
-| Corps / bloc de champs déchiffré | 1 024 octets / 128 champs | Fermer l’essai ; effacer les tampons secrets de l’appelant | IMPLÉMENTÉ ; revue de remédiation en attente |
-| Réponse d’enregistrement complète | 1 500 octets pour en-tête plus corps | Fermer l’essai | IMPLÉMENTÉ ; revue de remédiation en attente |
-| Futur datagramme UDP chiffré | 2 048 octets | Abandon et erreur classée comptabilisée | PRÉVU, hors premier lot |
+| Bloc d’en-têtes HTTP d’enregistrement | 1 024 octets | Fermer l’essai ; aucun résultat partiel conservé | IMPLÉMENTÉ ; remédiation `GO` |
+| Corps / bloc de champs déchiffré | 1 024 octets / 128 champs | Fermer l’essai ; effacer les tampons secrets de l’appelant | IMPLÉMENTÉ ; remédiation `GO` |
+| Réponse d’enregistrement complète | 1 500 octets pour en-tête plus corps | Fermer l’essai | IMPLÉMENTÉ ; remédiation `GO` |
+| Futur datagramme UDP chiffré | 2 048 octets | Abandon et erreur classée comptabilisée | CRYPTO INTÉGRÉE ; transport hors lot |
 | Futur ensemble de fragments média | 64 fragments / 4 Mio agrégés | Abandon de l’image et demande de récupération si disponible | PRÉVU, hors premier lot |
 | Future fenêtre de réordonnancement | 128 paquets / 250 ms | Éviction du plus ancien et perte bornée enregistrée | PRÉVU, hors premier lot |
 
@@ -67,13 +67,43 @@ séparateur du statut, LF-CR suivi de données et les espaces dans le port.
 
 GPSx n’implémentera pas lui-même AES, le mode CFB, AES-GCM/GHASH, SHA-256, HMAC,
 ECDH secp256k1, la dérivation de clé, l’aléatoire, la comparaison en temps
-constant ou l’effacement. Le registre candidat couvre `aes`, `cfb-mode`, `hmac`,
-`sha2`, `subtle`, `zeroize`, `secrecy`, `getrandom` adossé à la plateforme et
-des familles maintenues encore non résolues pour AES-GCM/GHASH et ECDH secp256k1. Les versions candidates,
-licences, preuves MSRV et la gate d’avis encore ouverte sont consignées dans
-`CRYPTO_DEPENDENCIES.md`. Les sommes exactes devront être épinglées et auditées avant la création de `gpsx-crypto`. Si le mode requis ne
+constant ou l’effacement. Le registre intégré couvre `aes`, `cfb-mode`, `hmac`,
+`sha2`, `subtle`, `zeroize`, `secp256k1` 0.33.1, `ctr` 0.9.2 et `aes-gcm`
+0.10.3. `k256` a été rejeté parce que sa résolution Rust 1.85 est touchée par
+`RUSTSEC-2026-0387` ; `secrecy` et `getrandom` direct n’ont pas été retenus. Les
+versions exactes, licences, preuves MSRV et gates terminés sont consignés dans
+`CRYPTO_DEPENDENCIES.fr.md` ; les invariants de session figurent dans
+`SESSION_CRYPTO_PLAN.fr.md`. Si le mode requis ne
 peut pas être représenté sûrement par des bibliothèques maintenues, le travail
 s’arrête pour une nouvelle revue ; aucun repli maison n’est permis.
+
+Le GMAC de session sur 32 bits est un risque résiduel consigné. GPSx accepte au
+plus 2 048 octets authentifiés par paquet, ne revendique la conformité au tableau 1 de la
+SP 800-38D que jusqu’à 1 024 octets, limite les invocations de déchiffrement
+authentifié à 2 048 par clé GMAC d’époque distante et conserve des budgets
+d’échec globaux par direction/session. Un
+plafond de resynchronisation avant de 4 Mio permet une dérivation directe de
+l’époque cible ; une position plus en avant est rejetée avant cryptographie et
+une position périmée sous la fenêtre arrière est abandonnée sans consommer le
+budget d’échec d’authentification. Limites exactes, état borné des compteurs par
+époque, acceptation du responsable, abandon silencieux et absence de reset sont
+normatifs dans `SESSION_CRYPTO_PLAN.fr.md` ; l’implémentation et l’intégration de
+l’oracle externe fermé ont reçu le `GO` indépendant le 2026-10-28.
+
+Le handshake de session est une chaîne consommante : un `HandshakeSession`
+possède la clé de handshake et le scalaire éphémère produit de manière faillible,
+vérifie le pair, effectue ECDH et dérive les deux directions sans exposer de clé
+authentifiée ou secret partagé pouvant être relié à une autre clé. L’entropie de
+production utilise `try_fill_bytes` puis un rejet borné et sans biais avec
+au plus huit essais de validation `secp256k1::SecretKey` ; le scalaire fixe n’existe que
+sous `#[cfg(test)]`.
+
+Une unique sortie publique écrit la clé de handshake dans un
+`Zeroizing<[u8; 16]>` possédé par l’appelant pour le futur constructeur
+LaunchSpec/rpcrypt relu. Aucun chemin d’import depuis des octets n’existe en
+production. La confidentialité dépend encore de ce futur lot, qui devra encoder
+la clé en base64 et chiffrer par rpcrypt le LaunchSpec complet avant toute E/S
+réseau ; cela reste une hypothèse de conception, pas une preuve d’implémentation.
 
 Les secrets utilisent des enveloppes dédiées non `Clone` et expurgées, sont effacés
 à la destruction lorsque la dépendance le permet, ne traversent jamais les API de
@@ -105,14 +135,11 @@ compatibilité emploient seulement des vecteurs publics ou synthétiques.
 - Registre licence/avis des dépendances avant tout ajout cryptographique.
 - Fixtures synthétiques avec provenance complète et scan de secrets propre.
 
-Le GO accepté n’a créé que `gpsx-protocol`. `gpsx-transport` a ensuite reçu un
-GO séparé et existe désormais. Le lot `gpsx-crypto` limité à l’enregistrement a
-franchi sa revue de remédiation. Le codec d’enregistrement borné a reçu `GO WITH
-CHANGES` ; sa remédiation requise des tests et de la documentation est
-implémentée et attend sa revue de clôture. R5 a autorisé la génération de son
-oracle C uniquement dans un arbre scratch externe. La revue d’intégration
-séparée a rendu `GO WITH CHANGES` ; B1-B4 sont implémentés mais restent non
-commités jusqu’à leur contrôle indépendant requis. Le harnais, le stub, le
-patch, les logs et le manifeste fermé de construction restent définitivement
-externes. `gpsx-session` reste absente en attente d’une revue explicite
-ultérieure.
+Le GO accepté a d’abord créé `gpsx-protocol` ; `gpsx-transport` a ensuite reçu
+un GO séparé. Les remédiations de la cryptographie d’enregistrement et du codec
+borné, l’intégration de l’oracle d’enregistrement, ainsi que l’implémentation et
+l’oracle de cryptographie de session ont désormais tous reçu leurs `GO`
+indépendants requis. Les harnais, stubs, patchs, logs et manifestes fermés de
+construction externes restent définitivement hors dépôt. La cryptographie de
+session portable est intégrée dans `gpsx-crypto` ; aucune crate `gpsx-session`
+séparée n’a été introduite.

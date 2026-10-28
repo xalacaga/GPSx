@@ -670,10 +670,10 @@ struct SeenFields {
     support_command: bool,
 }
 
-pub fn parse_registration_response_fields<'a>(
+pub fn parse_registration_response_fields(
     profile: RegistrationProfile,
-    input: &'a [u8],
-) -> Result<RegistrationResponseView<'a>, RegistrationCodecError> {
+    input: &[u8],
+) -> Result<RegistrationResponseView<'_>, RegistrationCodecError> {
     if input.len() > MAX_REGISTRATION_BODY_SIZE {
         return Err(RegistrationCodecError::BodyTooLarge);
     }
