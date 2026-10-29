@@ -3,14 +3,14 @@ package com.gpsx.tv.ui
 import androidx.annotation.StringRes
 import com.gpsx.tv.R
 
-enum class Destination(@StringRes val labelRes: Int, val glyph: String) {
-    HOME(R.string.nav_home, "H"),
-    CONSOLES(R.string.nav_consoles, "C"),
-    SESSION(R.string.nav_session, ">"),
-    CONTROLLERS(R.string.nav_controllers, "2"),
-    DIAGNOSTICS(R.string.nav_diagnostics, "D"),
-    SETTINGS(R.string.nav_settings, "S"),
-    ABOUT(R.string.nav_about, "i"),
+enum class Destination(@StringRes val labelRes: Int) {
+    HOME(R.string.nav_home),
+    CONSOLES(R.string.nav_consoles),
+    SESSION(R.string.nav_session),
+    CONTROLLERS(R.string.nav_controllers),
+    DIAGNOSTICS(R.string.nav_diagnostics),
+    SETTINGS(R.string.nav_settings),
+    ABOUT(R.string.nav_about),
 }
 
 enum class SessionPhase {

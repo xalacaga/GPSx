@@ -7,6 +7,7 @@ members = [
     "crates/gpsx-protocol",
     "crates/gpsx-telemetry",
     "crates/gpsx-transport",
+    "platform/android/gpsx-android-input",
 ]
 
 [workspace.package]

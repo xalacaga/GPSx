@@ -2,7 +2,15 @@
 
 > Traduction française de `UPSTREAM_ANALYSIS.md`.
 
-Date de l'audit : 2026-10-25. Ce document décrit des preuves ; il n'autorise pas à copier du code.
+Date de l'audit : 2026-10-25 ; décision d'intégration mise à jour le 2026-10-28.
+
+## Décision d'intégration Android épinglée (2026-10-28)
+
+Le projet accepte les conséquences de licence AGPL/OpenSSL de l'utilisation de chiaki-ng comme première base Remote Play exécutable. L'intégration Android est épinglée sur le commit `c8bea2642d0e95402f373af55584a3b98cd89417` de `chiaki-ng/chiaki-ng` ; le code dérivé de son contrat Kotlin/JNI porte `LicenseRef-AGPL-3.0-only-OpenSSL` et inscrit ce commit dans son en-tête source.
+
+FAIT : GPSx enveloppe maintenant le moteur épinglé derrière `RemotePlayEngine`. La frontière expose l'enregistrement, le démarrage/l'arrêt, la propriété de la Surface, le PIN de connexion et la soumission de l'état manette. Les événements Android de touches, HAT, axes et gâchettes passent d'abord par la machine Rust portable de fusion/fronts `gpsx-input`, puis sont convertis dans l'ordre des contrôles chiaki. Les paquets réseau, la vidéo compressée et le PCM restent natifs et ne traversent pas la JVM. Le premier build consomme les bibliothèques natives construites localement au moyen de la propriété Gradle explicite `chiakiPrebuiltDir` ; `.tools/` reste un espace de build ignoré, pas une source de provenance.
+
+FAIT : l'émulateur Android x86_64 a chargé la bibliothèque JNI épinglée et résolu une méthode native, et toute la suite d'instrumentation a réussi. INCONNU : une connexion à une vraie PS5, l'audio/vidéo réel, les mappings manette en jeu, la reconnexion et les performances. Aucune comparaison avec chiaki-ng n'est revendiquée avant des mesures comparables P50/P95/P99 et de profondeur des files.
 
 ## Pylux
 
@@ -40,7 +48,7 @@ Le récepteur vidéo réalise l'assemblage des images, la récupération FEC, la
 
 Les fonctionnalités bureau incluent le remappage, le pavé tactile, le mouvement, le micro, les retours haptiques, les gâchettes adaptatives, le suivi des pertes de paquets, le choix du décodeur et le buffering audio. C'est donc le meilleur oracle Windows, même si Qt/libplacebo n'est pas le frontend final visé. [StreamSession chiaki-ng](https://github.com/chiaki-ng/chiaki-ng/blob/main/gui/src/streamsession.cpp)
 
-Recommandation : utiliser chiaki-ng bureau comme premier client de référence fonctionnel. Si une distribution sous AGPL est acceptable, envelopper son cœur partagé est moins risqué que le traduire.
+Décision : utiliser le cœur chiaki-ng épinglé comme première base exécutable connue fonctionnelle. GPSx pourra remplacer plus tard les goulots d'étranglement mesurés, mais uniquement avec du code dont la provenance est sûre et des preuves comparables.
 
 ## Forks Android
 

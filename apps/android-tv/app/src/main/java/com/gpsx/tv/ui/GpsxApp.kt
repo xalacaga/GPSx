@@ -1,13 +1,18 @@
 package com.gpsx.tv.ui
 
+import android.content.Intent
+import android.provider.Settings
+import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,18 +25,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,45 +46,103 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import com.gpsx.tv.BuildConfig
 import com.gpsx.tv.R
+import com.gpsx.tv.remoteplay.RemotePlayEngine
+import com.gpsx.tv.remoteplay.ConnectedGameController
+import com.gpsx.tv.remoteplay.GameControllerMonitor
+import com.gpsx.tv.remoteplay.RemotePlayPhase
+import com.gpsx.tv.remoteplay.RemotePlaySnapshot
+import com.gpsx.tv.remoteplay.RemotePlaySurfaceController
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val PanelShape = RoundedCornerShape(22.dp)
 
+private data class ResponsiveLayout(
+    val compact: Boolean,
+    val short: Boolean,
+)
+
+private val LocalResponsiveLayout = staticCompositionLocalOf { ResponsiveLayout(compact = false, short = false) }
+
 @Composable
 fun GpsxApp() {
+    val context = LocalContext.current
+    val engine = remember(context) { RemotePlayEngine(context.applicationContext) }
+    DisposableEffect(engine) {
+        onDispose(engine::close)
+    }
+    GpsxApp(engine)
+}
+
+@Composable
+fun GpsxApp(engine: RemotePlayEngine) {
+    val context = LocalContext.current
     var state by remember { mutableStateOf(AppUiState()) }
-    val scope = rememberCoroutineScope()
+    var remote by remember { mutableStateOf(engine.snapshot()) }
+    var controllers by remember { mutableStateOf(emptyList<ConnectedGameController>()) }
     val firstLegalFocusRequester = remember { FocusRequester() }
+    val controllerMonitor = remember(context) { GameControllerMonitor(context.applicationContext) }
+
+    DisposableEffect(controllerMonitor) {
+        controllerMonitor.start { controllers = it }
+        onDispose(controllerMonitor::close)
+    }
+
+    DisposableEffect(engine) {
+        engine.setListener { remote = it }
+        onDispose { engine.setListener(null) }
+    }
+
+    LaunchedEffect(remote.phase) {
+        state = state.copy(sessionPhase = remote.phase.toSessionPhase())
+    }
 
     fun dispatch(action: UiAction) {
-        state = reduce(state, action)
-        if (action == UiAction.StartDemo && state.sessionPhase == SessionPhase.CONNECTING) {
-            scope.launch {
-                delay(750)
-                state = reduce(state, UiAction.ConfirmDemoStarted)
+        when (action) {
+            UiAction.StartDemo -> {
+                state = state.copy(destination = Destination.SESSION)
+                if (remote.phase == RemotePlayPhase.READY || remote.phase == RemotePlayPhase.STOPPED) {
+                    engine.start(state.quality)
+                }
             }
+            UiAction.StopDemo -> engine.stop()
+            else -> state = reduce(state, action)
         }
     }
 
-    BackHandler(enabled = state.destination != Destination.HOME) {
+    val fullscreenStream =
+        state.destination == Destination.SESSION && remote.phase == RemotePlayPhase.STREAMING
+
+    BackHandler(enabled = fullscreenStream) {
+        dispatch(UiAction.StopDemo)
+    }
+
+    BackHandler(enabled = !fullscreenStream && state.destination != Destination.HOME) {
         dispatch(UiAction.Navigate(Destination.HOME))
     }
 
-    Box(
+    BoxWithConstraints(
         modifier =
             Modifier
                 .fillMaxSize()
@@ -89,22 +152,32 @@ fun GpsxApp() {
                     ),
                 ),
     ) {
-        CompositionLocalProvider(LocalContentColor provides SoftWhite) {
+        val responsive = ResponsiveLayout(compact = maxWidth < 1100.dp, short = maxHeight < 650.dp)
+        CompositionLocalProvider(
+            LocalContentColor provides SoftWhite,
+            LocalResponsiveLayout provides responsive,
+        ) {
             Row(Modifier.fillMaxSize()) {
                 NavigationRail(
                     state.destination,
                     firstLegalFocusRequester,
+                    visible = !fullscreenStream,
                     onNavigate = { dispatch(UiAction.Navigate(it)) },
                 )
-                Box(Modifier.fillMaxSize().padding(start = 12.dp)) {
-                    when (state.destination) {
-                        Destination.HOME -> HomeScreen(state, ::dispatch)
-                        Destination.CONSOLES -> ConsolesScreen(::dispatch)
-                        Destination.SESSION -> SessionScreen(state, ::dispatch)
-                        Destination.CONTROLLERS -> ControllersScreen()
-                        Destination.DIAGNOSTICS -> DiagnosticsScreen()
-                        Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
-                        Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
+                Box(Modifier.fillMaxSize().padding(start = if (fullscreenStream) 0.dp else 12.dp)) {
+                    key(state.destination) {
+                        when (state.destination) {
+                            Destination.HOME -> HomeScreen(state, ::dispatch)
+                            Destination.CONSOLES -> ConsolesScreen(::dispatch)
+                            Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
+                            Destination.CONTROLLERS ->
+                                ControllersScreen(controllers) {
+                                    context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                }
+                            Destination.DIAGNOSTICS -> DiagnosticsScreen()
+                            Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
+                            Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
+                        }
                     }
                 }
             }
@@ -116,8 +189,10 @@ fun GpsxApp() {
 private fun NavigationRail(
     selected: Destination,
     firstLegalFocusRequester: FocusRequester,
+    visible: Boolean = true,
     onNavigate: (Destination) -> Unit,
 ) {
+    val responsive = LocalResponsiveLayout.current
     val homeFocusRequester = remember { FocusRequester() }
     LaunchedEffect(homeFocusRequester) {
         homeFocusRequester.requestFocus()
@@ -126,11 +201,15 @@ private fun NavigationRail(
     Column(
         modifier =
             Modifier
-                .width(224.dp)
+                .width(if (!visible) 0.dp else if (responsive.compact) 180.dp else 224.dp)
                 .fillMaxHeight()
                 .background(Color(0xB3081823))
-                .padding(horizontal = 24.dp, vertical = 28.dp),
+                .padding(
+                    horizontal = if (responsive.compact) 16.dp else 24.dp,
+                    vertical = if (responsive.short) 16.dp else 28.dp,
+                ),
     ) {
+        if (!visible) return@Column
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Mint),
@@ -141,11 +220,12 @@ private fun NavigationRail(
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("GPSx", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("REMOTE PLAY, REPENSÉ", fontSize = 8.sp, color = Muted, letterSpacing = 1.6.sp)
+                Text("REMOTE PLAY", fontSize = 7.sp, color = Muted, letterSpacing = 1.2.sp, maxLines = 1)
+                Text("REPENSÉ", fontSize = 7.sp, color = Muted, letterSpacing = 1.2.sp, maxLines = 1)
             }
         }
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(if (responsive.short) 18.dp else 36.dp))
         Destination.entries.forEach { destination ->
             NavItem(
                 destination = destination,
@@ -158,7 +238,7 @@ private fun NavigationRail(
                         else -> Modifier
                     },
             )
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(if (responsive.short) 3.dp else 7.dp))
         }
 
         Spacer(Modifier.weight(1f))
@@ -190,8 +270,6 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
                 .padding(horizontal = 15.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(destination.glyph, color = if (selected || focused) Mint else Muted, fontSize = 18.sp)
-        Spacer(Modifier.width(13.dp))
         Text(
             stringResource(destination.labelRes),
             color = if (selected || focused) SoftWhite else Muted,
@@ -206,18 +284,33 @@ private fun ScreenFrame(
     eyebrow: String,
     title: String,
     subtitle: String,
+    fullscreen: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val responsive = LocalResponsiveLayout.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 38.dp, end = 46.dp, top = 34.dp, bottom = 34.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        contentPadding =
+            PaddingValues(
+                start = if (fullscreen) 0.dp else if (responsive.compact) 22.dp else 38.dp,
+                end = if (fullscreen) 0.dp else if (responsive.compact) 24.dp else 46.dp,
+                top = if (fullscreen) 0.dp else if (responsive.short) 18.dp else 34.dp,
+                bottom = if (fullscreen) 0.dp else if (responsive.short) 18.dp else 34.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(if (responsive.short) 12.dp else 18.dp),
     ) {
         item {
-            Text(eyebrow.uppercase(), color = Mint, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
-            Text(title, fontSize = 35.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(5.dp))
-            Text(subtitle, color = Muted, fontSize = 14.sp)
+            if (!fullscreen) {
+                Text(eyebrow.uppercase(), color = Mint, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    title,
+                    fontSize = if (responsive.compact) 29.sp else 35.sp,
+                    lineHeight = if (responsive.compact) 34.sp else 40.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(subtitle, color = Muted, fontSize = 14.sp)
+            }
         }
         item { content() }
     }
@@ -225,6 +318,7 @@ private fun ScreenFrame(
 
 @Composable
 private fun HomeScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
+    val responsive = LocalResponsiveLayout.current
     ScreenFrame(
         eyebrow = "Expérience salon",
         title = "Bonsoir.",
@@ -232,34 +326,41 @@ private fun HomeScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             HeroPanel(state, dispatch)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                item { MetricCard("LATENCE LAN", "4,8 ms", "simulation", Mint) }
-                item { MetricCard("FLUIDITÉ", "59,9 fps", "simulation", Sky) }
-                item { MetricCard("DÉCODAGE", "8,2 ms", "simulation", Amber) }
-                item { MetricCard("PERTES", "0,02 %", "simulation", Mint) }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                MetricCard("LATENCE LAN", "4,8 ms", "simulation", Mint, Modifier.weight(1f))
+                MetricCard("FLUIDITÉ", "59,9 fps", "simulation", Sky, Modifier.weight(1f))
+                if (!responsive.compact) {
+                    MetricCard("DÉCODAGE", "8,2 ms", "simulation", Amber, Modifier.weight(1f))
+                    MetricCard("PERTES", "0,02 %", "simulation", Mint, Modifier.weight(1f))
+                }
+                }
+                if (responsive.compact) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                MetricCard("DÉCODAGE", "8,2 ms", "simulation", Amber, Modifier.weight(1f))
+                MetricCard("PERTES", "0,02 %", "simulation", Mint, Modifier.weight(1f))
+                }
             }
             SectionTitle("Accès rapide", "Fonctions essentielles et avancées")
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(
-                    listOf(
-                        Triple("Connexion distante", "PSN · planifiée", "◎"),
-                        Triple("Inspecteur manette", "Entrées en direct", "✦"),
-                        Triple("Profils", "Utilisateurs multiples", "◉"),
-                        Triple("Exporter les réglages", "JSON sans secrets", "⇧"),
-                    ),
-                ) { (title, subtitle, glyph) -> FeatureCard(glyph, title, subtitle) }
-            }
+            FeatureGrid(
+                listOf(
+                    Triple("Connexion distante", "PSN · planifiée", "◎"),
+                    Triple("Inspecteur manette", "Entrées en direct", "✦"),
+                    Triple("Profils", "Utilisateurs multiples", "◉"),
+                    Triple("Exporter les réglages", "JSON sans secrets", "⇧"),
+                ),
+            )
         }
     }
 }
 
 @Composable
 private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
+    val responsive = LocalResponsiveLayout.current
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(246.dp)
+                .height(if (responsive.compact) 220.dp else 246.dp)
                 .clip(PanelShape)
                 .background(
                     Brush.horizontalGradient(
@@ -281,7 +382,7 @@ private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
             Spacer(Modifier.weight(1f))
             FocusButton(stringResource(R.string.start_demo), primary = true) { dispatch(UiAction.StartDemo) }
         }
-        Box(Modifier.width(330.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+        if (!responsive.compact) Box(Modifier.width(330.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.size(225.dp).clip(CircleShape).background(Mint.copy(alpha = .08f)),
                 contentAlignment = Alignment.Center,
@@ -309,9 +410,21 @@ private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
 
 @Composable
 private fun ConsolesScreen(dispatch: (UiAction) -> Unit) {
+    val responsive = LocalResponsiveLayout.current
     ScreenFrame("Bibliothèque", "Vos consoles", "Découverte locale, ajout manuel, réveil et accès distant seront réunis ici.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (responsive.compact) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ConsoleCard(
+                        stringResource(R.string.console_title),
+                        stringResource(R.string.console_subtitle),
+                        stringResource(R.string.offline_badge),
+                        Mint,
+                        Modifier.fillMaxWidth(),
+                    ) { dispatch(UiAction.StartDemo) }
+                    ConsoleCard("Ajouter une console", "Découverte ou adresse manuelle", "PLANIFIÉ", Sky, Modifier.fillMaxWidth()) {}
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ConsoleCard(
                     stringResource(R.string.console_title),
                     stringResource(R.string.console_subtitle),
@@ -324,7 +437,13 @@ private fun ConsolesScreen(dispatch: (UiAction) -> Unit) {
                 ConsoleCard("Ajouter une console", "Découverte ou adresse manuelle", "PLANIFIÉ", Sky, Modifier.weight(1f)) {}
             }
             SectionTitle("Modes de connexion", "Parité prévue avec les clients de référence")
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (responsive.compact) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MiniPanel("Réseau local", "Découverte automatique et réveil", "LAN", Modifier.fillMaxWidth())
+                    MiniPanel("À distance", "Connexion assistée par PSN", "WAN", Modifier.fillMaxWidth())
+                    MiniPanel("Enregistrement", "PIN et stockage sécurisé", "PAIR", Modifier.fillMaxWidth())
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 MiniPanel("Réseau local", "Découverte automatique et réveil", "LAN", Modifier.weight(1f))
                 MiniPanel("À distance", "Connexion assistée par PSN", "WAN", Modifier.weight(1f))
                 MiniPanel("Enregistrement", "PIN et stockage sécurisé", "PAIR", Modifier.weight(1f))
@@ -334,74 +453,313 @@ private fun ConsolesScreen(dispatch: (UiAction) -> Unit) {
 }
 
 @Composable
-private fun SessionScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
-    ScreenFrame("Lecture", "Session de démonstration", "Le rendu et les mesures ci-dessous sont synthétiques ; aucune console n’est contactée.") {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+private fun SessionScreen(
+    state: AppUiState,
+    remote: RemotePlaySnapshot,
+    engine: RemotePlayEngine,
+    dispatch: (UiAction) -> Unit,
+) {
+    val responsive = LocalResponsiveLayout.current
+    val fullscreen = remote.phase == RemotePlayPhase.STREAMING
+    var host by remember { mutableStateOf("") }
+    var registrationPin by remember { mutableStateOf("") }
+    var accountId by remember { mutableStateOf("") }
+    var loginPin by remember { mutableStateOf("") }
+    var showFullscreenHint by remember { mutableStateOf(false) }
+    val discoveryFocus = remember { FocusRequester() }
+    val hostFocus = remember { FocusRequester() }
+    val registrationPinFocus = remember { FocusRequester() }
+    val accountIdFocus = remember { FocusRequester() }
+    val registerFocus = remember { FocusRequester() }
+
+    LaunchedEffect(remote.discoveredHost) {
+        remote.discoveredHost?.let { host = it }
+    }
+
+    LaunchedEffect(fullscreen) {
+        showFullscreenHint = fullscreen
+        if (fullscreen) {
+            delay(10_000)
+            showFullscreenHint = false
+        }
+    }
+
+    BoxWithConstraints {
+        val streamHeight = maxHeight
+        ScreenFrame("Lecture", "Session PS5", remote.detail, fullscreen = fullscreen) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(
                 modifier =
-                    Modifier.fillMaxWidth().height(330.dp).clip(PanelShape)
-                        .background(Brush.linearGradient(listOf(Color(0xFF142D45), Color(0xFF251B40), Color(0xFF0D2630)))),
+                    Modifier.fillMaxWidth()
+                        .height(if (fullscreen) streamHeight else if (responsive.short) 300.dp else if (responsive.compact) 360.dp else 430.dp)
+                        .clip(if (fullscreen) RectangleShape else PanelShape)
+                        .background(Color.Black),
             ) {
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (state.sessionPhase == SessionPhase.CONNECTING) "◌" else "GPSx", fontSize = 44.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(sessionLabel(state.sessionPhase), color = Muted, fontSize = 14.sp)
-                }
-                StatusPill("DONNÉES SIMULÉES", Amber, Modifier.align(Alignment.TopStart).padding(18.dp))
-                if (state.metricsVisible) {
-                    Row(
-                        Modifier.align(Alignment.TopEnd).padding(18.dp).clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xCC061018)).padding(horizontal = 15.dp, vertical = 11.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    ) {
-                        OverlayMetric("FPS", "59,9")
-                        OverlayMetric("RTT", "4,8 ms")
-                        OverlayMetric("P95", "11,3 ms")
+                RemotePlaySurface(
+                    engine,
+                    Modifier.fillMaxSize().testTag(if (fullscreen) "fullscreen-stream" else "session-surface"),
+                )
+                if (remote.phase != RemotePlayPhase.STREAMING) {
+                    Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (remote.phase == RemotePlayPhase.CONNECTING) "◌" else "GPSx", fontSize = 44.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(remote.detail, color = Muted, fontSize = 14.sp)
                     }
                 }
-                Row(
+                StatusPill(
+                    if (fullscreen) remote.consoleName ?: "PS5" else remote.phase.label(),
+                    remote.phase.accent(),
+                    Modifier.align(Alignment.TopStart).padding(18.dp),
+                )
+                if (fullscreen && showFullscreenHint) {
+                    Text(
+                        "Retour : déconnecter",
+                        color = SoftWhite,
+                        fontSize = 11.sp,
+                        modifier =
+                            Modifier.align(Alignment.BottomStart).padding(18.dp)
+                                .clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                } else if (!fullscreen && responsive.compact) Column(
+                    Modifier.align(Alignment.BottomStart).padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (remote.consoleName != null && remote.phase !in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.STOPPING)) {
+                        FocusButton("Démarrer le stream", primary = true) { dispatch(UiAction.StartDemo) }
+                    }
+                    if (remote.phase in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.LOGIN_PIN_REQUIRED)) {
+                        FocusButton("Déconnecter", primary = true) { dispatch(UiAction.StopDemo) }
+                    }
+                    FocusButton(if (state.metricsVisible) "Masquer les stats" else "Afficher les stats") { dispatch(UiAction.ToggleMetrics) }
+                } else if (!fullscreen) Row(
                     Modifier.align(Alignment.BottomStart).padding(18.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    FocusButton(
-                        if (state.sessionPhase == SessionPhase.STREAMING) {
-                            stringResource(R.string.stop_demo)
-                        } else {
-                            stringResource(R.string.start_demo)
-                        },
-                        primary = true,
-                    ) {
-                        if (state.sessionPhase == SessionPhase.STREAMING || state.sessionPhase == SessionPhase.CONNECTING) {
-                            dispatch(UiAction.StopDemo)
-                        } else {
-                            dispatch(UiAction.StartDemo)
-                        }
+                    if (remote.consoleName != null && remote.phase !in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.STOPPING)) {
+                        FocusButton("Démarrer le stream", primary = true) { dispatch(UiAction.StartDemo) }
+                    }
+                    if (remote.phase in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.LOGIN_PIN_REQUIRED)) {
+                        FocusButton("Déconnecter", primary = true) { dispatch(UiAction.StopDemo) }
                     }
                     FocusButton(if (state.metricsVisible) "Masquer les stats" else "Afficher les stats") { dispatch(UiAction.ToggleMetrics) }
                 }
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(listOf("Menu rapide", "Micro", "Ajustement image", "Reconnexion", "Mettre en veille")) {
-                    FeatureCard("·", it, "Disponible au fil des jalons")
+
+            if (remote.consoleName == null) {
+                SectionTitle(
+                    "Enregistrer GPSx sur la PS5",
+                    "Association chiffrée dans le stockage privé Android ; aucun secret n’est journalisé",
+                )
+                RegistrationGuide()
+                if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FocusButton(
+                        if (remote.discoveryRunning) "Recherche en cours…" else "Rechercher ma PS5",
+                        primary = true,
+                        modifier = Modifier.focusRequester(discoveryFocus).focusProperties { down = hostFocus },
+                    ) { engine.discoverPs5() }
+                    Text(remote.discoveryDetail, color = Muted, fontSize = 11.sp)
+                } else Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FocusButton(
+                        if (remote.discoveryRunning) "Recherche en cours…" else "Rechercher ma PS5",
+                        primary = true,
+                        modifier = Modifier.focusRequester(discoveryFocus).focusProperties { down = hostFocus },
+                    ) { engine.discoverPs5() }
+                    Text(remote.discoveryDetail, color = Muted, fontSize = 11.sp)
                 }
+                if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LabeledInput("Adresse PS5", host, { host = it }, Modifier.fillMaxWidth(), hostFocus, discoveryFocus, registrationPinFocus, "registration-host")
+                    LabeledInput("PIN à 8 chiffres", registrationPin, { registrationPin = it.filter(Char::isDigit).take(8) }, Modifier.fillMaxWidth(), registrationPinFocus, hostFocus, accountIdFocus, "registration-pin")
+                    LabeledInput("PSN Account ID (Base64 ou hex)", accountId, { accountId = it }, Modifier.fillMaxWidth(), accountIdFocus, registrationPinFocus, registerFocus, "registration-account-id")
+                } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LabeledInput("Adresse PS5", host, { host = it }, Modifier.weight(1f), hostFocus, discoveryFocus, registrationPinFocus, "registration-host")
+                    LabeledInput("PIN à 8 chiffres", registrationPin, { registrationPin = it.filter(Char::isDigit).take(8) }, Modifier.weight(1f), registrationPinFocus, hostFocus, accountIdFocus, "registration-pin")
+                    LabeledInput("PSN Account ID (Base64 ou hex)", accountId, { accountId = it }, Modifier.weight(1.4f), accountIdFocus, registrationPinFocus, registerFocus, "registration-account-id")
+                }
+                FocusButton(
+                    "Enregistrer",
+                    primary = true,
+                    modifier = Modifier.focusRequester(registerFocus).focusProperties { up = accountIdFocus }.testTag("registration-submit"),
+                ) { engine.register(host, registrationPin, accountId) }
+            }
+
+            if (remote.phase == RemotePlayPhase.LOGIN_PIN_REQUIRED) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+                    LabeledInput("PIN utilisateur PS5", loginPin, { loginPin = it.filter(Char::isDigit) }, Modifier.weight(1f))
+                    FocusButton("Envoyer le PIN", primary = true) { engine.submitLoginPin(loginPin) }
+                }
+            }
+
+            if (!fullscreen) FeatureGrid(
+                listOf(
+                    Triple("Vidéo", "MediaCodec natif · H.264 · ${state.quality.label}", "V"),
+                    Triple("Audio", "Décodage et sortie natifs", "A"),
+                    Triple("Manette", "Événements Android vers l’état unifié", "J1"),
+                ),
+                columns = if (responsive.compact) 1 else 3,
+            )
             }
         }
     }
 }
 
 @Composable
-private fun ControllersScreen() {
+private fun RemotePlaySurface(engine: RemotePlayEngine, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val surfaceView = remember(context) { SurfaceView(context).apply { isFocusable = false } }
+    DisposableEffect(surfaceView, engine) {
+        val controller = RemotePlaySurfaceController(surfaceView, engine)
+        onDispose(controller::close)
+    }
+    AndroidView(factory = { surfaceView }, modifier = modifier)
+}
+
+@Composable
+private fun RegistrationGuide() {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
+            .background(Color(0xAD102835)).padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Où trouver les informations", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "1. Sur la PS5 : Paramètres → Système → Lecture à distance → Associer l’appareil. " +
+                "Recopiez ici le code à 8 chiffres avant son expiration.",
+            color = SoftWhite,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+        Text(
+            "2. Le PSN Account ID est l’identifiant numérique du compte (8 octets, Base64 ou 16 caractères hexadécimaux). " +
+                "Ce n’est ni votre pseudo PSN ni votre adresse e-mail. GPSx ne sait pas encore le récupérer automatiquement : " +
+                "copiez-le depuis un profil Remote Play/Chiaki déjà enregistré et fiable.",
+            color = Muted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+        Text(
+            "Ne saisissez jamais ici votre mot de passe, un cookie, un jeton PSN ou une URL de redirection.",
+            color = Amber,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun LabeledInput(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    previousFocusRequester: FocusRequester? = null,
+    nextFocusRequester: FocusRequester? = null,
+    testTag: String? = null,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(12.dp)
+    Column(modifier) {
+        Text(label, color = Muted, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = SoftWhite),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                    .then(
+                        if (previousFocusRequester != null || nextFocusRequester != null) {
+                            Modifier.focusProperties {
+                                previousFocusRequester?.let { up = it }
+                                nextFocusRequester?.let { down = it }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionUp -> previousFocusRequester?.requestFocus() ?: false
+                            Key.DirectionDown -> nextFocusRequester?.requestFocus() ?: false
+                            else -> false
+                        }
+                    }
+                    .onFocusChanged { focused = it.isFocused }
+                    .clip(shape)
+                    .background(Color(0xFF102835))
+                    .border(if (focused) 3.dp else 1.dp, if (focused) Mint else Color(0xFF315263), shape)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun ControllersScreen(
+    controllers: List<ConnectedGameController>,
+    onOpenBluetooth: () -> Unit,
+) {
+    val responsive = LocalResponsiveLayout.current
     ScreenFrame(
         "Entrées",
         stringResource(R.string.controller_screen_title),
         stringResource(R.string.controller_screen_subtitle),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ControllerSlot("1", stringResource(R.string.controller_a), Mint, Modifier.weight(1f))
-                ControllerSlot("2", stringResource(R.string.controller_b), Sky, Modifier.weight(1f))
+            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    if (controllers.isEmpty()) "Aucune manette détectée" else "${controllers.size} manette(s) détectée(s)",
+                    color = Muted,
+                    fontSize = 12.sp,
+                )
+                FocusButton("Ouvrir les réglages Bluetooth", primary = true, onClick = onOpenBluetooth)
+            } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (controllers.isEmpty()) "Aucune manette détectée" else "${controllers.size} manette(s) détectée(s)",
+                    color = Muted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                FocusButton("Ouvrir les réglages Bluetooth", primary = true, onClick = onOpenBluetooth)
             }
-            MiniPanel("Inspecteur en direct", "Sélection par ControllerId : touches, axes, HAT, VID/PID, batterie et capacités", "DÉV", Modifier.fillMaxWidth())
+            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(2) { index ->
+                    val controller = controllers.getOrNull(index)
+                    ControllerSlot(
+                        number = (index + 1).toString(),
+                        name = controller?.name ?: if (index == 0) stringResource(R.string.controller_a) else stringResource(R.string.controller_b),
+                        status = if (controller == null) stringResource(R.string.controller_waiting) else "CONNECTÉE",
+                        detail = controller?.let { "${it.kind.label} · VID %04X · PID %04X".format(it.vendorId, it.productId) }
+                            ?: stringResource(R.string.controller_merge_note),
+                        accent = if (index == 0) Mint else Sky,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                repeat(2) { index ->
+                    val controller = controllers.getOrNull(index)
+                    ControllerSlot(
+                        number = (index + 1).toString(),
+                        name = controller?.name ?: if (index == 0) stringResource(R.string.controller_a) else stringResource(R.string.controller_b),
+                        status = if (controller == null) stringResource(R.string.controller_waiting) else "CONNECTÉE",
+                        detail =
+                            controller?.let {
+                                "${it.kind.label} · VID %04X · PID %04X".format(it.vendorId, it.productId)
+                            } ?: stringResource(R.string.controller_merge_note),
+                        accent = if (index == 0) Mint else Sky,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            MiniPanel("Entrées actives", "DualSense, Xbox et manettes Android standard : touches, HAT, axes et gâchettes analogiques", "ANDROID", Modifier.fillMaxWidth())
             SectionTitle("Capacités prévues", "Chaque capacité restera NON TESTÉE jusqu’à validation appropriée")
             CapabilityGrid()
         }
@@ -409,7 +767,14 @@ private fun ControllersScreen() {
 }
 
 @Composable
-private fun ControllerSlot(number: String, name: String, accent: Color, modifier: Modifier) {
+private fun ControllerSlot(
+    number: String,
+    name: String,
+    status: String,
+    detail: String,
+    accent: Color,
+    modifier: Modifier,
+) {
     Column(modifier.clip(PanelShape).background(Color(0xC0102835)).padding(22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp).clip(CircleShape).background(accent.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
@@ -419,15 +784,16 @@ private fun ControllerSlot(number: String, name: String, accent: Color, modifier
             Column(Modifier.weight(1f)) {
                 Text(name, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             }
-            StatusPill(stringResource(R.string.controller_waiting), accent)
+            StatusPill(status, accent)
         }
         Spacer(Modifier.height(16.dp))
-        Text(stringResource(R.string.controller_merge_note), color = Muted, fontSize = 10.sp)
+        Text(detail, color = Muted, fontSize = 10.sp)
     }
 }
 
 @Composable
 private fun CapabilityGrid() {
+    val responsive = LocalResponsiveLayout.current
     val capabilities =
         listOf(
             "Mapping complet" to "Standard",
@@ -440,7 +806,7 @@ private fun CapabilityGrid() {
             "Multi-manette" to "Architecture prête",
         )
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        capabilities.chunked(4).forEach { row ->
+        capabilities.chunked(if (responsive.compact) 2 else 4).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { (name, status) -> MiniPanel(name, status, "○", Modifier.weight(1f)) }
             }
@@ -450,15 +816,29 @@ private fun CapabilityGrid() {
 
 @Composable
 private fun DiagnosticsScreen() {
+    val responsive = LocalResponsiveLayout.current
     ScreenFrame("Observabilité", stringResource(R.string.diagnostic_title), "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
+                    HealthCard("Vidéo", "Simulation", "FPS · files · rendu · erreurs", Sky, Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HealthCard("Audio", "Simulation", "Route · buffer · underruns", Amber, Modifier.weight(1f))
+                    HealthCard("Entrées", "Simulation", "P50 · P95 · P99 · événements", Mint, Modifier.weight(1f))
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
                 HealthCard("Vidéo", "Simulation", "FPS · files · rendu · erreurs", Sky, Modifier.weight(1f))
                 HealthCard("Audio", "Simulation", "Route · buffer · underruns", Amber, Modifier.weight(1f))
                 HealthCard("Entrées", "Simulation", "P50 · P95 · P99 · événements", Mint, Modifier.weight(1f))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                MiniPanel("Performance", "Superposition, percentiles et comparaison de référence", "P95", Modifier.fillMaxWidth())
+                MiniPanel("Journaux", "Structurés, filtrables et expurgés", "JOURNAL", Modifier.fillMaxWidth())
+                MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.fillMaxWidth())
+            } else Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 MiniPanel("Performance", "Superposition, percentiles et comparaison de référence", "P95", Modifier.weight(1f))
                 MiniPanel("Journaux", "Structurés, filtrables et expurgés", "JOURNAL", Modifier.weight(1f))
                 MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.weight(1f))
@@ -482,6 +862,7 @@ private fun DiagnosticsScreen() {
 
 @Composable
 private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
+    val responsive = LocalResponsiveLayout.current
     ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
@@ -489,7 +870,16 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
             SettingRow("Télémétrie locale", "Mesures structurées sans données personnelles", yesNo(state.telemetryEnabled)) { dispatch(UiAction.ToggleTelemetry) }
             SettingRow("Microphone", "Désactivé par défaut", yesNo(state.microphoneEnabled)) { dispatch(UiAction.ToggleMicrophone) }
             SectionTitle("Fonctions avancées", "Prévues pour la parité complète")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MiniPanel("Image", "HDR · cadrage · zoom · étirement", "HDR", Modifier.weight(1f))
+                    MiniPanel("Audio", "Sortie · tampon · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
+                    MiniPanel("Données", "Importer · exporter · réinitialiser", "DONNÉES", Modifier.weight(1f))
+                }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniPanel("Image", "HDR · cadrage · zoom · étirement", "HDR", Modifier.weight(1f))
                 MiniPanel("Audio", "Sortie · tampon · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
                 MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
@@ -539,7 +929,12 @@ private fun AboutScreen(firstLegalFocusRequester: FocusRequester) {
 }
 
 @Composable
-private fun FocusButton(label: String, primary: Boolean = false, onClick: () -> Unit) {
+private fun FocusButton(
+    label: String,
+    primary: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     var focused by remember { mutableStateOf(false) }
     val background = when {
         focused -> SoftWhite
@@ -549,7 +944,7 @@ private fun FocusButton(label: String, primary: Boolean = false, onClick: () -> 
     val foreground = if (focused || primary) Ink else SoftWhite
     Box(
         modifier =
-            Modifier.clip(RoundedCornerShape(13.dp)).background(background)
+            modifier.clip(RoundedCornerShape(13.dp)).background(background)
                 .then(if (focused) Modifier.border(BorderStroke(3.dp, Mint), RoundedCornerShape(13.dp)) else Modifier)
                 .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -560,9 +955,9 @@ private fun FocusButton(label: String, primary: Boolean = false, onClick: () -> 
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, detail: String, accent: Color) {
+private fun MetricCard(label: String, value: String, detail: String, accent: Color, modifier: Modifier = Modifier) {
     Column(
-        Modifier.width(194.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xB3112937)).padding(18.dp),
+        modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xB3112937)).padding(18.dp),
     ) {
         Text(label, color = Muted, fontSize = 9.sp, letterSpacing = 1.1.sp)
         Spacer(Modifier.height(8.dp))
@@ -572,9 +967,9 @@ private fun MetricCard(label: String, value: String, detail: String, accent: Col
 }
 
 @Composable
-private fun FeatureCard(glyph: String, title: String, subtitle: String) {
+private fun FeatureCard(glyph: String, title: String, subtitle: String, modifier: Modifier = Modifier) {
     Row(
-        Modifier.width(248.dp).height(86.dp).clip(RoundedCornerShape(18.dp))
+        modifier.height(86.dp).clip(RoundedCornerShape(18.dp))
             .background(Color(0xAA102633)).padding(15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -585,6 +980,22 @@ private fun FeatureCard(glyph: String, title: String, subtitle: String) {
         Column {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, color = Muted, fontSize = 10.sp, maxLines = 2)
+        }
+    }
+}
+
+@Composable
+private fun FeatureGrid(items: List<Triple<String, String, String>>, columns: Int = 2) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items.chunked(columns).forEach { rowItems ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowItems.forEach { (title, subtitle, glyph) ->
+                    FeatureCard(glyph, title, subtitle, Modifier.weight(1f))
+                }
+                repeat(columns - rowItems.size) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
         }
     }
 }
@@ -698,22 +1109,34 @@ private fun SectionTitle(title: String, subtitle: String) {
     }
 }
 
-@Composable
-private fun OverlayMetric(label: String, value: String) {
-    Column {
-        Text(label, color = Muted, fontSize = 8.sp)
-        Text(value, color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+private fun RemotePlayPhase.toSessionPhase(): SessionPhase =
+    when (this) {
+        RemotePlayPhase.NEEDS_REGISTRATION,
+        RemotePlayPhase.READY,
+        -> SessionPhase.READY
+        RemotePlayPhase.REGISTERING,
+        RemotePlayPhase.CONNECTING,
+        RemotePlayPhase.STOPPING,
+        -> SessionPhase.CONNECTING
+        RemotePlayPhase.STREAMING,
+        RemotePlayPhase.LOGIN_PIN_REQUIRED,
+        -> SessionPhase.STREAMING
+        RemotePlayPhase.STOPPED -> SessionPhase.STOPPED
+        RemotePlayPhase.FAILED -> SessionPhase.FAILED
     }
-}
 
-@Composable
-private fun sessionLabel(phase: SessionPhase): String =
-    when (phase) {
-        SessionPhase.READY -> stringResource(R.string.ready)
-        SessionPhase.CONNECTING -> stringResource(R.string.connecting)
-        SessionPhase.STREAMING -> stringResource(R.string.streaming)
-        SessionPhase.STOPPED -> stringResource(R.string.stopped)
-        SessionPhase.FAILED -> stringResource(R.string.failed)
+private fun RemotePlayPhase.label(): String = name.replace('_', ' ')
+
+private fun RemotePlayPhase.accent(): Color =
+    when (this) {
+        RemotePlayPhase.STREAMING,
+        RemotePlayPhase.READY,
+        -> Mint
+        RemotePlayPhase.FAILED -> Color(0xFFFF6B6B)
+        RemotePlayPhase.NEEDS_REGISTRATION,
+        RemotePlayPhase.LOGIN_PIN_REQUIRED,
+        -> Amber
+        else -> Sky
     }
 
 private fun yesNo(value: Boolean): String = if (value) "ACTIVÉ" else "DÉSACTIVÉ"

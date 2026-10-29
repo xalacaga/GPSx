@@ -2,7 +2,10 @@
 #![forbid(unsafe_code)]
 
 use std::env;
+use std::io::{Read, Write};
+use std::net::{IpAddr, TcpListener, TcpStream};
 use std::process::ExitCode;
+use std::time::Duration;
 
 use gpsx_protocol::{ConsoleGeneration, DiscoveryState};
 use gpsx_transport::{
@@ -14,7 +17,11 @@ use gpsx_transport::{
 enum Mode {
     Help,
     Live,
+    AndroidRelay,
 }
+
+const ANDROID_RELAY_ADDRESS: &str = "127.0.0.1:49302";
+const ANDROID_RELAY_REQUEST: &[u8] = b"GPSX_DISCOVER_PS5_V1\n";
 
 fn main() -> ExitCode {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
@@ -24,6 +31,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Some(Mode::Live) => run_live(),
+        Some(Mode::AndroidRelay) => run_android_relay(),
         None => {
             eprintln!("Aucun paquet n'a été envoyé. Utilisez --help ou confirmez avec --live.");
             ExitCode::from(2)
@@ -35,8 +43,52 @@ fn parse_mode(arguments: &[String]) -> Option<Mode> {
     match arguments {
         [argument] if argument == "--help" || argument == "-h" => Some(Mode::Help),
         [argument] if argument == "--live" => Some(Mode::Live),
+        [argument] if argument == "--android-relay" => Some(Mode::AndroidRelay),
         _ => None,
     }
+}
+
+fn run_android_relay() -> ExitCode {
+    let listener = match TcpListener::bind(ANDROID_RELAY_ADDRESS) {
+        Ok(listener) => listener,
+        Err(_) => {
+            eprintln!("Impossible d’ouvrir le bridge Android local.");
+            return ExitCode::FAILURE;
+        }
+    };
+    println!("Bridge Android prêt sur {ANDROID_RELAY_ADDRESS}. Arrêtez-le avec Ctrl+C.");
+    for stream in listener.incoming() {
+        let Ok(mut stream) = stream else {
+            eprintln!("Connexion locale au bridge refusée.");
+            continue;
+        };
+        let response = handle_android_relay_request(&mut stream);
+        if stream.write_all(&response.to_be_bytes()).is_err() {
+            eprintln!("Réponse du bridge Android non remise.");
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+fn handle_android_relay_request(stream: &mut TcpStream) -> u32 {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+    let mut request = [0_u8; ANDROID_RELAY_REQUEST.len()];
+    if stream.read_exact(&mut request).is_err() || request != ANDROID_RELAY_REQUEST {
+        return 0;
+    }
+    let Ok(report) = discover_broadcast(ConsoleGeneration::Ps5, Duration::from_millis(1_200))
+    else {
+        return 0;
+    };
+    report
+        .consoles()
+        .iter()
+        .find_map(|console| match console.peer().ip() {
+            IpAddr::V4(address) => Some(u32::from(address)),
+            IpAddr::V6(_) => None,
+        })
+        .unwrap_or(0)
 }
 
 fn run_live() -> ExitCode {
@@ -114,10 +166,13 @@ const fn error_label(error: DiscoveryError) -> &'static str {
 fn print_help() {
     println!(
         "GPSx — découverte locale PS4/PS5\n\n\
-         Usage :\n  gpsx-discover --help\n  gpsx-discover --live\n\n\
+         Usage :\n  gpsx-discover --help\n  gpsx-discover --live\n  gpsx-discover --android-relay\n\n\
          --live envoie une requête UDP SRCH bornée vers les ports officiels de\n\
          découverte PS5 et PS4. Aucun réveil, identifiant, secret, enregistrement\n\
-         ou démarrage de session n'est effectué."
+         ou démarrage de session n'est effectué.\n\n\
+         --android-relay ouvre uniquement 127.0.0.1:49302. Il relaie la demande\n\
+         de découverte de l’AVD vers le LAN et ne renvoie que la première adresse\n\
+         IPv4 détectée. Aucun flux de session ni secret ne traverse ce bridge."
     );
 }
 
@@ -135,6 +190,10 @@ mod tests {
     #[test]
     fn live_network_mode_requires_one_exact_argument() {
         assert_eq!(parse_mode(&arguments(&["--live"])), Some(Mode::Live));
+        assert_eq!(
+            parse_mode(&arguments(&["--android-relay"])),
+            Some(Mode::AndroidRelay)
+        );
         for invalid in [
             arguments(&[]),
             arguments(&["live"]),

@@ -40,7 +40,7 @@ Thread priorities: AAudio sets the callback priority. Raising the net receive an
 
 | Queue | Producer → Consumer | Capacity | Overflow policy |
 |---|---|---|---|
-| Input events | Main (JNI) → feedback/input stage | 256 events (HYPOTHESIS) | Never drop button edges or trigger 0 ↔ non-zero crossings; a state change's transitions are queued all-or-nothing. Stick, motion, and intermediate trigger values are latest-wins state, not queue entries. On overflow, count it (`overflows()`); any overflow fails tests. Implemented in `gpsx-input` (`diff`, `push_batch`). |
+| Input events | Main (JNI) → feedback/input stage | 128 transitions (Android adapter FACT) | One raw Android event produces at most 18 transitions and is normalized synchronously through `gpsx-input`. The whole batch enters the queue or none does; the adapter drains it before returning and refuses output if `overflows()` is non-zero. Button edges and trigger 0 ↔ non-zero crossings are submitted immediately; sticks and intermediate trigger values are latest-wins state. |
 | Protocol input history | input stage → feedback sender | per protocol (upstream: 16 events, 8 kept for resend) | Protocol-defined; tail resend 20/50/100/200 ms (upstream FACT) |
 | Compressed video AUs | net receive → video feeder | 2 AUs (HYPOTHESIS) | On overflow drop queued non-IDR units, set `need_idr`, request IDR, discard until the next IDR. Never block net receive. |
 | Video buffer pool | feeder returns buffers to assembler | fixed N buffers sized for the max AU | Pool empty → same as video overflow |

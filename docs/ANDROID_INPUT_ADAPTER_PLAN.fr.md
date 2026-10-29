@@ -1,6 +1,6 @@
 # Plan de l’adaptateur d’entrée Android
 
-Statut : **CANDIDAT DE PLAN — REVUE INDÉPENDANTE DE FRONTIÈRE REQUISE**.
+Statut : **IMPLÉMENTÉ POUR VALIDATION ÉMULATEUR — MANETTES PHYSIQUES NOT_TESTED**.
 
 ## Périmètre et frontière de preuve
 
@@ -12,8 +12,35 @@ mapping DualSense sous Android 11.
 
 FAIT : le cœur portable possède déjà l’identité des manettes, la fusion
 déterministe de deux manettes, la dérivation des edges et la file bornée de
-transitions. FAIT : aucun chemin ne relie actuellement `MainActivity` à
+transitions. FAIT : `MainActivity` route maintenant les événements Android de
+touches et de mouvement dans l’adaptateur natif, puis `gpsx-input` et son
 `InputTransitionQueue`.
+
+## Interface des manettes Bluetooth
+
+L’écran Manettes observe l’`InputManager` Android, affiche au plus deux gamepads
+connectés, classe pour le diagnostic les appareils Sony (`0x054c`), Microsoft
+(`0x045e`) et Android génériques, puis ouvre les réglages Bluetooth Android pour
+l’association. L’association et les permissions Bluetooth restent la propriété
+du système. Touches gamepad standard, axes HAT, sticks et gâchettes analogiques
+empruntent le même chemin portable ; le nom du constructeur n’attribue aucune
+sémantique wire.
+
+L’émulateur Google TV ne fournit aucun passthrough Bluetooth de l’hôte. Pour les
+tests émulateur, le script hôte optionnel lance scrcpy 5.0 en mode manette UHID
+uniquement et expose dans Android la manette associée à Windows comme un gamepad
+HID physique. L’archive Windows vérifiée porte le SHA-256
+`44c10d9e82f20ea67227d14d37bf9fbe3603117c5736df3f514544a02ba20a73`.
+Cet outil et ce chemin ne sont pas embarqués dans l’APK. Sur un appareil Android
+réel, la manette est associée dans les réglages Bluetooth système et passe
+directement par `InputManager`.
+
+Le 29 octobre 2026, le bridge UHID a exposé la manette Xbox associée à Windows
+dans l’AVD Google TV API 36 sous le nom `Microsoft X-Box 360 Pad`, constructeur
+1118, produit 654, avec les sources Android `GAMEPAD | JOYSTICK` et le numéro de
+contrôleur 1. Cela prouve l’énumération et la classification des sources Android
+sur cet hôte. Le mapping complet touches/axes, la latence, la livraison physique
+DualSense et le GP520 restent NOT_TESTED.
 
 ## Ownership et couches
 
@@ -91,7 +118,7 @@ présenter les key codes de l’émulateur comme des faits DualSense.
 Chaque événement brut accepté est mappé synchroniquement pendant son unique
 appel JNI. Aucune file non bornée d’événements bruts n’est ajoutée. L’adaptateur
 met à jour `ControllerSet` et pousse atomiquement le batch complet de transitions
-dans l’`InputTransitionQueue` existante de 256 entrées.
+dans l’`InputTransitionQueue` Android de 128 entrées.
 
 - Les edges de boutons et les franchissements de gâchette `0 ↔ non-zéro` ne sont
   jamais fusionnés.
@@ -103,10 +130,10 @@ dans l’`InputTransitionQueue` existante de 256 entrées.
   mettre la session en échec plutôt que continuer avec un bouton maintenu inconnu.
 - JNI retourne sans attendre le réseau, le feedback, la télémétrie ou l’UI.
 
-Le chemin natif d’événement n’alloue plus en régime stable après l’enregistrement
-de l’appareil et du profil. La frontière Kotlin peut construire les deux tableaux
-primitifs d’un `MotionEvent` ; cette allocation et sa latence doivent être
-mesurées avant toute revendication d’optimisation.
+La frontière JNI passe des primitives par valeur et ne crée aucun tableau JNI.
+Le bridge actuel n’alloue plus après l’entrée du slot manette dans le
+`ControllerSet` ; sa latence doit encore être mesurée avant toute revendication
+d’optimisation.
 
 ## Sûreté native
 

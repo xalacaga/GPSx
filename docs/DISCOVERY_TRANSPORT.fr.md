@@ -1,7 +1,7 @@
-# Transport de découverte UDP Windows
+# Transport de découverte UDP
 
-Statut : implémenté et testé en boucle locale ; l’interopérabilité PS4/PS5 reste
-NOT_TESTED.
+Statut : implémenté sous Windows et Android, et testé en boucle locale et sur
+l’émulateur Android ; l’interopérabilité avec une vraie PS4/PS5 reste NOT_TESTED.
 
 ## Périmètre
 
@@ -9,9 +9,38 @@ Cette tranche ajoute le premier adaptateur d’E/S hors du cœur portable. La cr
 `gpsx-transport` dépend de `gpsx-protocol` ; aucune crate du cœur portable ne
 dépend du transport. Seule la découverte SRCH en IPv4 est prise en charge.
 
-Elle n’implémente ni WAKEUP, ni enregistrement, ni authentification, ni stockage
-d’identifiants, ni cryptographie, ni session, ni média, ni manette, ni JNI, ni
-accès Android ou GP520.
+L’adaptateur limité à Android expose un appel JNI grossier pour la découverte
+PS5. Il n’implémente ni WAKEUP, ni authentification, ni stockage d’identifiants,
+ni cryptographie, ni média, ni accès GP520.
+
+## Intégration dans l’interface Android
+
+L’écran Session lance une recherche PS5 bornée à 1,2 seconde sur son worker
+existant. Kotlin détient temporairement un verrou multicast Wi-Fi non
+reference-counted et l’adaptateur Rust Android appelle la même implémentation
+`gpsx-transport` que le CLI. Le premier résultat IPv4 ne fait que préremplir le
+champ d’hôte : c’est un indice non authentifié et l’enregistrement reste chargé
+d’authentifier la console.
+
+L’AVD Google TV standard ne transfère pas les broadcasts IPv4 limités entre son
+réseau virtuel et le LAN physique. GPSx sélectionne donc un bridge réservé à
+l’émulateur lorsque Android signale `ranchu`, `goldfish`, un produit SDK ou un
+modèle émulateur. L’AVD envoie une requête fixe vers l’alias hôte
+`10.0.2.2:49302` ; le helper hôte écoute uniquement sur `127.0.0.1:49302`,
+effectue le broadcast LAN borné et ne renvoie que la première adresse IPv4.
+Aucune donnée d’enregistrement, aucun identifiant et aucun trafic de stream ne
+traverse ce bridge. Un appareil Android réel utilise toujours le broadcast UDP
+direct.
+
+Les deux bridges émulateur se lancent avec :
+
+```powershell
+tools/powershell/start-android-emulator-bridges.ps1
+```
+
+Le 29 octobre 2026, ce bridge a découvert la vraie PS5 à `192.168.1.50` depuis
+l’AVD Google TV API 36. Cette preuve ne vaut que pour cet hôte et ce LAN et ne
+constitue pas une preuve GP520.
 
 ## Bornes et comportement en cas d’échec
 

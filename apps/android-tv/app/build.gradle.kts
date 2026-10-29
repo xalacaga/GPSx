@@ -8,6 +8,21 @@ plugins {
 val gpsxSourceRevision = providers.gradleProperty("gpsxSourceRevision")
 val sourceRevision = gpsxSourceRevision.orNull ?: "development"
 val gpsxAsan = providers.gradleProperty("gpsxAsan").map(String::toBoolean).orElse(false)
+val gpsxLocalProperties = Properties().apply {
+    val propertiesFile = rootProject.file("local.properties")
+    if (propertiesFile.isFile) propertiesFile.inputStream().use(::load)
+}
+val gpsxAndroidSdk =
+    gpsxLocalProperties.getProperty("sdk.dir")
+        ?: providers.environmentVariable("ANDROID_SDK_ROOT").orNull
+        ?: providers.environmentVariable("ANDROID_HOME").orNull
+val gpsxAndroidNdk = file(checkNotNull(gpsxAndroidSdk) { "Android SDK path is required." }).resolve("ndk/28.2.13676358")
+val chiakiPrebuiltDir =
+    providers.gradleProperty("chiakiPrebuiltDir").orElse(
+        rootProject.layout.projectDirectory.dir(
+            "../../.tools/chiaki-ng-c8bea264/android/app/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib",
+        ).asFile.absolutePath,
+    )
 
 fun gitOutput(vararg arguments: String): String {
     return providers.exec {
@@ -96,6 +111,11 @@ android {
         buildConfig = true
     }
 
+    // Emulator-first integration of the audited, pinned chiaki-ng build.
+    // CI/release packaging must provide -PchiakiPrebuiltDir explicitly.
+    sourceSets.getByName("main").jniLibs.directories.add(file(chiakiPrebuiltDir.get()).absolutePath)
+    sourceSets.getByName("main").jniLibs.directories.add(rootProject.file("../../target/android-jni").absolutePath)
+
     packaging {
         jniLibs {
             useLegacyPackaging = gpsxAsan.get()
@@ -107,6 +127,43 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+}
+
+val buildRustAndroidInput = tasks.register<Exec>("buildRustAndroidInput") {
+    val workspace = rootProject.file("../..")
+    val output = workspace.resolve("target/android-jni")
+    workingDir(workspace)
+    environment("ANDROID_NDK_HOME", gpsxAndroidNdk.absolutePath)
+    commandLine(
+        "cargo",
+        "ndk",
+        "-t",
+        "arm64-v8a",
+        "-t",
+        "armeabi-v7a",
+        "-t",
+        "x86",
+        "-t",
+        "x86_64",
+        "-o",
+        output.absolutePath,
+        "build",
+        "-p",
+        "gpsx-android-input",
+        "--release",
+        "--locked",
+    )
+    inputs.files(
+        workspace.resolve("Cargo.toml"),
+        workspace.resolve("Cargo.lock"),
+        workspace.resolve("crates/gpsx-input/src"),
+        workspace.resolve("platform/android/gpsx-android-input/src"),
+    )
+    outputs.dir(output)
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
+    dependsOn(buildRustAndroidInput)
 }
 
 if (!gpsxAsan.get()) {

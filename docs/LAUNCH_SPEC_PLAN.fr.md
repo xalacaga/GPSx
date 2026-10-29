@@ -1,11 +1,10 @@
 # Contrat d’implémentation LaunchSpec et rpcrypt de session
 
-Statut : **CANDIDATE D’IMPLÉMENTATION — CONTRE-REVUE CR3 INDÉPENDANTE DE
-L’IMPLÉMENTATION REQUISE**. La remédiation du plan a reçu un `GO` indépendant
-le 2026-10-28. L’implémentation Rust, l’oracle externe fermé, les tests de
-liaison exacte et les gates locaux existent désormais ; l’intégration reste
-bloquée jusqu’au `GO` de la contre-revue d’implémentation exigée ci-dessous. Le
-lot cryptographique de session intégré reste la référence jusque-là.
+Statut : **INTÉGRÉ**. La remédiation du plan et la contre-revue de
+l’implémentation ont toutes deux reçu un `GO` indépendant le 2026-10-28.
+L’implémentation Rust, l’oracle externe fermé, les tests de liaison exacte et
+les gates locaux sont intégrés dans le commit
+`3b90227491eb924168347e688d8dcdfe036e38ef`.
 
 ## But et preuves
 

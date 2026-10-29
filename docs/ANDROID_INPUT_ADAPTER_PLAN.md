@@ -1,6 +1,6 @@
 # Android input adapter plan
 
-Status: **PLAN CANDIDATE — INDEPENDENT BOUNDARY REVIEW REQUIRED**.
+Status: **IMPLEMENTED FOR EMULATOR VALIDATION — PHYSICAL CONTROLLERS NOT_TESTED**.
 
 ## Scope and evidence boundary
 
@@ -11,7 +11,31 @@ a console or GP520 and cannot validate the DualSense mapping on Android 11.
 
 FACT: the portable core already owns controller identity, deterministic
 two-controller merging, edge derivation and the bounded transition queue.
-FACT: no path currently connects `MainActivity` to `InputTransitionQueue`.
+FACT: `MainActivity` now routes Android key and motion events through the native
+adapter into `gpsx-input` and its `InputTransitionQueue`.
+
+## Bluetooth controller UI
+
+The Controllers screen observes Android `InputManager`, displays at most two
+connected gamepads, classifies Sony (`0x054c`), Microsoft (`0x045e`) and generic
+Android devices for diagnostics, and opens Android's Bluetooth settings for
+pairing. Pairing and Bluetooth permissions remain system-owned. Standard
+Android gamepad buttons, HAT axes, sticks and analog triggers use the same
+portable input path; no vendor name is used to assign wire semantics.
+
+The Google TV emulator has no host Bluetooth passthrough. For emulator testing,
+the optional host script starts scrcpy 5.0 in UHID gamepad-only mode and exposes
+the Windows-paired controller as a physical HID gamepad inside Android. The
+verified Windows archive has SHA-256
+`44c10d9e82f20ea67227d14d37bf9fbe3603117c5736df3f514544a02ba20a73`.
+This tool and path are not packaged in the APK. A real Android device pairs the
+controller in system Bluetooth settings and uses `InputManager` directly.
+
+On 2026-10-29, the UHID bridge exposed the Windows-paired Xbox controller to the
+Google TV API 36 AVD as `Microsoft X-Box 360 Pad`, vendor 1118, product 654,
+with Android `GAMEPAD | JOYSTICK` sources and controller number 1. This proves
+enumeration and Android source classification on that host. Complete button and
+axis mapping, latency, physical DualSense delivery and GP520 remain NOT_TESTED.
 
 ## Ownership and layers
 
@@ -81,7 +105,7 @@ scan-code and axis maps; it must not label emulator key codes as DualSense facts
 
 Each accepted raw event is mapped synchronously during its one JNI call. No
 unbounded raw-event queue is introduced. The adapter updates `ControllerSet` and
-pushes the complete transition batch to the existing 256-entry
+pushes the complete transition batch to the 128-entry Android
 `InputTransitionQueue` atomically.
 
 - Button edges and trigger `0 ↔ non-zero` crossings are never coalesced.
@@ -92,10 +116,10 @@ pushes the complete transition batch to the existing 256-entry
   can fail the session rather than continue with an unknown held-button state.
 - JNI returns without waiting for network, feedback, telemetry or UI work.
 
-No steady-state native event path allocates after device/profile registration.
-The Kotlin boundary may construct the two primitive arrays for one
-`MotionEvent`; this allocation and its latency must be measured before an
-optimization claim.
+The JNI boundary passes primitives by value and creates no JNI array. The
+current bridge is allocation-free after a controller slot has entered the
+`ControllerSet`; its latency must still be measured before an optimization
+claim.
 
 ## Native safety
 

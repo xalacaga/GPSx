@@ -1,11 +1,9 @@
 # LaunchSpec and session-rpcrypt implementation contract
 
-Status: **IMPLEMENTATION CANDIDATE — INDEPENDENT CR3 IMPLEMENTATION REVIEW
-REQUIRED**. The plan remediation received independent `GO` on 2026-10-28. The
-Rust implementation, closed external oracle, exact binding tests and local
-gates now exist; integration remains blocked on the independent implementation
-re-review required below. The integrated session-crypto slice remains the
-baseline until that review returns `GO`.
+Status: **INTEGRATED**. The plan remediation and implementation re-review both
+received independent `GO` on 2026-10-28. The Rust implementation, closed
+external oracle, exact binding tests and local gates are integrated in commit
+`3b90227491eb924168347e688d8dcdfe036e38ef`.
 
 ## Purpose and evidence
 

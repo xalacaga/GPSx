@@ -32,7 +32,7 @@ mentions distribuées avec le produit. La stratégie acceptée est l’option C 
 | Commit immuable | `c8bea2642d0e95402f373af55584a3b98cd89417` |
 | Licence | `LicenseRef-AGPL-3.0-only-OpenSSL` |
 | Source de licence | `COPYING` au commit épinglé |
-| Usage actuel | Ports comportementaux Rust des lots bornés de découverte SRCH et de cryptographie limitée à l’enregistrement listés ci-dessous |
+| Usage actuel | Lots protocole Rust dérivés déclarés, plus la base Remote Play native Android épinglée et le contrat de compatibilité Kotlin/JNI listés ci-dessous |
 | Approbateur/date | Responsable du projet, 2026-10-25 |
 
 ## Projets de référence uniquement
@@ -48,6 +48,7 @@ mentions distribuées avec le produit. La stratégie acceptée est l’option C 
 
 | Chemin local | Chemin amont | Commit | Copyright d’origine | SPDX | Responsable/date | Modifications |
 |---|---|---|---|---|---|---|
+| `apps/android-tv/app/src/main/java/com/metallic/chiaki/lib/ChiakiCompat.kt` | `android/app/src/main/java/com/metallic/chiaki/lib/Chiaki.kt` ; `android/app/src/main/cpp/chiaki-jni.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | Contributeurs chiaki-ng ; historique Git épinglé | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-28 | Contrat Kotlin réduit pour le binaire JNI épinglé : enregistrement local, cycle de session, Surface, PIN de connexion et état manette uniquement ; supprime découverte, Parcelable et journalisation applicative tout en conservant noms/signatures JNI |
 | `crates/gpsx-protocol/Cargo.toml` | N/A - GPSx-authored | `c8bea2642d0e95402f373af55584a3b98cd89417` | Contributeurs GPSx | `AGPL-3.0-only` | GPSx / 2026-10-25 | Manifeste sans dépendance ; aucun script de build |
 | `crates/gpsx-protocol/src/lib.rs` | N/A - GPSx-authored | `c8bea2642d0e95402f373af55584a3b98cd89417` | Contributeurs GPSx | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-26 | Surface publique de formatage/parsing purs et bornés pour SRCH et l’enregistrement local ; sans E/S ni cryptographie |
 | `crates/gpsx-protocol/src/discovery.rs` | `lib/include/chiaki/discovery.h`; `lib/src/discovery.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | Contributeurs chiaki-ng ; historique Git épinglé | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-25 | Port comportemental Rust du format SRCH et des réponses ; parsing strict et borné, affichage expurgé, sans E/S ni WAKEUP |
@@ -71,15 +72,16 @@ mentions distribuées avec le produit. La stratégie acceptée est l’option C 
 
 ## Fichiers plateforme écrits par GPSx
 
-L’adaptateur Android natif sous `apps/android-tv/app/src/main/cpp/`, son
-propriétaire Kotlin sous `com/gpsx/tv/nativeadapter/` et leur test
-d’instrumentation sont écrits par GPSx le 2026-10-28 sous `AGPL-3.0-only`,
-consigné dans leurs en-têtes SPDX. Ils
-référencent uniquement les déclarations publiques Android SDK/NDK. Aucun source
-d’implémentation Pylux, Chiaki ou autre n’est copié ou adapté.
-`ANDROID_NATIVE_ADAPTER.fr.md` consigne le périmètre et les preuves. Ces fichiers
-plateforme restent intentionnellement hors du tableau protocolaire dérivé
-contrôlé par ProvenanceGuard.
+L’adaptateur de test de cycle de vie sous `apps/android-tv/app/src/main/cpp/`,
+son propriétaire Kotlin sous `com/gpsx/tv/nativeadapter/`, la façade
+`remoteplay`/adaptateur d’entrée et leurs tests sont écrits par GPSx le
+2026-10-28 sous `AGPL-3.0-only`, consigné dans leurs en-têtes SPDX.
+`ChiakiCompat.kt` est l’exception explicite et figure comme dérivé ci-dessus. Le
+runtime consomme des bibliothèques natives construites depuis la révision source
+chiaki-ng épinglée complète ; ces binaires sont des sorties de build sous
+`.tools/` ignoré, pas des sources commitées. `ANDROID_NATIVE_ADAPTER.fr.md`
+consigne le périmètre et les preuves. Les fichiers plateforme restent hors du
+tableau des crates protocole contrôlé par ProvenanceGuard.
 
 ## Entrées de fichiers prévues pour CR3
 

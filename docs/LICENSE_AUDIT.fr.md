@@ -6,14 +6,14 @@ Date de l'audit : 2026-10-25. Il s'agit d'une analyse de conformité d'ingénier
 
 ## Statut du projet
 
-**FACT :** le responsable a accepté l’option C le 2026-10-25. GPSx est sous AGPL-3.0-only avec la permission additionnelle OpenSSL de la famille Chiaki, et son futur port protocolaire Rust est un dérivé déclaré. Aucun code de production amont n’a encore été copié. L’ADR-0001 est la source de vérité.
+**FAIT :** le responsable a accepté l’option C le 2026-10-25 et la base Android chiaki-ng épinglée le 2026-10-28. GPSx est sous AGPL-3.0-only avec la permission additionnelle OpenSSL de la famille Chiaki ; son port protocolaire Rust et son contrat de compatibilité Kotlin/JNI sont des dérivés déclarés. L’ADR-0001 et `PROVENANCE.fr.md` sont les sources de vérité.
 
 ## Résumé de l'amont
 
 | Projet/composant | Licence observée | Statut de réutilisation |
 |---|---|---|
 | Chiaki | Lignée AGPL-3.0 avec exception OpenSSL | Bloqué en attente de la décision de licence produit |
-| chiaki-ng | AGPL-3.0 ; les fichiers du cœur utilisent `LicenseRef-AGPL-3.0-only-OpenSSL` | Bloqué en attente de décision |
+| chiaki-ng | AGPL-3.0 ; les fichiers du cœur utilisent `LicenseRef-AGPL-3.0-only-OpenSSL` | Accepté au commit épinglé pour la base Android et les ports dérivés déclarés |
 | Pylux | AGPL-3.0 avec la même exception OpenSSL | Bloqué en attente de décision |
 | `hid-playstation.c` de Linux | GPL-2.0-or-later | Référence comportementale uniquement ; pas de copie sans revue |
 | API/artefacts Android AOSP | Licence variable ; souvent Apache-2.0 pour les sources concernées | Utilisation des API autorisée ; tout code copié doit être revu |
@@ -110,4 +110,4 @@ Pour chaque artefact importé ou adapté, consigner :
 
 ## Décision de Phase 0
 
-L’option C est acceptée. Aucun source de la famille Chiaki ne peut néanmoins être copié, traduit ou adapté avant que le dossier CR3 ait validé mentions, processus de provenance fichier par fichier, bornes des parseurs, cryptographie et fixtures.
+L’option C est acceptée. Les revues CR3 ont fermé les gates de provenance, parsing, cryptographie et fixtures ; la décision de base Android du 2026-10-28 autorise le contrat de compatibilité épinglé consigné dans `PROVENANCE.fr.md`. Tout nouveau chemin ou nouvelle révision amont exige encore une mise à jour du registre et l’audit final.

@@ -42,7 +42,7 @@ l’échéance est vérifiée avant chaque réception, même sous un flot contin
 
 | File | Capacité initiale | Débordement |
 |---|---|---|
-| Événements d’entrée | 256, HYPOTHESIS | ne jamais perdre un front de bouton ni un passage 0 ↔ non-zéro de gâchette ; les transitions d’un changement d’état entrent toutes ou aucune ; sticks, mouvement et valeurs intermédiaires de gâchette sont de l’état (le plus récent l’emporte) ; compter tout débordement (`overflows()`), qui fait échouer les tests ; implémenté dans `gpsx-input` (`diff`, `push_batch`) |
+| Événements d’entrée | 128 transitions, FAIT pour l’adaptateur Android | un événement Android brut produit au plus 18 transitions et est normalisé synchroniquement par `gpsx-input` ; le lot complet entre dans la file ou aucun élément n’y entre ; l’adaptateur la draine avant de retourner et refuse toute sortie si `overflows()` est non nul ; les fronts de boutons et passages 0 ↔ non-zéro sont soumis immédiatement, tandis que les sticks et valeurs intermédiaires sont latest-wins |
 | Historique protocolaire | défini par protocole | conserver les événements requis et renvoyer la queue |
 | AU vidéo compressés | 2, HYPOTHESIS | jeter non-IDR, demander IDR, ne pas bloquer le réseau |
 | Pool vidéo | N buffers fixes | pool vide = débordement vidéo |

@@ -1,6 +1,14 @@
 # Upstream Analysis
 
-Audit date: 2026-10-25. This document describes evidence, not permission to copy code.
+Audit date: 2026-10-25; integration decision updated 2026-10-28.
+
+## Pinned Android integration decision (2026-10-28)
+
+The project accepts the AGPL/OpenSSL licensing consequences of using chiaki-ng as the first executable Remote Play baseline. The Android integration is pinned to `chiaki-ng/chiaki-ng` commit `c8bea2642d0e95402f373af55584a3b98cd89417`; code derived from its Kotlin/JNI contract carries `LicenseRef-AGPL-3.0-only-OpenSSL` and records that commit in the source header.
+
+FACT: GPSx now wraps the pinned engine behind `RemotePlayEngine`. The boundary exposes registration, start/stop, Surface ownership, login PIN and controller-state submission. Android key, HAT, axis and trigger events first pass through the portable Rust `gpsx-input` merge/edge state machine, then map to chiaki's controller order. Network packets, compressed video and PCM remain native and do not cross the JVM. The first build consumes locally built native libraries through the explicit `chiakiPrebuiltDir` Gradle property; `.tools/` remains an ignored build workspace, not source provenance.
+
+FACT: the Android x86_64 emulator loaded the pinned JNI library and resolved a native method, and the full instrumentation suite passed. UNKNOWN: a real PS5 connection, real audio/video, controller mappings under play, reconnect behavior and performance. No comparison with chiaki-ng is claimed until comparable P50/P95/P99 and queue-depth measurements exist.
 
 ## Pylux
 
@@ -38,7 +46,7 @@ The video receiver performs frame assembly, FEC recovery, missing-reference dete
 
 Desktop functionality includes remapping, touchpad, motion, microphone, haptics, adaptive triggers, packet-loss monitoring, decoder selection, and audio buffering. This makes it the strongest Windows oracle, although Qt/libplacebo is not the intended final frontend. [chiaki-ng StreamSession](https://github.com/chiaki-ng/chiaki-ng/blob/main/gui/src/streamsession.cpp)
 
-Recommendation: use chiaki-ng desktop as the first known-good reference client. If AGPL distribution is acceptable, wrapping its shared core is lower risk than translating it.
+Decision: use the pinned chiaki-ng core as the first known-good executable baseline. GPSx may replace measured bottlenecks later, but only with provenance-safe code and comparable evidence.
 
 ## Android forks
 

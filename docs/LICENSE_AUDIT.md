@@ -4,14 +4,14 @@ Audit date: 2026-10-25. This is an engineering compliance analysis, not legal ad
 
 ## Project status
 
-**FACT:** the owner accepted Option C on 2026-10-25. GPSx is AGPL-3.0-only with the Chiaki-family OpenSSL additional permission, and its future Rust protocol port is a declared derivative. No upstream production code has yet been copied into this repository. ADR-0001 is the source of truth.
+**FACT:** the owner accepted Option C on 2026-10-25 and the pinned chiaki-ng Android baseline on 2026-10-28. GPSx is AGPL-3.0-only with the Chiaki-family OpenSSL additional permission; its Rust protocol port and Kotlin/JNI compatibility contract are declared derivatives. ADR-0001 and `PROVENANCE.md` are the sources of truth.
 
 ## Upstream summary
 
 | Project/component | Observed license | Reuse status |
 |---|---|---|
 | Chiaki | AGPL-3.0 lineage with OpenSSL exception | Blocked pending product-license decision |
-| chiaki-ng | AGPL-3.0; core files use `LicenseRef-AGPL-3.0-only-OpenSSL` | Blocked pending decision |
+| chiaki-ng | AGPL-3.0; core files use `LicenseRef-AGPL-3.0-only-OpenSSL` | Accepted at pinned commit for the Android baseline and declared-derivative ports |
 | Pylux | AGPL-3.0 with the same OpenSSL exception | Blocked pending decision |
 | Linux `hid-playstation.c` | GPL-2.0-or-later | Behavioral reference only; do not copy without review |
 | Android APIs/AOSP artifacts | License varies; commonly Apache-2.0 for relevant source | API use allowed; copied code still needs review |
@@ -108,5 +108,5 @@ For every imported or adapted artifact record:
 
 ## Phase 0 decision
 
-Option C is accepted. No Chiaki-family source may nevertheless be copied, translated or adapted until the CR3 review package verifies notices, the file-level provenance process, parser bounds, cryptography and fixture handling.
+Option C is accepted. The CR3 reviews closed the required provenance, parser, cryptography and fixture gates; the Android baseline decision of 2026-10-28 authorizes the pinned compatibility contract recorded in `PROVENANCE.md`. Any new upstream path or revision still requires a ledger update and final audit.
 

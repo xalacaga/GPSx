@@ -53,7 +53,9 @@ function Assert-GpsxProvenance {
     $coreCrates = @('gpsx-model', 'gpsx-input', 'gpsx-telemetry')
     $protocolCrates = @('gpsx-protocol', 'gpsx-transport', 'gpsx-crypto', 'gpsx-session')
     $allowedCrates = @($coreCrates + $protocolCrates)
-    $allowedCratePaths = @($allowedCrates | ForEach-Object { "crates/$_" })
+    $platformCratePaths = @('platform/android/gpsx-android-input')
+    $derivedPlatformFiles = @('apps/android-tv/app/src/main/java/com/metallic/chiaki/lib/ChiakiCompat.kt')
+    $allowedCratePaths = @(($allowedCrates | ForEach-Object { "crates/$_" }) + $platformCratePaths)
     $standaloneFuzzPath = 'fuzz'
     $cratesRoot = Join-Path $root 'crates'
 
@@ -113,7 +115,7 @@ function Assert-GpsxProvenance {
     foreach ($line in Get-Content -LiteralPath $upstreamInventoryPath) {
         $candidate = $line.Trim()
         if ($candidate -and -not $candidate.StartsWith('#')) {
-            if ($candidate -cnotmatch '^(lib|gui|test)/' -or $candidate -match '(^|/)\.\.(/|$)') {
+            if ($candidate -cnotmatch '^(android/app/src/main/(?:cpp|java)|lib|gui|test)/' -or $candidate -match '(^|/)\.\.(/|$)') {
                 throw "Invalid path in pinned upstream inventory: $candidate"
             }
             [void]$approvedUpstreamPaths.Add($candidate)
@@ -149,8 +151,10 @@ function Assert-GpsxProvenance {
         }
         $inProtocolCrate = @($protocolCrates | Where-Object { $localPath.StartsWith("crates/$_/", [StringComparison]::Ordinal) }).Count -eq 1
         $inFuzzTargets = $localPath.StartsWith("fuzz/fuzz_targets/", [StringComparison]::Ordinal)
-        if (-not ($inProtocolCrate -xor $inFuzzTargets)) {
-            throw "Derived-file entry is outside an authorized protocol crate: $localPath"
+        $inDerivedPlatform = $derivedPlatformFiles -contains $localPath
+        $authorizedKinds = @($inProtocolCrate, $inFuzzTargets, $inDerivedPlatform) | Where-Object { $_ }
+        if (@($authorizedKinds).Count -ne 1) {
+            throw "Derived-file entry is outside an authorized protocol or platform path: $localPath"
         }
         if (-not (Test-Path -LiteralPath (Join-Path $root $localPath) -PathType Leaf)) {
             throw "Derived-file entry points to a missing local file: $localPath"
@@ -227,7 +231,8 @@ function Assert-GpsxProvenance {
         $relativePath = Get-GpsxRelativePath -Root $root -FullName $source.FullName
         $authorized = @($protocolCrates | Where-Object {
             $relativePath.StartsWith("crates/$_/", [StringComparison]::Ordinal)
-        }).Count -eq 1 -or $relativePath.StartsWith('fuzz/fuzz_targets/', [StringComparison]::Ordinal)
+        }).Count -eq 1 -or $relativePath.StartsWith('fuzz/fuzz_targets/', [StringComparison]::Ordinal) -or
+            $derivedPlatformFiles -contains $relativePath
         if ($authorized -or $source.Extension -eq '.md' -or $complianceFiles -contains $relativePath) {
             continue
         }

@@ -1,0 +1,22 @@
+[package]
+name = "gpsx-android-input"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+gpsx-input = { path = "../../../crates/gpsx-input" }
+gpsx-protocol = { path = "../../../crates/gpsx-protocol" }
+gpsx-transport = { path = "../../../crates/gpsx-transport" }
+
+[lints.clippy]
+all = "warn"
+undocumented_unsafe_blocks = "deny"
+
+[lints.rust]
+unsafe_code = "allow"

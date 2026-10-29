@@ -150,6 +150,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpsx-android-input"
+version = "0.1.0"
+dependencies = [
+ "gpsx-input",
+ "gpsx-protocol",
+ "gpsx-transport",
+]
+
+[[package]]
 name = "gpsx-crypto"
 version = "0.1.0"
 dependencies = [

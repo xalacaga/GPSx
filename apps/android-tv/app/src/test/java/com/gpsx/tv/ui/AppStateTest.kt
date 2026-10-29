@@ -66,4 +66,5 @@ class AppStateTest {
         assertTrue(result.microphoneEnabled)
         assertTrue(result.telemetryEnabled)
     }
+
 }
