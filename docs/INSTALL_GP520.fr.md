@@ -37,8 +37,10 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
 
 ## 5. Envoyer les résultats sur GitHub
 
-Les résultats vont dans le dépôt privé `xalacaga/GPSx-diagnostics`, jamais dans
-le dépôt source public.
+Les résultats vont dans le dépôt `xalacaga/GPSx-diagnostics`, séparé du dépôt
+source. Il est **public** pour l'instant par choix du propriétaire : tout le
+monde peut lire les rapports, qui ne contiennent que les données listées
+ci-dessous.
 
 1. Sur github.com : Settings → Developer settings → Fine-grained tokens →
    *Generate new token* ; accès **Only select repositories → GPSx-diagnostics** ;

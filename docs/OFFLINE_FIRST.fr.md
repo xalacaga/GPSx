@@ -52,7 +52,7 @@ nomme une date et un périmètre.
 
 Le propriétaire du projet a ouvert le canal de test GP520 le 2026-10-31.
 Périmètre : le propriétaire installe l'APK release signé avec Downloader, lance
-des streams sur le GP520 et envoie les rapports par session vers le dépôt privé
+des streams sur le GP520 et envoie les rapports par session vers le dépôt public
 `xalacaga/GPSx-diagnostics` (voir `INSTALL_GP520.fr.md`). Les agents ne se
 connectent toujours jamais eux-mêmes au GP520, ne le sondent pas et n'y
 installent rien ; ils analysent les rapports envoyés. Les rapports appareil
