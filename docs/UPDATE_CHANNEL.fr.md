@@ -2,7 +2,7 @@
 
 ## Première installation
 
-Comportement prévu, encore `NOT_TESTED` : la première installation sur le GP520
+Implémenté le 2026-10-31 (`AppUpdater`, `tools/powershell/publish-release.ps1`) ; comportement GP520 `NOT_TESTED`. La première installation sur le GP520
 utilisera l’application Downloader déjà disponible sur Google TV. Downloader
 ouvrira une URL stable de Release GPSx, téléchargera l’APK puis le remettra à
 l’installateur Android. L’utilisateur autorisera explicitement cette source et l’installation.

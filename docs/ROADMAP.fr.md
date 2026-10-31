@@ -1,5 +1,18 @@
 # Feuille de route
 
+## Orientation actuelle (2026-10-31)
+
+- Cible : Android TV uniquement. Windows n'est plus une cible de livraison pour
+  l'instant ; l'ancien M2 « validation protocole Windows » est abandonné.
+- Les gates de contre-revue sont supprimés ; voir `CROSS_REVIEW.fr.md`.
+- Nouveau périmètre : streaming de jeux cloud PlayStation Plus en plus du Remote
+  Play console, à partir du moteur AGPL Pylux. Voir `CLOUD_GAMING_PLAN.fr.md`.
+- Le gate matériel GP520 de `OFFLINE_FIRST.fr.md` est inchangé.
+
+Les sections ci-dessous sont le plan d'origine de la phase 0, gardé pour
+l'historique.
+
+
 Audit de phase 0 achevé le 25 octobre 2026. Une revue humaine reste obligatoire.
 
 ## Premier jalon recommandé — M0.5 Référence factuelle et verrou de licence
@@ -49,9 +62,4 @@ fuzzing, injection de pannes, sécurité et préparation de version.
 
 ## Gates de contre-revue indépendante
 
-Une contre-revue Claude Code est obligatoire avant les décisions d’entrée en
-M1, avant la fusion de chaque jalon, après toute nouvelle frontière
-protocole/crypto/JNI/média/concurrence, avant toute affirmation de performance
-et avant release. L’agent s’arrête à chaque gate et fournit le prompt et les
-fichiers exacts définis dans `CROSS_REVIEW.md`.
-
+Supprimés le 2026-10-31 par le propriétaire du projet. Voir `CROSS_REVIEW.fr.md`.

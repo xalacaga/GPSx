@@ -7,22 +7,23 @@ import org.junit.Test
 
 class VideoProfileTest {
     @Test
-    fun autoUsesFullHdOnEmulatorAndDevice() {
-        val emulator = videoProfileFor(StreamQuality.AUTO, isEmulator = true)
-        val device = videoProfileFor(StreamQuality.AUTO, isEmulator = false)
+    fun autoUsesFullHdAndPrefersHardwareHevc() {
+        val h264 = videoProfileFor(StreamQuality.AUTO, hevc = false)
+        val hevc = videoProfileFor(StreamQuality.AUTO, hevc = true)
 
-        assertEquals(1920, emulator.width)
-        assertEquals(1080, emulator.height)
-        assertEquals(60, emulator.maxFPS)
-        assertEquals(15_000, emulator.bitrate)
-        assertEquals(Codec.H264, emulator.codec)
-        assertEquals(1920, device.width)
-        assertEquals(1080, device.height)
-        assertEquals(15_000, device.bitrate)
+        assertEquals(1920, h264.width)
+        assertEquals(1080, h264.height)
+        assertEquals(60, h264.maxFPS)
+        assertEquals(15_000, h264.bitrate)
+        assertEquals(Codec.H264, h264.codec)
+        assertEquals(Codec.H265, hevc.codec)
+        assertEquals(1920, hevc.width)
+        assertEquals(15_000, hevc.bitrate)
     }
 
     @Test
-    fun explicitQualityOverridesEmulatorAutoSelection() {
+    fun explicitQualityStaysOnH264() {
+        assertEquals(Codec.H264, videoProfileFor(StreamQuality.FULL_HD_1080, hevc = true).codec)
         assertEquals(1920, videoProfileFor(StreamQuality.FULL_HD_1080, true).width)
         assertEquals(1280, videoProfileFor(StreamQuality.HD_720, false).width)
     }

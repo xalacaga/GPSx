@@ -32,3 +32,5 @@
 /graphify-out/memory/
 /graphify-out/reflections/
 
+# Local screenshots and scratch output.
+/tmp/

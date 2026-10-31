@@ -1,5 +1,11 @@
 # Gates de contre-revue indépendante par Claude Code
 
+> **Supprimé le 2026-10-31.** Le propriétaire du projet a arrêté les gates de
+> contre-revue indépendante. Cette page reste un historique de CR0 à CR4. Plus
+> aucun gate ne bloque le travail ; les tests, la licence, la sécurité et le gate
+> matériel physique restent applicables.
+
+
 Le but est une validation contradictoire, pas une seconde implémentation. Codex
 porte la modification ; Claude Code examine le diff figé, les preuves, tests et
 hypothèses. Compiler ne suffit pas à franchir un gate.

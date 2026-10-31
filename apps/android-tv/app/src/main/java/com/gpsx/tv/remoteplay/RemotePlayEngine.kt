@@ -25,8 +25,15 @@ import com.metallic.chiaki.lib.RegistEventFailed
 import com.metallic.chiaki.lib.RegistEventSuccess
 import com.metallic.chiaki.lib.RegistInfo
 import com.metallic.chiaki.lib.Session
+import com.metallic.chiaki.lib.StreamMetrics
 import com.metallic.chiaki.lib.Target
+import com.metallic.chiaki.lib.discoveryWakeup
+import java.net.InetSocketAddress
+import java.net.Socket
+import com.gpsx.tv.diagnostics.StreamTestRecorder
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class RemotePlayPhase {
@@ -36,6 +43,7 @@ enum class RemotePlayPhase {
     CONNECTING,
     STREAMING,
     LOGIN_PIN_REQUIRED,
+    WAKING,
     STOPPING,
     STOPPED,
     FAILED,
@@ -48,6 +56,8 @@ data class RemotePlaySnapshot(
     val discoveryRunning: Boolean = false,
     val discoveredHost: String? = null,
     val discoveryDetail: String = "Recherche LAN non lancée.",
+    /** Title shown while a cloud game streams; null for console Remote Play. */
+    val cloudTitle: String? = null,
 )
 
 /**
@@ -72,6 +82,35 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
     private var registration: Regist? = null
     private var session: Session? = null
     private var surface: Surface? = null
+
+    /** Per-session test reports, uploaded on request from the Diagnostics screen. */
+    val testRecorder: StreamTestRecorder? = applicationContext?.let(::StreamTestRecorder)
+    private val sampler = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "gpsx-test-sampler").apply { isDaemon = true }
+    }
+    private var sampling: ScheduledFuture<*>? = null
+    @Volatile private var endReason = "Arrêt demandé par l’utilisateur."
+
+    // The emulator decode path is not representative, so AUTO keeps H.264 there.
+    // Held only while a session exists: Wi-Fi power save otherwise adds tens of ms of jitter.
+    private val streamWifiLock: WifiManager.WifiLock? by lazy {
+        runCatching {
+            val mode =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                } else {
+                    @Suppress("DEPRECATION")
+                    WifiManager.WIFI_MODE_FULL_HIGH_PERF
+                }
+            applicationContext?.getSystemService(WifiManager::class.java)
+                ?.createWifiLock(mode, "gpsx-stream")
+                ?.apply { setReferenceCounted(false) }
+        }.getOrNull()
+    }
+
+    private val autoHevc by lazy {
+        !shouldUseEmulatorHostBridge(Build.HARDWARE, Build.PRODUCT, Build.MODEL) && hasHardwareHevc1080p60()
+    }
 
     init {
         consoleStore?.load()?.let { restored ->
@@ -188,31 +227,92 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             publish(RemotePlayPhase.NEEDS_REGISTRATION, "Enregistrez d’abord GPSx sur la PS5.")
             return
         }
+        updateSnapshot { copy(cloudTitle = null) }
         publish(RemotePlayPhase.CONNECTING, "Connexion à ${console.name}…")
         worker.execute {
+            if (!isSessionPortOpen(console.host, QUICK_PROBE_MILLIS) && !wakeAndWait(console)) return@execute
+            publish(RemotePlayPhase.CONNECTING, "Connexion à ${console.name}…")
+        }
+        launchSession(
+            ConnectInfo(
+                ps5 = true,
+                host = console.host,
+                registKey = console.registKey,
+                morning = console.morning,
+                videoProfile =
+                    videoProfileFor(quality, hevc = autoHevc),
+            ),
+            "Stream PS5 actif.",
+        )
+    }
+
+    /** Sends a WAKEUP to the registered PS5 and waits until it accepts session requests. */
+    fun wakeConsole() {
+        if (closed.get()) return
+        val console = synchronized(lock) { registeredConsole }
+        if (console == null) {
+            publish(RemotePlayPhase.NEEDS_REGISTRATION, "Enregistrez d’abord GPSx sur la PS5.")
+            return
+        }
+        worker.execute {
+            if (isSessionPortOpen(console.host, QUICK_PROBE_MILLIS)) {
+                publish(RemotePlayPhase.READY, "${console.name} est déjà allumée.")
+            } else if (wakeAndWait(console)) {
+                publish(RemotePlayPhase.READY, "${console.name} est prête.")
+            }
+        }
+    }
+
+    /** Runs on [worker]. Returns true once the console accepts TCP on the session port. */
+    private fun wakeAndWait(console: RegisteredConsole): Boolean {
+        val credential = wakeupCredential(console.registKey)
+        if (credential == null) {
+            publish(RemotePlayPhase.FAILED, "Clé d’enregistrement inutilisable pour le réveil ; réassociez la PS5.")
+            return false
+        }
+        val sent = runCatching { discoveryWakeup(console.host, credential, ps5 = true) }.getOrNull()
+        if (sent?.isSuccess != true) {
+            publish(RemotePlayPhase.FAILED, "Échec de l’envoi du signal de réveil.")
+            return false
+        }
+        publish(RemotePlayPhase.WAKING, "Réveil de ${console.name}…")
+        val deadline = System.nanoTime() + WAKE_TIMEOUT_MILLIS * 1_000_000L
+        while (!closed.get() && System.nanoTime() < deadline) {
+            if (isSessionPortOpen(console.host, PROBE_MILLIS)) return true
+            Thread.sleep(PROBE_INTERVAL_MILLIS)
+        }
+        publish(RemotePlayPhase.FAILED, "${console.name} ne s’est pas réveillée. Vérifiez le mode repos et l’option « Rester connecté à Internet ».")
+        return false
+    }
+
+    /** Starts a stream from an already provisioned cloud allocation. Called from any thread. */
+    fun startCloud(connectInfo: ConnectInfo, title: String) {
+        if (closed.get()) return
+        updateSnapshot { copy(cloudTitle = title) }
+        publish(RemotePlayPhase.CONNECTING, "Connexion au serveur cloud pour $title…")
+        launchSession(connectInfo, "Jeu cloud actif : $title.")
+    }
+
+    private fun launchSession(connectInfo: ConnectInfo, streamingDetail: String) {
+        worker.execute {
+            if (snapshot().phase != RemotePlayPhase.CONNECTING) return@execute
             try {
                 stopSession()
-                val newSession =
-                    Session(
-                        ConnectInfo(
-                            ps5 = true,
-                            host = console.host,
-                            registKey = console.registKey,
-                            morning = console.morning,
-                            videoProfile =
-                                videoProfileFor(
-                                    quality,
-                                    shouldUseEmulatorHostBridge(Build.HARDWARE, Build.PRODUCT, Build.MODEL),
-                                ),
-                        ),
-                    )
+                runCatching { streamWifiLock?.acquire() }
+                val newSession = Session(connectInfo)
                 newSession.eventCallback = { event ->
                     when (event) {
-                        ConnectedEvent -> publish(RemotePlayPhase.STREAMING, "Stream PS5 actif.")
+                        ConnectedEvent -> {
+                            publish(RemotePlayPhase.STREAMING, streamingDetail)
+                            beginTestRecording(connectInfo)
+                        }
                         is LoginPinRequestEvent -> publish(RemotePlayPhase.LOGIN_PIN_REQUIRED, "PIN utilisateur PS5 requis.")
                         is QuitEvent -> {
                             val label = event.reasonString?.takeIf(String::isNotBlank) ?: "Session terminée."
+                            endReason = label
                             publish(if (event.reason.isError) RemotePlayPhase.FAILED else RemotePlayPhase.STOPPED, label)
+                            // Join and free off the native callback thread; also releases the Wi-Fi lock.
+                            if (!closed.get()) worker.execute { if (synchronized(lock) { session } === newSession) stopSession() }
                         }
                         else -> Unit
                     }
@@ -260,6 +360,11 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         }
     }
 
+    /** Latest native measurements, or null when no session is streaming. Cheap; safe to poll once per second. */
+    fun metrics(): StreamMetrics? =
+        // Read under the lock: stopSession() detaches the session under the same lock before freeing it.
+        if (isStreaming()) synchronized(lock) { session?.let { runCatching(it::metrics).getOrNull() } } else null
+
     fun isStreaming(): Boolean = snapshot().phase == RemotePlayPhase.STREAMING
 
     override fun close() {
@@ -276,6 +381,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             }
         }
         worker.shutdown()
+        sampler.shutdown()
     }
 
     private fun handleRegistrationEvent(host: String, event: RegistEvent) {
@@ -321,6 +427,26 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             runCatching { owned.stop() }
             runCatching { owned.close() }
         }
+        runCatching { if (streamWifiLock?.isHeld == true) streamWifiLock?.release() }
+        finishTestRecording()
+    }
+
+    private fun beginTestRecording(connectInfo: ConnectInfo) {
+        val recorder = testRecorder ?: return
+        endReason = "Arrêt demandé par l’utilisateur."
+        recorder.begin(if (connectInfo.serviceType != null) "cloud" else "console", connectInfo.videoProfile, autoHevc)
+        synchronized(lock) {
+            sampling?.cancel(false)
+            sampling = sampler.scheduleWithFixedDelay({ metrics()?.let(recorder::sample) }, 1, 1, TimeUnit.SECONDS)
+        }
+    }
+
+    private fun finishTestRecording() {
+        synchronized(lock) {
+            sampling?.cancel(false)
+            sampling = null
+        }
+        testRecorder?.finish(endReason)
     }
 
     private fun publish(phase: RemotePlayPhase, detail: String, consoleName: String? = snapshot().consoleName) {
@@ -362,11 +488,31 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
 
 }
 
-@Suppress("UNUSED_PARAMETER")
-internal fun videoProfileFor(quality: StreamQuality, isEmulator: Boolean): ConnectVideoProfile =
+private const val SESSION_PORT = 9295
+private const val QUICK_PROBE_MILLIS = 800
+private const val PROBE_MILLIS = 1_000
+private const val PROBE_INTERVAL_MILLIS = 1_500L
+private const val WAKE_TIMEOUT_MILLIS = 60_000L
+
+private fun isSessionPortOpen(host: String, timeoutMillis: Int): Boolean =
+    runCatching { Socket().use { it.connect(InetSocketAddress(host, SESSION_PORT), timeoutMillis) } }.isSuccess
+
+/**
+ * The WAKEUP user credential is the registration key's ASCII hex text (up to
+ * the first NUL, at most 8 characters) read as an unsigned 64-bit number.
+ */
+internal fun wakeupCredential(registKey: ByteArray): Long? {
+    val end = registKey.indexOf(0.toByte()).let { if (it >= 0) it else registKey.size }
+    if (end == 0 || end > 8) return null
+    val text = String(registKey, 0, end, Charsets.US_ASCII)
+    return text.toULongOrNull(16)?.toLong()
+}
+
+/** AUTO uses HEVC when [hevc] reports a hardware decoder; explicit choices stay on H.264. */
+internal fun videoProfileFor(quality: StreamQuality, hevc: Boolean): ConnectVideoProfile =
     when (quality) {
         StreamQuality.HD_720 -> ConnectVideoProfile(1280, 720, 60, 10_000, Codec.H264)
-        StreamQuality.AUTO -> ConnectVideoProfile(1920, 1080, 60, 15_000, Codec.H264)
+        StreamQuality.AUTO -> ConnectVideoProfile(1920, 1080, 60, 15_000, if (hevc) Codec.H265 else Codec.H264)
         StreamQuality.FULL_HD_1080 -> ConnectVideoProfile(1920, 1080, 60, 15_000, Codec.H264)
     }
 

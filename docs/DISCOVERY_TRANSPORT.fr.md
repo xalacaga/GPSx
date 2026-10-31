@@ -112,3 +112,20 @@ La suite de tests du transport a réussi 50 exécutions consécutives sous charg
 CPU locale après le passage des fenêtres de réponse à 500 millisecondes. Cette
 preuve de stabilité ne vaut que pour cet hôte Windows et ne constitue aucune
 affirmation de performance.
+
+## Réveil de la PS5
+
+`RemotePlayEngine.wakeConsole()` envoie un datagramme de découverte `WAKEUP` à la
+PS5 enregistrée (UDP 9302) via le moteur natif épinglé. L'identifiant utilisateur
+est le texte hexadécimal ASCII de la clé d'enregistrement, lu comme un entier non
+signé de 64 bits ; une clé inutilisable échoue de manière fermée et demande une
+nouvelle association. GPSx sonde ensuite TCP 9295 toutes les 1,5 s pendant 60 s
+au plus et signale `READY` dès que la console accepte les requêtes de session, ou
+un échec classifié. **Démarrer le stream** exécute la même étape de réveil quand
+une sonde de 800 ms trouve la console endormie. L'identifiant n'est jamais
+journalisé.
+
+FAIT (2026-10-31) : depuis l'émulateur Google TV API 36, le réveil a sorti la
+vraie PS5 du mode repos et la session suivante a streamé son écran d'accueil.
+L'unicast UDP de l'émulateur atteint directement le LAN ; aucun bridge hôte
+n'est nécessaire. Ce n'est pas une preuve GP520.

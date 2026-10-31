@@ -1,6 +1,8 @@
 package com.gpsx.tv.ui
 
+import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
@@ -35,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -53,6 +56,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -74,7 +78,22 @@ import com.gpsx.tv.remoteplay.GameControllerMonitor
 import com.gpsx.tv.remoteplay.RemotePlayPhase
 import com.gpsx.tv.remoteplay.RemotePlaySnapshot
 import com.gpsx.tv.remoteplay.RemotePlaySurfaceController
+import com.gpsx.tv.remoteplay.cloud.CloudCategory
+import com.gpsx.tv.remoteplay.cloud.CloudGame
+import com.gpsx.tv.remoteplay.cloud.CloudPlayController
+import com.gpsx.tv.remoteplay.cloud.CloudSnapshot
+import com.gpsx.tv.remoteplay.cloud.PsnLoginView
+import com.metallic.chiaki.lib.StreamMetrics
+import com.gpsx.tv.diagnostics.GitHubResultUploader
+import com.gpsx.tv.diagnostics.StoredReport
+import com.gpsx.tv.diagnostics.UploadResult
+import com.gpsx.tv.update.AppUpdater
+import com.gpsx.tv.update.ReleaseManifest
+import com.gpsx.tv.update.UpdateCheck
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val PanelShape = RoundedCornerShape(22.dp)
 
@@ -103,6 +122,13 @@ fun GpsxApp(engine: RemotePlayEngine) {
     var controllers by remember { mutableStateOf(emptyList<ConnectedGameController>()) }
     val firstLegalFocusRequester = remember { FocusRequester() }
     val controllerMonitor = remember(context) { GameControllerMonitor(context.applicationContext) }
+    val cloud = remember(engine) { CloudPlayController(context.applicationContext, engine) }
+    var cloudState by remember { mutableStateOf(cloud.snapshot()) }
+
+    DisposableEffect(cloud) {
+        cloud.setListener { cloudState = it }
+        onDispose(cloud::close)
+    }
 
     DisposableEffect(controllerMonitor) {
         controllerMonitor.start { controllers = it }
@@ -118,11 +144,17 @@ fun GpsxApp(engine: RemotePlayEngine) {
         state = state.copy(sessionPhase = remote.phase.toSessionPhase())
     }
 
+    LaunchedEffect(remote.phase, remote.cloudTitle) {
+        if (remote.cloudTitle != null && remote.phase == RemotePlayPhase.CONNECTING && state.destination == Destination.CLOUD) {
+            state = state.copy(destination = Destination.SESSION)
+        }
+    }
+
     fun dispatch(action: UiAction) {
         when (action) {
             UiAction.StartDemo -> {
                 state = state.copy(destination = Destination.SESSION)
-                if (remote.phase == RemotePlayPhase.READY || remote.phase == RemotePlayPhase.STOPPED) {
+                if (remote.phase in setOf(RemotePlayPhase.READY, RemotePlayPhase.STOPPED, RemotePlayPhase.FAILED, RemotePlayPhase.WAKING)) {
                     engine.start(state.quality)
                 }
             }
@@ -133,6 +165,8 @@ fun GpsxApp(engine: RemotePlayEngine) {
 
     val fullscreenStream =
         state.destination == Destination.SESSION && remote.phase == RemotePlayPhase.STREAMING
+
+    StreamDisplayMode(active = fullscreenStream)
 
     BackHandler(enabled = fullscreenStream) {
         dispatch(UiAction.StopDemo)
@@ -170,11 +204,12 @@ fun GpsxApp(engine: RemotePlayEngine) {
                             Destination.HOME -> HomeScreen(state, ::dispatch)
                             Destination.CONSOLES -> ConsolesScreen(::dispatch)
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
+                            Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.CONTROLLERS ->
                                 ControllersScreen(controllers) {
                                     context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                                 }
-                            Destination.DIAGNOSTICS -> DiagnosticsScreen()
+                            Destination.DIAGNOSTICS -> DiagnosticsScreen(engine)
                             Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
                             Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
                         }
@@ -507,10 +542,13 @@ private fun SessionScreen(
                     }
                 }
                 StatusPill(
-                    if (fullscreen) remote.consoleName ?: "PS5" else remote.phase.label(),
+                    if (fullscreen) remote.cloudTitle ?: remote.consoleName ?: "PS5" else remote.phase.label(),
                     remote.phase.accent(),
                     Modifier.align(Alignment.TopStart).padding(18.dp),
                 )
+                if (fullscreen && state.metricsVisible) {
+                    StreamMetricsOverlay(engine, Modifier.align(Alignment.TopEnd).padding(18.dp))
+                }
                 if (fullscreen && showFullscreenHint) {
                     Text(
                         "Retour : déconnecter",
@@ -521,28 +559,8 @@ private fun SessionScreen(
                                 .clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
-                } else if (!fullscreen && responsive.compact) Column(
-                    Modifier.align(Alignment.BottomStart).padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (remote.consoleName != null && remote.phase !in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.STOPPING)) {
-                        FocusButton("Démarrer le stream", primary = true) { dispatch(UiAction.StartDemo) }
-                    }
-                    if (remote.phase in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.LOGIN_PIN_REQUIRED)) {
-                        FocusButton("Déconnecter", primary = true) { dispatch(UiAction.StopDemo) }
-                    }
-                    FocusButton(if (state.metricsVisible) "Masquer les stats" else "Afficher les stats") { dispatch(UiAction.ToggleMetrics) }
-                } else if (!fullscreen) Row(
-                    Modifier.align(Alignment.BottomStart).padding(18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    if (remote.consoleName != null && remote.phase !in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.STOPPING)) {
-                        FocusButton("Démarrer le stream", primary = true) { dispatch(UiAction.StartDemo) }
-                    }
-                    if (remote.phase in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.LOGIN_PIN_REQUIRED)) {
-                        FocusButton("Déconnecter", primary = true) { dispatch(UiAction.StopDemo) }
-                    }
-                    FocusButton(if (state.metricsVisible) "Masquer les stats" else "Afficher les stats") { dispatch(UiAction.ToggleMetrics) }
+                } else if (!fullscreen) {
+                    SessionActions(state, remote, engine, dispatch, vertical = responsive.compact, Modifier.align(Alignment.BottomStart).padding(18.dp))
                 }
             }
 
@@ -604,6 +622,109 @@ private fun SessionScreen(
             )
             }
         }
+    }
+}
+
+/**
+ * While streaming: keep the screen on and ask the display for its game mode
+ * (minimal post-processing, API 30+), which removes TV picture processing latency.
+ */
+@Composable
+private fun StreamDisplayMode(active: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, active) {
+        val window = (view.context as? Activity)?.window
+        fun apply(enabled: Boolean) {
+            view.keepScreenOn = enabled
+            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.attributes = window.attributes.apply { preferMinimalPostProcessing = enabled }
+            }
+        }
+        apply(active)
+        onDispose { apply(false) }
+    }
+}
+
+/** Real native measurements, polled once per second while the stream is visible. */
+@Composable
+private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
+    var metrics by remember { mutableStateOf<StreamMetrics?>(null) }
+    LaunchedEffect(engine) {
+        while (true) {
+            metrics = engine.metrics()
+            delay(1_000)
+        }
+    }
+    val current = metrics ?: return
+    Text(
+        String.format(
+            java.util.Locale.FRANCE,
+            "%dp · %.1f fps · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d",
+            current.height,
+            current.fps,
+            current.bitrateMbps,
+            current.rttMs,
+            current.packetLoss * 100,
+            current.framesLost,
+        ),
+        color = SoftWhite,
+        fontSize = 11.sp,
+        modifier =
+            modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
+                .padding(horizontal = 12.dp, vertical = 8.dp).testTag("stream-metrics"),
+    )
+}
+
+/**
+ * Session buttons. The set of buttons changes with the phase; when the user acted
+ * from here, focus is moved back to the first button so the D-pad never falls
+ * back to the navigation rail.
+ */
+@Composable
+private fun SessionActions(
+    state: AppUiState,
+    remote: RemotePlaySnapshot,
+    engine: RemotePlayEngine,
+    dispatch: (UiAction) -> Unit,
+    vertical: Boolean,
+    modifier: Modifier,
+) {
+    val firstAction = remember { FocusRequester() }
+    var keepFocus by remember { mutableStateOf(false) }
+    fun act(block: () -> Unit) {
+        keepFocus = true
+        block()
+    }
+    LaunchedEffect(remote.phase) {
+        if (keepFocus) runCatching { firstAction.requestFocus() }
+    }
+    val waking = remote.phase == RemotePlayPhase.WAKING
+    val canStart = remote.consoleName != null && remote.phase !in BUSY_PHASES
+    val canStop = remote.phase in setOf(RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.LOGIN_PIN_REQUIRED)
+    val buttons: @Composable () -> Unit = {
+        if (canStart || waking) {
+            // Start stays available while waking: it is queued behind the wake-up and connects once ready.
+            FocusButton("Démarrer le stream", primary = true, modifier = Modifier.focusRequester(firstAction)) {
+                act { dispatch(UiAction.StartDemo) }
+            }
+            FocusButton(if (waking) "Réveil en cours…" else "Réveiller la PS5", modifier = Modifier.testTag("wake-console")) {
+                if (!waking) act(engine::wakeConsole)
+            }
+        }
+        if (canStop) {
+            FocusButton("Déconnecter", primary = true, modifier = if (canStart || waking) Modifier else Modifier.focusRequester(firstAction)) {
+                act { dispatch(UiAction.StopDemo) }
+            }
+        }
+        FocusButton(
+            if (state.metricsVisible) "Masquer les stats" else "Afficher les stats",
+            modifier = if (canStart || waking || canStop) Modifier else Modifier.focusRequester(firstAction),
+        ) { dispatch(UiAction.ToggleMetrics) }
+    }
+    if (vertical) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) { buttons() }
+    } else {
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) { buttons() }
     }
 }
 
@@ -815,10 +936,11 @@ private fun CapabilityGrid() {
 }
 
 @Composable
-private fun DiagnosticsScreen() {
+private fun DiagnosticsScreen(engine: RemotePlayEngine) {
     val responsive = LocalResponsiveLayout.current
     ScreenFrame("Observabilité", stringResource(R.string.diagnostic_title), "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TestResultsPanel(engine)
             if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
@@ -861,6 +983,138 @@ private fun DiagnosticsScreen() {
 }
 
 @Composable
+private fun UpdatePanel() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val updater = remember(context) { AppUpdater(context) }
+    var status by remember { mutableStateOf("Version installée : ${BuildConfig.VERSION_NAME}") }
+    var available by remember { mutableStateOf<ReleaseManifest?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    SectionTitle("Mettre à jour GPSx", "Depuis les releases GitHub · APK vérifié · confirmation Android requise")
+    Text(status, color = Muted, fontSize = 12.sp, modifier = Modifier.testTag("update-status"))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FocusButton(if (busy) "Recherche…" else "Rechercher une mise à jour", primary = available == null, modifier = Modifier.testTag("update-check")) {
+            if (busy) return@FocusButton
+            busy = true
+            scope.launch {
+                val result = withContext(Dispatchers.IO) { updater.check() }
+                busy = false
+                when (result) {
+                    is UpdateCheck.Available -> {
+                        available = result.manifest
+                        status = "GPSx ${result.manifest.versionName} est disponible."
+                    }
+                    UpdateCheck.UpToDate -> {
+                        available = null
+                        status = "GPSx ${BuildConfig.VERSION_NAME} est à jour."
+                    }
+                    is UpdateCheck.Failed -> status = result.message
+                }
+            }
+        }
+        available?.let { manifest ->
+            FocusButton("Installer ${manifest.versionName}", primary = true) {
+                if (busy) return@FocusButton
+                busy = true
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        updater.downloadAndInstall(manifest) { message -> scope.launch { status = message } }
+                    }
+                    busy = false
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestResultsPanel(engine: RemotePlayEngine) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val recorder = engine.testRecorder ?: return
+    val uploader = remember(context) { GitHubResultUploader(context) }
+    var reports by remember { mutableStateOf(emptyList<StoredReport>()) }
+    var hasToken by remember { mutableStateOf(false) }
+    var token by remember { mutableStateOf("") }
+    var repository by remember { mutableStateOf(uploader.repository) }
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(recorder) {
+        reports = withContext(Dispatchers.IO) { recorder.list() }
+        hasToken = withContext(Dispatchers.IO) { uploader.hasToken() }
+    }
+    SectionTitle(
+        "Résultats de tests",
+        "Chaque session stream enregistre un rapport (mesures, appareil, Wi-Fi) sans adresse, nom ni secret",
+    )
+    if (reports.isEmpty()) {
+        Text("Aucun rapport : lancez un stream d’au moins quelques secondes.", color = Muted, fontSize = 12.sp)
+    }
+    reports.take(8).forEach { report ->
+        Text(
+            String.format(
+                java.util.Locale.FRANCE,
+                "%s · %s · %.0f s · %s fps · RTT p95 %s ms%s",
+                report.name.removeSuffix(".json"),
+                report.kind,
+                report.durationSeconds,
+                report.fpsP50?.let { "%.1f".format(java.util.Locale.FRANCE, it) } ?: "–",
+                report.rttP95?.let { "%.0f".format(java.util.Locale.FRANCE, it) } ?: "–",
+                if (report.uploaded) " · envoyé" else "",
+            ),
+            color = if (report.uploaded) Muted else SoftWhite,
+            fontSize = 11.sp,
+        )
+    }
+    if (hasToken) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            FocusButton(if (busy) "Envoi…" else "Envoyer les résultats sur GitHub", primary = true, modifier = Modifier.testTag("upload-results")) {
+                if (busy) return@FocusButton
+                busy = true
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) { uploader.uploadPending(recorder) }
+                    status =
+                        when (result) {
+                            is UploadResult.Sent -> if (result.count == 0) "Rien de nouveau à envoyer." else "${result.count} rapport(s) envoyé(s) vers ${uploader.repository}."
+                            is UploadResult.Failed -> result.message
+                        }
+                    reports = withContext(Dispatchers.IO) { recorder.list() }
+                    busy = false
+                }
+            }
+            FocusButton("Supprimer le jeton") {
+                uploader.clearToken()
+                hasToken = false
+                status = "Jeton supprimé de l’appareil."
+            }
+        }
+    } else {
+        Text(
+            "Créez sur GitHub un jeton « fine-grained » limité au dépôt de diagnostics, droit Contents : lecture et écriture, " +
+                "expiration 30 jours, puis collez-le ici (l’application Google TV du téléphone permet de coller).",
+            color = Muted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+            LabeledInput("Dépôt (propriétaire/nom)", repository, { repository = it.take(140) }, Modifier.weight(1f), testTag = "results-repository")
+            LabeledInput("Jeton GitHub", token, { token = it.take(300) }, Modifier.weight(1.4f), testTag = "github-token")
+            FocusButton("Enregistrer") {
+                uploader.repository = repository
+                if (uploader.saveToken(token)) {
+                    token = ""
+                    hasToken = true
+                    status = "Jeton chiffré sur l’appareil. Dépôt : ${uploader.repository}."
+                } else {
+                    status = "Jeton GitHub invalide."
+                }
+            }
+        }
+    }
+    if (status.isNotEmpty()) Text(status, color = Amber, fontSize = 11.sp)
+}
+
+@Composable
 private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
     val responsive = LocalResponsiveLayout.current
     ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
@@ -885,12 +1139,7 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
                 MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
                 MiniPanel("Données", "Importer · exporter · réinitialiser", "DONNÉES", Modifier.weight(1f))
             }
-            MiniPanel(
-                "Mettre à jour GPSx",
-                "Releases GitHub vérifiées · confirmation Android requise · Downloader en secours",
-                "PLANIFIÉ",
-                Modifier.fillMaxWidth(),
-            )
+            UpdatePanel()
         }
     }
 }
@@ -1109,12 +1358,158 @@ private fun SectionTitle(title: String, subtitle: String) {
     }
 }
 
+@Composable
+private fun CloudScreen(cloudState: CloudSnapshot, cloud: CloudPlayController) {
+    val responsive = LocalResponsiveLayout.current
+    ScreenFrame("Jeu cloud", "PlayStation Plus", cloudState.detail) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (cloudState.signedIn) {
+                CloudCatalogPanel(cloudState, cloud, columns = if (responsive.compact) 2 else 3)
+            } else {
+                PsnSignInPanel(cloud)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PsnSignInPanel(cloud: CloudPlayController) {
+    var showWebLogin by remember { mutableStateOf(false) }
+    var manualToken by remember { mutableStateOf("") }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(Color(0xAD102835)).padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Connexion PlayStation Network", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Un abonnement PlayStation Plus Premium est nécessaire pour streamer le catalogue cloud. " +
+                "La connexion se fait directement sur la page de Sony ; GPSx ne voit pas votre mot de passe.",
+            color = SoftWhite,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+        Text(
+            "Le jeton de session est chiffré sur l’appareil et n’est jamais journalisé. " +
+                "L’usage d’un client non officiel se fait aux risques du titulaire du compte.",
+            color = Amber,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+    FocusButton(
+        if (showWebLogin) "Fermer la page Sony" else "Essayer la page de connexion Sony",
+        modifier = Modifier.testTag("psn-sign-in"),
+    ) {
+        showWebLogin = !showWebLogin
+    }
+    if (showWebLogin) {
+        Box(Modifier.fillMaxWidth().height(520.dp).clip(PanelShape).background(Color.White)) {
+            AndroidView(
+                factory = { context ->
+                    PsnLoginView(context) { token ->
+                        cloud.signIn(token)
+                        showWebLogin = false
+                    }.apply { start() }
+                },
+                onRelease = { it.destroy() },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+    SectionTitle(
+        "Saisie du jeton NPSSO",
+        "Sur un ordinateur ou un téléphone connecté à playstation.com, ouvrez ca.account.sony.com/api/v1/ssocookie " +
+            "et collez ici la valeur npsso (ou toute la réponse). L’application Google TV du téléphone permet de coller du texte.",
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+        LabeledInput("Jeton NPSSO", manualToken, { manualToken = it.take(512) }, Modifier.weight(1f), testTag = "npsso-input")
+        FocusButton("Valider") {
+            if (cloud.signIn(manualToken)) manualToken = ""
+        }
+    }
+}
+
+@Composable
+private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayController, columns: Int) {
+    var query by remember { mutableStateOf("") }
+    var visibleCount by remember { mutableStateOf(CLOUD_PAGE_SIZE) }
+    val matches =
+        remember(cloudState.games, query) {
+            val needle = query.trim()
+            cloudState.games.filter { it.playable && (needle.isEmpty() || it.name.contains(needle, ignoreCase = true)) }
+        }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        FocusButton(if (cloudState.loading) "Chargement…" else "Actualiser", primary = true) { cloud.refreshCatalog() }
+        FocusButton("Qualité : ${cloudState.resolution.label}") { cloud.cycleResolution() }
+        if (cloudState.provisioning) FocusButton("Annuler") { cloud.cancelProvisioning() }
+        FocusButton("Se déconnecter") { cloud.signOut() }
+    }
+    if (cloudState.warning.isNotEmpty()) {
+        Text(cloudState.warning, color = Amber, fontSize = 11.sp)
+    }
+    LabeledInput(
+        "Rechercher un jeu",
+        query,
+        {
+            query = it.take(80)
+            visibleCount = CLOUD_PAGE_SIZE
+        },
+        Modifier.fillMaxWidth(),
+        testTag = "cloud-search",
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        matches.take(visibleCount).chunked(columns).forEach { rowGames ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowGames.forEach { game ->
+                    CloudGameCard(game, enabled = !cloudState.provisioning, modifier = Modifier.weight(1f)) { cloud.play(game) }
+                }
+                repeat(columns - rowGames.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+    if (matches.size > visibleCount) {
+        FocusButton("Afficher plus (${matches.size - visibleCount} restants)") { visibleCount += CLOUD_PAGE_SIZE }
+    } else if (matches.isEmpty() && !cloudState.loading) {
+        Text("Aucun jeu jouable trouvé.", color = Muted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun CloudGameCard(game: CloudGame, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val accent = if (game.category == CloudCategory.OWNED) Mint else Sky
+    Row(
+        modifier.height(86.dp).clip(RoundedCornerShape(18.dp))
+            .background(if (focused) Color(0xFF173B4C) else Color(0xAA102633))
+            .then(if (focused) Modifier.border(2.dp, accent, RoundedCornerShape(18.dp)) else Modifier)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
+            Text(game.platform.uppercase().ifEmpty { "PS" }, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(game.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(if (game.category == CloudCategory.OWNED) "Possédé" else "Catalogue Plus", color = Muted, fontSize = 10.sp)
+        }
+    }
+}
+
+private const val CLOUD_PAGE_SIZE = 30
+
+private val BUSY_PHASES =
+    setOf(RemotePlayPhase.WAKING, RemotePlayPhase.CONNECTING, RemotePlayPhase.STREAMING, RemotePlayPhase.STOPPING)
+
 private fun RemotePlayPhase.toSessionPhase(): SessionPhase =
     when (this) {
         RemotePlayPhase.NEEDS_REGISTRATION,
         RemotePlayPhase.READY,
         -> SessionPhase.READY
         RemotePlayPhase.REGISTERING,
+        RemotePlayPhase.WAKING,
         RemotePlayPhase.CONNECTING,
         RemotePlayPhase.STOPPING,
         -> SessionPhase.CONNECTING

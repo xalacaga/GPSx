@@ -48,3 +48,12 @@ d’accès physique sont deux décisions distinctes. La première fige et relit 
 diff d’adaptateur limité à l’émulateur ; la seconde ne peut suivre qu’un `GO` et
 nomme une date et un périmètre.
 
+## Gate physique ouvert (2026-10-31)
+
+Le propriétaire du projet a ouvert le canal de test GP520 le 2026-10-31.
+Périmètre : le propriétaire installe l'APK release signé avec Downloader, lance
+des streams sur le GP520 et envoie les rapports par session vers le dépôt privé
+`xalacaga/GPSx-diagnostics` (voir `INSTALL_GP520.fr.md`). Les agents ne se
+connectent toujours jamais eux-mêmes au GP520, ne le sondent pas et n'y
+installent rien ; ils analysent les rapports envoyés. Les rapports appareil
+portent `evidenceClass: DEVICE` ; ceux de l'émulateur restent `EMULATOR`.

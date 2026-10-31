@@ -2,7 +2,7 @@
 
 ## Bootstrap installation
 
-Planned behavior, still `NOT_TESTED`: the first GP520 installation will use the
+Implemented 2026-10-31 (`AppUpdater`, `tools/powershell/publish-release.ps1`); GP520 behavior `NOT_TESTED`. The first GP520 installation will use the
 Downloader application already available on Google TV. Downloader will open a
 stable GPSx release URL, download the release APK, and hand it to Android's package
 installer. The user will explicitly authorize the Downloader source and installation.

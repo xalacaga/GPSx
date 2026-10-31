@@ -2,6 +2,8 @@
 
 package com.gpsx.tv.remoteplay
 
+import android.os.Build
+import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 
@@ -15,8 +17,16 @@ class RemotePlaySurfaceController(
         view.holder.addCallback(this)
     }
 
-    override fun surfaceCreated(holder: SurfaceHolder) = engine.setSurface(holder.surface)
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = engine.setSurface(holder.surface)
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        holder.surface.requestStreamFrameRate()
+        engine.setSurface(holder.surface)
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        holder.surface.requestStreamFrameRate()
+        engine.setSurface(holder.surface)
+    }
+
     override fun surfaceDestroyed(holder: SurfaceHolder) = engine.setSurface(null)
 
     override fun close() {
@@ -24,5 +34,12 @@ class RemotePlaySurfaceController(
         closed = true
         view.holder.removeCallback(this)
         engine.setSurface(null)
+    }
+}
+
+/** Asks the display to run at the stream's 60 fps so frames are not judder-converted. */
+private fun Surface.requestStreamFrameRate() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && isValid) {
+        runCatching { setFrameRate(60f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE) }
     }
 }

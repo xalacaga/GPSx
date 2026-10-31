@@ -4,6 +4,11 @@ GPSx intègre un laboratoire de mesure sur l’appareil afin que les sessions GP
 produisent des preuves reproductibles sans débogueur. La capture locale fonctionne
 sans GitHub ni Internet ; le transfert GitHub est une seconde étape facultative.
 
+Première implémentation (2026-10-31) : un rapport JSON `gpsx-stream-test/1` par
+session streamée, envoyé sur demande via l'API contents de GitHub vers le dépôt
+de diagnostics privé ; voir `INSTALL_GP520.fr.md`. Les scénarios guidés et
+l'archive zip ci-dessous restent prévus.
+
 ## Scénarios guidés
 
 - Contrôle rapide : 2 minutes.

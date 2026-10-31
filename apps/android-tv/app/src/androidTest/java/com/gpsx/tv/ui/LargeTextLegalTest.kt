@@ -36,7 +36,7 @@ class LargeTextLegalTest {
         }
 
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        repeat(6) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(7) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN) }
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
 
         composeRule.onNodeWithText("LOGICIEL LIBRE").assertIsDisplayed()

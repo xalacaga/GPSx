@@ -1,5 +1,17 @@
 # Roadmap
 
+## Current direction (2026-10-31)
+
+- Target: Android TV only. Windows is no longer a delivery target for now, so
+  the former M2 "Windows protocol validation" is dropped.
+- Cross-review gates are retired; see `CROSS_REVIEW.md`.
+- New scope: PlayStation Plus cloud game streaming alongside console Remote
+  Play, based on the AGPL Pylux engine. See `CLOUD_GAMING_PLAN.md`.
+- The physical GP520 gate in `OFFLINE_FIRST.md` is unchanged.
+
+The sections below are the original Phase 0 plan, kept for history.
+
+
 Phase 0 audit completed on 2026-10-25. Human review is required before implementation.
 
 ## Recommended first milestone — M0.5 Evidence Baseline and License Gate
@@ -86,8 +98,4 @@ Before the license decision, only the path-independent crates (`model`, `input`,
 
 ## Independent cross-review gates
 
-Claude Code cross-review is required before accepting the M1 entry decisions,
-before merging each milestone, after introducing protocol/crypto/JNI/media or
-concurrency boundaries, before performance claims, and before release. The
-agent must stop at each gate and give the user the exact prompt and file scope
-defined in `CROSS_REVIEW.md`.
+Retired on 2026-10-31 by the project owner. See `CROSS_REVIEW.md`.

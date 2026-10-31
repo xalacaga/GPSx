@@ -103,15 +103,15 @@
     "semantic_hash": ""
   },
   "AGENTS.fr.md": {
-    "mtime": 1792954330.5238087,
-    "seen": 1792954360.2602415,
-    "ast_hash": "0b171064d03c356bff2d351f35a2620f",
+    "mtime": 1793434671.4673305,
+    "seen": 1793436328.54751,
+    "ast_hash": "8752d31423226b7bae217cd7392139d5",
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1792954329.6722085,
-    "seen": 1792954360.2602427,
-    "ast_hash": "45a16032410019bfa9345587bc00cf03",
+    "mtime": 1793434671.4663231,
+    "seen": 1793436328.5475116,
+    "ast_hash": "ae1ec7bcd20eb2e35d33a6a51129d2bb",
     "semantic_hash": ""
   },
   "CLAUDE.fr.md": {
@@ -205,9 +205,9 @@
     "semantic_hash": ""
   },
   "docs/ROADMAP.md": {
-    "mtime": 1792953626.9433334,
-    "seen": 1792954360.260294,
-    "ast_hash": "870e6aed6dbe8b7e6bd314b59e3a2ad9",
+    "mtime": 1793434690.363178,
+    "seen": 1793436328.5476081,
+    "ast_hash": "b349133db9436668e190a246788e5d96",
     "semantic_hash": ""
   },
   "docs/TESTING.md": {
@@ -271,15 +271,15 @@
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.fr.md": {
-    "mtime": 1793213909.827137,
-    "seen": 1793214190.4653137,
-    "ast_hash": "e9059bdb7cbd30b71ad40f30c17a3692",
+    "mtime": 1793434679.7684138,
+    "seen": 1793436328.5475492,
+    "ast_hash": "ffe8c83bafea7e53c1e64b57c295bef6",
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.md": {
-    "mtime": 1793213909.827137,
-    "seen": 1793214190.4653153,
-    "ast_hash": "b20d83cb4a36e56d4df97b40cf8e7665",
+    "mtime": 1793434679.7684138,
+    "seen": 1793436328.5475507,
+    "ast_hash": "3b0dd6bd765b9ff61d748e60a8fd8ca3",
     "semantic_hash": ""
   },
   "docs/DUALSENSE_ANALYSIS.fr.md": {
@@ -313,9 +313,9 @@
     "semantic_hash": ""
   },
   "docs/ROADMAP.fr.md": {
-    "mtime": 1792953647.989873,
-    "seen": 1792954360.2602923,
-    "ast_hash": "b8923470ef0f928e101ab7d0c0586a05",
+    "mtime": 1793434690.3641827,
+    "seen": 1793436328.5476065,
+    "ast_hash": "1c2117ceaeaf400c8795ed4aa8fdac7c",
     "semantic_hash": ""
   },
   "docs/TESTING.fr.md": {
@@ -343,27 +343,27 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
-    "mtime": 1793222804.0220425,
-    "seen": 1793223200.0894072,
-    "ast_hash": "3dd8c38caebfdb87d13228d5e7cea03c",
+    "mtime": 1793439245.447829,
+    "seen": 1793439770.1815894,
+    "ast_hash": "8f12a6a711cd0f91ee514ab5b549ced6",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
-    "mtime": 1793307755.4651148,
-    "seen": 1793307810.7374241,
-    "ast_hash": "80ee33386d2702b0d4fe829287377871",
+    "mtime": 1793308120.724099,
+    "seen": 1793436328.5473614,
+    "ast_hash": "c61bb6b9d689aa34079af4bb277b9c62",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
-    "mtime": 1793307755.4641142,
-    "seen": 1793307810.737444,
-    "ast_hash": "655a5cc2bd293f3e4ca230d261b82618",
+    "mtime": 1793435771.8521802,
+    "seen": 1793436328.5473866,
+    "ast_hash": "ac734ce9e2e40878ac3bc66e8314c7f5",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1793308032.50158,
-    "seen": 1793308075.8252525,
-    "ast_hash": "1942f28e358ddcb975193bb0d31f7098",
+    "mtime": 1793438633.2136369,
+    "seen": 1793439770.1816406,
+    "ast_hash": "3e8ad7dba9c4cfb103b1d2022e5ab54b",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -373,9 +373,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/ui/AppStateTest.kt": {
-    "mtime": 1793307755.4671204,
-    "seen": 1793307810.7374578,
-    "ast_hash": "0a491aae2927aed7155ee88b8bd63429",
+    "mtime": 1793308120.7270954,
+    "seen": 1793436328.5474002,
+    "ast_hash": "be10a2452c001d498eb543bacea0bfce",
     "semantic_hash": ""
   },
   "apps/android-tv/build.gradle.kts": {
@@ -487,15 +487,15 @@
     "semantic_hash": ""
   },
   "docs/PROVENANCE.fr.md": {
-    "mtime": 1793223070.1360168,
-    "seen": 1793223200.0896327,
-    "ast_hash": "6025da1d51e3216a3f125169f6fe0028",
+    "mtime": 1793439764.910204,
+    "seen": 1793439770.1818576,
+    "ast_hash": "d658b1d7dfad90fe8c22cf213f6e30a8",
     "semantic_hash": ""
   },
   "docs/PROVENANCE.md": {
-    "mtime": 1793223070.1350138,
-    "seen": 1793223200.0896344,
-    "ast_hash": "c79e991d4b8bcc956339747c5d90a7eb",
+    "mtime": 1793439764.910204,
+    "seen": 1793439770.1818588,
+    "ast_hash": "c296684b1d8e277229c9839e6f3b54e8",
     "semantic_hash": ""
   },
   "tools/powershell/ProvenanceGuard.psm1": {
@@ -565,15 +565,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/RemoteNavigationTest.kt": {
-    "mtime": 1793305516.004176,
-    "seen": 1793305670.263872,
-    "ast_hash": "ccdcbfe3f6d78f429d6d7f55c5eedd3a",
+    "mtime": 1793435810.4767613,
+    "seen": 1793436328.5473561,
+    "ast_hash": "eb6a6585b84635f6770e9b1db227c532",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/LargeTextLegalTest.kt": {
-    "mtime": 1792963266.273866,
-    "seen": 1792963376.1882987,
-    "ast_hash": "967b7eb6f01ffd1e2d7b65c584a961d3",
+    "mtime": 1793435822.7165608,
+    "seen": 1793436328.5473542,
+    "ast_hash": "31a536b4cceef97ffa27b6cb824c6d09",
     "semantic_hash": ""
   },
   "docs/DIAGNOSTICS.fr.md": {
@@ -607,15 +607,15 @@
     "semantic_hash": ""
   },
   "docs/DISCOVERY_TRANSPORT.fr.md": {
-    "mtime": 1793303721.0629504,
-    "seen": 1793303993.1498945,
-    "ast_hash": "04968d4b24132f2bb98f5b843f1b9804",
+    "mtime": 1793438200.6503012,
+    "seen": 1793438205.282864,
+    "ast_hash": "574dcdebcf4bed807429bb8a51028d2f",
     "semantic_hash": ""
   },
   "docs/DISCOVERY_TRANSPORT.md": {
-    "mtime": 1793303721.0619464,
-    "seen": 1793303993.149896,
-    "ast_hash": "96323931eaa0106cf06484bf1eff4466",
+    "mtime": 1793438200.6487963,
+    "seen": 1793438205.2828658,
+    "ast_hash": "ef4868ba69324a6d4239e7104519d922",
     "semantic_hash": ""
   },
   "docs/REGISTRATION_CRYPTO_PLAN.fr.md": {
@@ -1021,21 +1021,21 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/RemotePlayEngine.kt": {
-    "mtime": 1793308032.5005732,
-    "seen": 1793308075.8252466,
-    "ast_hash": "d8b217a747722e7b88637c909bdcbef3",
+    "mtime": 1793438679.907649,
+    "seen": 1793439770.1816251,
+    "ast_hash": "6aa80b884ab35b420b74fe1290662577",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/RemotePlaySurfaceController.kt": {
-    "mtime": 1793222178.6671135,
-    "seen": 1793223200.0894353,
-    "ast_hash": "f6aef026268000c5f39f4e4e9bc73762",
+    "mtime": 1793438619.153176,
+    "seen": 1793439770.1816278,
+    "ast_hash": "36506b8204cc4d3a07e08056cf5cdbdf",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/metallic/chiaki/lib/ChiakiCompat.kt": {
-    "mtime": 1793306033.8114057,
-    "seen": 1793306291.614262,
-    "ast_hash": "89bf60457baca57f4eef1c4999170ada",
+    "mtime": 1793438367.4628239,
+    "seen": 1793439770.1816442,
+    "ast_hash": "d4f43f6dba0184928b7287330b2e5318",
     "semantic_hash": ""
   },
   "platform/android/gpsx-android-input/Cargo.toml": {
@@ -1105,15 +1105,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/metallic/chiaki/lib/ChiakiCompatAbiTest.kt": {
-    "mtime": 1793306076.1904874,
-    "seen": 1793306291.614269,
-    "ast_hash": "95926be926888177c720b164c0f90f5a",
+    "mtime": 1793435797.974366,
+    "seen": 1793436328.547402,
+    "ast_hash": "517b091ed72e148c627ea4180b7be6b2",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/remoteplay/VideoProfileTest.kt": {
-    "mtime": 1793307755.4671204,
-    "seen": 1793307810.737456,
-    "ast_hash": "b42c18f9cce0b9736c58b1960573d54d",
+    "mtime": 1793438619.152174,
+    "seen": 1793439770.1816494,
+    "ast_hash": "70966fa8ad6bba050ed6ef472d74f86f",
     "semantic_hash": ""
   },
   "tmp/gpsx-back-menu.png": {
@@ -1152,10 +1152,70 @@
     "ast_hash": "6692b078957d65f78a4693d3c71e64c2",
     "semantic_hash": ""
   },
-  "apps/android-tv/app/src/test/java/com/gpsx/tv/remoteplay/RemotePlayPolicyTest.kt": {
-    "mtime": 1793307755.468119,
-    "seen": 1793307810.7374542,
-    "ast_hash": "dbf9334b0f3261de72a6d4b3d8924407",
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/cloud/CloudCatalog.kt": {
+    "mtime": 1793435547.464066,
+    "seen": 1793436328.5473802,
+    "ast_hash": "222beb6b0db1fc60c9d94fae6c106013",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/cloud/CloudPlayController.kt": {
+    "mtime": 1793435681.3826058,
+    "seen": 1793436328.547382,
+    "ast_hash": "6d2711c2913863b1b6d44dd0a9a667ae",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/cloud/PsnLoginView.kt": {
+    "mtime": 1793436066.583229,
+    "seen": 1793436328.5473833,
+    "ast_hash": "a5fc05d01aa00d6afee02f0ee2292960",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/cloud/PsnTokenStore.kt": {
+    "mtime": 1793435548.276615,
+    "seen": 1793436328.5473845,
+    "ast_hash": "ab77776381a92e89f9bc88b8a91a7c7d",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/test/java/com/gpsx/tv/remoteplay/cloud/CloudCatalogTest.kt": {
+    "mtime": 1793435797.0729504,
+    "seen": 1793436328.5473986,
+    "ast_hash": "9751e037ce1d11e3e5156119693452ab",
+    "semantic_hash": ""
+  },
+  "docs/CLOUD_GAMING_PLAN.fr.md": {
+    "mtime": 1793439764.9112017,
+    "seen": 1793439770.1817954,
+    "ast_hash": "99a8ad22b81e9adbbd5a415e3454e435",
+    "semantic_hash": ""
+  },
+  "docs/CLOUD_GAMING_PLAN.md": {
+    "mtime": 1793439764.9112017,
+    "seen": 1793439770.1817966,
+    "ast_hash": "04fe83a8fe903c076d1e52d65b5ea9ac",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/test/java/com/gpsx/tv/remoteplay/WakeupCredentialTest.kt": {
+    "mtime": 1793438077.479702,
+    "seen": 1793438205.2826812,
+    "ast_hash": "c0d72397d629b057cebf51306bc203e3",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/VideoCapabilities.kt": {
+    "mtime": 1793438617.6177056,
+    "seen": 1793439770.1816297,
+    "ast_hash": "a98208749f898a3846bb2ea67e6a9ad9",
+    "semantic_hash": ""
+  },
+  "docs/STREAM_TUNING.fr.md": {
+    "mtime": 1793439764.9092007,
+    "seen": 1793439770.1818743,
+    "ast_hash": "b1a7b670e11e6a3f2ab186990405cf0e",
+    "semantic_hash": ""
+  },
+  "docs/STREAM_TUNING.md": {
+    "mtime": 1793439764.9092007,
+    "seen": 1793439770.1818757,
+    "ast_hash": "a7d09966e360266de6a7dd0ff5ab0768",
     "semantic_hash": ""
   }
 }

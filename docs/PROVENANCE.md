@@ -48,7 +48,7 @@ notices shipped with the product. The accepted strategy is ADR-0001 Option C.
 
 | Local path | Upstream path | Commit | Original copyright | SPDX | Owner/date | Modifications |
 |---|---|---|---|---|---|---|
-| `apps/android-tv/app/src/main/java/com/metallic/chiaki/lib/ChiakiCompat.kt` | `android/app/src/main/java/com/metallic/chiaki/lib/Chiaki.kt`; `android/app/src/main/cpp/chiaki-jni.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | chiaki-ng contributors; pinned Git history | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-28 | Reduced Kotlin compatibility contract for the pinned JNI binary: local registration, session lifecycle, Surface, login PIN and controller state only; removes discovery, Parcelable and application logging while retaining JNI names/signatures |
+| `apps/android-tv/app/src/main/java/com/metallic/chiaki/lib/ChiakiCompat.kt` | `android/app/src/main/java/com/metallic/chiaki/lib/Chiaki.kt`; `android/app/src/main/cpp/chiaki-jni.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | chiaki-ng contributors; pinned Git history | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx (Pylux extension) / 2026-10-31 | Reduced Kotlin compatibility contract for the pinned JNI binary: local registration, session lifecycle, Surface, login PIN and controller state; since 2026-10-31 also the cloud fields of `ConnectInfo`, the PSN/holepunch/PS-chord session callbacks and the cloud catalog/provisioning/SSL declarations of Pylux `ca87a49a12bab071948f565ca53ffdad790775d3` (same upstream file names, AGPL-3.0-only with OpenSSL exception); removes discovery, Parcelable and application logging while retaining JNI names/signatures |
 | `crates/gpsx-protocol/Cargo.toml` | N/A - GPSx-authored | `c8bea2642d0e95402f373af55584a3b98cd89417` | GPSx contributors | `AGPL-3.0-only` | GPSx / 2026-10-25 | Dependency-free package manifest; no build script |
 | `crates/gpsx-protocol/src/lib.rs` | N/A - GPSx-authored | `c8bea2642d0e95402f373af55584a3b98cd89417` | GPSx contributors | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-26 | Public surface for pure bounded SRCH and local-registration formatting/parsing; no I/O or cryptography |
 | `crates/gpsx-protocol/src/discovery.rs` | `lib/include/chiaki/discovery.h`; `lib/src/discovery.c` | `c8bea2642d0e95402f373af55584a3b98cd89417` | chiaki-ng contributors; pinned Git history | `LicenseRef-AGPL-3.0-only-OpenSSL` | GPSx / 2026-10-25 | Behavioral Rust port of SRCH formatting and response mapping; strict bounded parsing, redacted formatting, no I/O or WAKEUP |
@@ -78,7 +78,15 @@ and their tests are GPSx-authored on 2026-10-28 under `AGPL-3.0-only`, recorded
 in their SPDX headers. `ChiakiCompat.kt` is the explicit exception and is listed
 as derived above. The runtime consumes native libraries built from the complete
 pinned chiaki-ng source revision; those binaries are build outputs under ignored
-`.tools/`, not committed source. `ANDROID_NATIVE_ADAPTER.md` records scope and
+`.tools/`, not committed source. Since 2026-10-31 the native engine is built from
+Pylux `ca87a49a12bab071948f565ca53ffdad790775d3` (a chiaki-ng superset that adds
+PlayStation Plus cloud streaming) with four local patches: the Windows-host
+`GPSX_PROTOBUF_PYTHON` override in `CMakeLists.txt`; null checks before
+`display_sink.cantdisplay_cb` in `lib/src/ctrl.c`, which the Android JNI never sets;
+no per-packet `DEBUG` session logging in `android/app/src/main/cpp/chiaki-jni.c`;
+and low-latency decoder hints with a plain retry in
+`android/app/src/main/cpp/video-decoder.c`. Libraries are built `RelWithDebInfo`
+and stripped. See `CLOUD_GAMING_PLAN.md` and `STREAM_TUNING.md`. `ANDROID_NATIVE_ADAPTER.md` records scope and
 evidence. Platform files intentionally remain outside the protocol-crate table
 enforced by ProvenanceGuard.
 

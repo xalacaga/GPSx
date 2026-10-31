@@ -1,0 +1,103 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b31dcd9..ec2f75c 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -167,6 +167,9 @@ if(CHIAKI_ENABLE_SPEEX)
+ 	endif()
+ endif()
+ 
++if(CMAKE_HOST_WIN32 AND DEFINED ENV{GPSX_PROTOBUF_PYTHON})
++	set(PYTHON_EXECUTABLE "$ENV{GPSX_PROTOBUF_PYTHON}" CACHE FILEPATH "Python used by the local Android reference build" FORCE)
++endif()
+ find_package(PythonInterp 3 REQUIRED) # Make sure nanopb doesn't find Python 2.7 because Python 2 should just die.
+ 
+ if(CHIAKI_USE_SYSTEM_NANOPB)
+diff --git a/android/app/src/main/cpp/chiaki-jni.c b/android/app/src/main/cpp/chiaki-jni.c
+index 039a4d9..31c89ac 100644
+--- a/android/app/src/main/cpp/chiaki-jni.c
++++ b/android/app/src/main/cpp/chiaki-jni.c
+@@ -436,7 +436,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject
+ 	AndroidChiakiSession *session = NULL;
+ 	ChiakiLog *log = malloc(sizeof(ChiakiLog));
+ 	const char *log_file = log_file_str ? E->GetStringUTFChars(env, log_file_str, NULL) : NULL;
+-	android_chiaki_file_log_init(log, log_verbose ? CHIAKI_LOG_ALL : (CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE), log_file);
++	// GPSx: drop per-packet DEBUG logging unless verbose logging is requested.
++	android_chiaki_file_log_init(log, log_verbose ? CHIAKI_LOG_ALL : (CHIAKI_LOG_ALL & ~(CHIAKI_LOG_VERBOSE | CHIAKI_LOG_DEBUG)), log_file);
+ 	if(log_file)
+ 		E->ReleaseStringUTFChars(env, log_file_str, log_file);
+ 
+diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
+index a256204..b947733 100644
+--- a/android/app/src/main/cpp/video-decoder.c
++++ b/android/app/src/main/cpp/video-decoder.c
+@@ -102,11 +102,36 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+ 	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
+ 	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
+ 
+-	media_status_t r = AMediaCodec_configure(decoder->codec, format, decoder->window, NULL, 0);
++	// GPSx: low-latency decoding. "low-latency" is honoured from API 30 by decoders that support
++	// it; "priority" 0 asks for real-time scheduling; vendor keys cover Qualcomm, MediaTek and
++	// Exynos decoders. Unknown keys are normally ignored, and a refused configure is retried
++	// without them so video never depends on these hints.
++	AMediaFormat *low_latency_format = AMediaFormat_new();
++	AMediaFormat_setString(low_latency_format, AMEDIAFORMAT_KEY_MIME, mime);
++	AMediaFormat_setInt32(low_latency_format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
++	AMediaFormat_setInt32(low_latency_format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
++	AMediaFormat_setInt32(low_latency_format, "low-latency", 1);
++	AMediaFormat_setInt32(low_latency_format, "priority", 0);
++	AMediaFormat_setInt32(low_latency_format, "vendor.qti-ext-dec-low-latency.enable", 1);
++	AMediaFormat_setInt32(low_latency_format, "vendor.rtc-ext-dec-low-latency.enable", 1);
++	AMediaFormat_setInt32(low_latency_format, "vendor.low-latency.enable", 1);
++	media_status_t r = AMediaCodec_configure(decoder->codec, low_latency_format, decoder->window, NULL, 0);
++	AMediaFormat_delete(low_latency_format);
++	if(r == AMEDIA_OK)
++		CHIAKI_LOGI(decoder->log, "AMediaCodec configured with low-latency hints");
++	else
++	{
++		CHIAKI_LOGW(decoder->log, "AMediaCodec refused low-latency hints (%d), retrying without", (int)r);
++		AMediaCodec_delete(decoder->codec);
++		decoder->codec = AMediaCodec_createDecoderByType(mime);
++		r = decoder->codec ? AMediaCodec_configure(decoder->codec, format, decoder->window, NULL, 0) : AMEDIA_ERROR_UNKNOWN;
++	}
+ 	if(r != AMEDIA_OK)
+ 	{
+ 		CHIAKI_LOGE(decoder->log, "AMediaCodec_configure() failed: %d", (int)r);
+ 		AMediaFormat_delete(format);
++		if(!decoder->codec)
++			goto error_surface;
+ 		goto error_codec;
+ 	}
+ 
+diff --git a/lib/src/ctrl.c b/lib/src/ctrl.c
+index 9e3625b..6b6d94d 100644
+--- a/lib/src/ctrl.c
++++ b/lib/src/ctrl.c
+@@ -890,7 +890,8 @@ static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, s
+ 	{
+ 		ctrl->cant_displaya = false;
+ 		CHIAKI_LOGI(ctrl->session->log, "Ctrl received message that the stream can now display.");
+-		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, false);
++		if(ctrl->session->display_sink.cantdisplay_cb)
++			ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, false);
+ 	}
+ }
+ 
+@@ -900,7 +901,8 @@ static void ctrl_message_received_displayb(ChiakiCtrl *ctrl, uint8_t *payload, s
+ 	{
+ 		if(!(payload[0] == 0x01 && payload[1] == 0xff) && !ctrl->cant_displayb)
+ 		{
+-			ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
++			if(ctrl->session->display_sink.cantdisplay_cb)
++				ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
+ 			CHIAKI_LOGI(ctrl->session->log, "Ctrl received message that the stream can't display due to displaying some content that can't be streamed.");
+ 			ctrl->cant_displayb = true;
+ 		}
+@@ -1394,7 +1396,7 @@ static ChiakiErrorCode ctrl_connect(ChiakiCtrl *ctrl)
+ 	else
+ 		CHIAKI_LOGE(session->log, "No valid Server Type in ctrl response");
+ 
+-	if(response.rp_prohibit)
++	if(response.rp_prohibit && ctrl->session->display_sink.cantdisplay_cb)
+ 		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
+ 
+ 	// if we already got more data than the header, put the rest in the buffer.

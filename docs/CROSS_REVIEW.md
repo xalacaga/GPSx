@@ -1,5 +1,10 @@
 # Independent Claude Code cross-review gates
 
+> **Retired 2026-10-31.** The project owner stopped the independent cross-review
+> gates. This page is kept as a historical record of CR0–CR4. No further gate
+> blocks work; tests, licensing, security and the physical-hardware gate remain.
+
+
 The purpose is adversarial validation, not duplicate implementation. Codex owns
 the active change; Claude Code reviews the frozen diff, evidence, tests, and
 assumptions. A gate is not passed merely because code compiles.

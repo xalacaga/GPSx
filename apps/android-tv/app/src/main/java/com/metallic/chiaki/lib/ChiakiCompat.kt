@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
-// Derived from chiaki-ng commit c8bea2642d0e95402f373af55584a3b98cd89417.
+// Derived from chiaki-ng commit c8bea2642d0e95402f373af55584a3b98cd89417 and
+// Pylux commit ca87a49a12bab071948f565ca53ffdad790775d3 (cloud and PSN fields).
 
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
@@ -36,12 +37,37 @@ data class ConnectVideoProfile(
     val codec: Codec,
 )
 
+// Every property below is read by name from native code; keep names and JVM types.
 data class ConnectInfo(
     val ps5: Boolean,
     val host: String,
     val registKey: ByteArray,
     val morning: ByteArray,
     val videoProfile: ConnectVideoProfile,
+    val serviceType: String? = null,
+    val cloudLaunchSpec: String? = null,
+    val cloudHandshakeKey: String? = null,
+    val cloudSessionId: String? = null,
+    val cloudPort: Int = 0,
+    val cloudPsnWrapperType: Int = 0,
+    val cloudMtuIn: Int = 0,
+    val cloudMtuOut: Int = 0,
+    val cloudRttUs: Long = 0L,
+    val duid: String? = null,
+    val psnAccountId: String? = null,
+    val holepunchSessionPtr: Long = 0L,
+    val autoRegist: Boolean = false,
+)
+
+/** Live stream measurements reported by the native session. */
+data class StreamMetrics(
+    val bitrateMbps: Double,
+    val packetLoss: Double,
+    val framesLost: Long,
+    val fps: Double,
+    val rttMs: Double,
+    val width: Int,
+    val height: Int,
 )
 
 class ErrorCode(val value: Int) {
@@ -128,6 +154,11 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
     fun setControllerState(state: ControllerState) = ChiakiNative.sessionSetControllerState(nativePtr, state)
     fun setLoginPin(pin: String) = ChiakiNative.sessionSetLoginPin(nativePtr, pin)
 
+    fun metrics(): StreamMetrics? {
+        val values = ChiakiNative.sessionGetMetrics(nativePtr)?.takeIf { it.size >= 7 } ?: return null
+        return StreamMetrics(values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt())
+    }
+
     override fun close() {
         val owned = nativePtr
         if (owned == 0L) return
@@ -155,6 +186,17 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
     private fun eventRumble(left: Int, right: Int) {
         eventCallback?.invoke(RumbleEvent(left.toUByte(), right.toUByte()))
     }
+
+    // PSN auto-registration, holepunch and PS-chord callbacks are resolved by the
+    // native session; GPSx does not use those flows yet.
+    @Suppress("unused", "UNUSED_PARAMETER")
+    private fun eventRegist(host: RegistHost) = Unit
+
+    @Suppress("unused")
+    private fun eventHolepunch() = Unit
+
+    @Suppress("unused")
+    private fun eventPsChord() = Unit
 }
 
 class ChiakiLog(
@@ -222,6 +264,90 @@ class Regist(info: RegistInfo, log: ChiakiLog, private val callback: (RegistEven
     private fun event(event: RegistEvent) = callback(event)
 }
 
+/** Progress and cancellation hooks invoked on the provisioning thread. */
+interface CloudProvisionCallbacks {
+    fun onProgress(stage: String)
+    fun isCancelled(): Boolean
+}
+
+/** Result of [cloudProvisionSession]; [err] is 0 when a cloud server is allocated. */
+data class CloudProvisionResult(
+    val err: Int,
+    val serverIp: String,
+    val serverPort: Int,
+    val handshakeKey: String,
+    val launchSpec: String,
+    val sessionId: String,
+    val entitlementId: String,
+    val platform: String,
+    val psnWrapperType: Int,
+    val mtuIn: Int,
+    val mtuOut: Int,
+    val rttMs: Int,
+    val datacenterPings: String,
+    val errorMessage: String,
+)
+
+data class CloudProvisionRequest(
+    val serviceType: String,
+    val gameIdentifier: String,
+    val gameName: String,
+    val npsso: String,
+    val storeCountry: String = "",
+    val storeLang: String = "",
+    val gameLanguage: String = "",
+    val ownedEntitlementId: String = "",
+    val ownedPlatform: String = "",
+    val forcedDatacenter: String = "",
+    val priorDatacentersJson: String = "",
+    val catalogIsForeign: Boolean = false,
+    val resolution: Int = 0,
+    val bitrateKbps: Int = 0,
+)
+
+/** Sends one discovery WAKEUP datagram to [host] using a temporary native socket. */
+fun discoveryWakeup(host: String, userCredential: Long, ps5: Boolean): ErrorCode =
+    ErrorCode(ChiakiNative.discoveryServiceWakeup(0L, host, userCredential, ps5))
+
+/** Installs the CA bundle used by the native HTTPS client. Call once before cloud requests. */
+fun initNativeSsl(cacheDir: String) = ChiakiNative.initNativeSsl(cacheDir)
+
+/** Blocking; returns the unified catalog JSON, or null with the failure detail in [errorOut]. */
+fun cloudCatalogFetchUnified(npsso: String?, locale: String?, cacheDir: String, forceRefresh: Boolean, errorOut: Array<String?>): String? =
+    ChiakiNative.cloudCatalogFetchUnified(npsso, locale, cacheDir, forceRefresh, errorOut)?.toString(Charsets.UTF_8)
+
+fun cloudCatalogInvalidateCache(cacheDir: String) = ChiakiNative.cloudCatalogInvalidateCache(cacheDir)
+
+/** Blocking Kamaji + Gaikai provisioning; call off the main thread. */
+fun cloudProvisionSession(request: CloudProvisionRequest, callbacks: CloudProvisionCallbacks?): CloudProvisionResult {
+    val strings = arrayOfNulls<String>(8)
+    val ints = IntArray(5)
+    val err =
+        with(request) {
+            ChiakiNative.cloudProvisionSession(
+                serviceType, gameIdentifier, gameName, npsso, storeCountry, storeLang, gameLanguage,
+                ownedEntitlementId, ownedPlatform, forcedDatacenter, priorDatacentersJson,
+                catalogIsForeign, resolution, bitrateKbps, callbacks, strings, ints,
+            )
+        }
+    return CloudProvisionResult(
+        err = err,
+        serverIp = strings[0].orEmpty(),
+        serverPort = ints[0],
+        handshakeKey = strings[1].orEmpty(),
+        launchSpec = strings[2].orEmpty(),
+        sessionId = strings[3].orEmpty(),
+        entitlementId = strings[4].orEmpty(),
+        platform = strings[5].orEmpty(),
+        psnWrapperType = ints[1],
+        mtuIn = ints[2],
+        mtuOut = ints[3],
+        rttMs = ints[4],
+        datacenterPings = strings[6].orEmpty(),
+        errorMessage = strings[7].orEmpty(),
+    )
+}
+
 private class ChiakiNative {
     data class CreateResult(var errorCode: Int, var ptr: Long)
 
@@ -241,8 +367,20 @@ private class ChiakiNative {
         @JvmStatic external fun sessionSetSurface(ptr: Long, surface: Surface?)
         @JvmStatic external fun sessionSetControllerState(ptr: Long, state: ControllerState)
         @JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
+        @JvmStatic external fun sessionGetMetrics(ptr: Long): DoubleArray?
         @JvmStatic external fun registStart(result: CreateResult, info: RegistInfo, log: ChiakiLog, regist: Regist)
         @JvmStatic external fun registStop(ptr: Long)
         @JvmStatic external fun registFree(ptr: Long)
+        @JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean): Int
+        @JvmStatic external fun initNativeSsl(cacheDir: String)
+        @JvmStatic external fun cloudCatalogFetchUnified(npsso: String?, locale: String?, cacheDir: String, forceRefresh: Boolean, errorOut: Array<String?>): ByteArray?
+        @JvmStatic external fun cloudCatalogInvalidateCache(cacheDir: String)
+        @JvmStatic external fun cloudProvisionSession(
+            serviceType: String, gameIdentifier: String, gameName: String, npsso: String,
+            storeCountry: String, storeLang: String, gameLanguage: String,
+            ownedEntitlementId: String, ownedPlatform: String, forcedDatacenter: String,
+            priorDatacentersJson: String, catalogIsForeign: Boolean, resolution: Int, bitrateKbps: Int,
+            callbacks: CloudProvisionCallbacks?, stringOut: Array<String?>, intOut: IntArray,
+        ): Int
     }
 }

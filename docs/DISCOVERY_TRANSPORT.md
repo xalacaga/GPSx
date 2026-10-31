@@ -108,3 +108,18 @@ broadcasts.
 The transport test suite passed 50 consecutive runs under local CPU load after
 the response windows were raised to 500 milliseconds. This is stability evidence
 for this Windows host only, not a timing or performance claim.
+
+## PS5 wake-up
+
+`RemotePlayEngine.wakeConsole()` sends one discovery `WAKEUP` datagram to the
+registered PS5 (UDP 9302) through the pinned native engine. The user credential
+is the registration key's ASCII hex text read as an unsigned 64-bit number; an
+unusable key fails closed and asks for a new pairing. GPSx then probes TCP 9295
+every 1.5 s for up to 60 s and reports `READY` once the console accepts session
+requests, or a classified failure. **Start stream** runs the same wake step when
+an 800 ms probe finds the console asleep. The credential is never logged.
+
+FACT (2026-10-31): from the Google TV API 36 emulator, the wake-up brought the
+real PS5 out of rest mode and the following session streamed its home screen.
+Emulator UDP unicast reaches the LAN directly; no host bridge is needed. This is
+not GP520 evidence.

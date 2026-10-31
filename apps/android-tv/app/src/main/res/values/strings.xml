@@ -4,6 +4,7 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_consoles">Consoles</string>
     <string name="nav_session">Session</string>
+    <string name="nav_cloud">Cloud</string>
     <string name="nav_controllers">Manettes</string>
     <string name="nav_diagnostics">Diagnostics</string>
     <string name="nav_settings">Paramètres</string>

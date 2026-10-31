@@ -7,6 +7,7 @@ enum class Destination(@StringRes val labelRes: Int) {
     HOME(R.string.nav_home),
     CONSOLES(R.string.nav_consoles),
     SESSION(R.string.nav_session),
+    CLOUD(R.string.nav_cloud),
     CONTROLLERS(R.string.nav_controllers),
     DIAGNOSTICS(R.string.nav_diagnostics),
     SETTINGS(R.string.nav_settings),

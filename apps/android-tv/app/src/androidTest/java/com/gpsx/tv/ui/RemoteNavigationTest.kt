@@ -41,10 +41,11 @@ class RemoteNavigationTest {
             listOf(
                 Triple(1, "Consoles", "Vos consoles"),
                 Triple(2, "Session", "Session PS5"),
-                Triple(3, "Manettes", "Manettes Bluetooth"),
-                Triple(4, "Diagnostics", "Santé de la session"),
-                Triple(5, "Paramètres", "Préférences de lecture"),
-                Triple(6, "À propos", "À propos de GPSx"),
+                Triple(3, "Cloud", "PlayStation Plus"),
+                Triple(4, "Manettes", "Manettes Bluetooth"),
+                Triple(5, "Diagnostics", "Santé de la session"),
+                Triple(6, "Paramètres", "Préférences de lecture"),
+                Triple(7, "À propos", "À propos de GPSx"),
             )
 
         destinations.forEach { (downPresses, navigationLabel, title) ->

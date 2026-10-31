@@ -4,6 +4,11 @@ GPSx includes an on-device measurement lab so GP520 sessions can produce
 reproducible evidence without attaching a debugger. Local capture works without
 GitHub or Internet access. GitHub transfer is an optional second step.
 
+First implementation (2026-10-31): one `gpsx-stream-test/1` JSON report per
+streamed session, uploaded on request through the GitHub contents API to the
+private diagnostics repository; see `INSTALL_GP520.md`. Guided scenarios and the
+zip bundle below remain planned.
+
 ## Guided scenarios
 
 - Quick health check: 2 minutes.

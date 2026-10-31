@@ -20,9 +20,19 @@ val gpsxAndroidNdk = file(checkNotNull(gpsxAndroidSdk) { "Android SDK path is re
 val chiakiPrebuiltDir =
     providers.gradleProperty("chiakiPrebuiltDir").orElse(
         rootProject.layout.projectDirectory.dir(
-            "../../.tools/chiaki-ng-c8bea264/android/app/build/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib",
+            "../../.tools/pylux-ca87a49-release/lib",
         ).asFile.absolutePath,
     )
+
+// Release signing material lives outside the repository (default ~/.gpsx/signing.properties)
+// with storeFile, storePassword, keyAlias and keyPassword. It is never committed.
+val gpsxSigning = Properties().apply {
+    val path =
+        providers.gradleProperty("gpsxSigningProperties").orNull
+            ?: "${System.getProperty("user.home")}/.gpsx/signing.properties"
+    val signingFile = file(path)
+    if (signingFile.isFile) signingFile.inputStream().use(::load)
+}
 
 fun gitOutput(vararg arguments: String): String {
     return providers.exec {
@@ -60,8 +70,8 @@ android {
         applicationId = "com.gpsx.tv"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         buildConfigField("String", "SOURCE_REPOSITORY_URL", "\"https://github.com/xalacaga/GPSx\"")
         buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
@@ -91,8 +101,22 @@ android {
         }
     }
 
+    signingConfigs {
+        if (gpsxSigning.getProperty("storeFile") != null) {
+            create("gpsxRelease") {
+                storeFile = file(gpsxSigning.getProperty("storeFile"))
+                storePassword = gpsxSigning.getProperty("storePassword")
+                keyAlias = gpsxSigning.getProperty("keyAlias")
+                keyPassword = gpsxSigning.getProperty("keyPassword")
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("gpsxRelease")
             isMinifyEnabled = false
             buildConfigField(
                 "String",
@@ -111,7 +135,8 @@ android {
         buildConfig = true
     }
 
-    // Emulator-first integration of the audited, pinned chiaki-ng build.
+    // Pinned Pylux build (chiaki-ng superset with cloud gaming), optimized RelWithDebInfo and stripped;
+    // see docs/STREAM_TUNING.md.
     // CI/release packaging must provide -PchiakiPrebuiltDir explicitly.
     sourceSets.getByName("main").jniLibs.directories.add(file(chiakiPrebuiltDir.get()).absolutePath)
     sourceSets.getByName("main").jniLibs.directories.add(rootProject.file("../../target/android-jni").absolutePath)
@@ -218,6 +243,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

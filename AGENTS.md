@@ -27,6 +27,7 @@ Rules:
 - Portable core crates use `#![forbid(unsafe_code)]`. `unsafe` is allowed only in FFI/adapter crates; every `unsafe` block carries a `// SAFETY:` comment stating its invariants (enforced with `clippy::undocumented_unsafe_blocks`). Run Miri where feasible and ASan/HWASan on Android native code.
 - Controller button edges and trigger engage/release crossings (0 ↔ non-zero) are never coalesced or dropped between capture and the wire. Stick, motion, and intermediate trigger values are continuous state and may be coalesced (latest wins).
 - Every authored Markdown document exists in English (`NAME.md`, the reference version) and French (`NAME.fr.md`). Update both in the same change. Third-party tooling under `.codex/` and generated files under `graphify-out/` are excluded.
-- Request an independent Claude Code cross-review at the gates in `docs/CROSS_REVIEW.md`. Stop and tell the user when a gate is reached; provide the exact review scope and prompt before advancing.
+- Independent cross-review gates were retired by the project owner on 2026-10-31 (see `docs/CROSS_REVIEW.md`). Work proceeds without stopping for review; the testing, licensing, security and hardware rules above still apply.
+- The current product target is Android TV. Windows is not a delivery target for now; keep the portable core cross-compilable but do not schedule Windows client work.
 - Follow `docs/OFFLINE_FIRST.md`: do not connect to, probe, sideload, or require the GP520 before the user explicitly opens the physical-hardware gate. Emulator and replay results are never GP520 evidence.
 - A change is complete only when relevant tests pass, failure behavior is documented, and performance-sensitive changes have before/after evidence.

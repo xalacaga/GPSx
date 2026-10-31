@@ -46,3 +46,11 @@ Owner authorization to conduct CR4 review and owner authorization for physical
 access are distinct decisions. The former freezes and reviews an emulator-only
 adapter diff; the latter may occur only after `GO` and names a date and scope.
 
+## Physical gate opened (2026-10-31)
+
+The project owner opened the GP520 test channel on 2026-10-31. Scope: the owner
+installs the signed release APK with Downloader, runs streams on the GP520, and
+uploads the per-session reports to the private `xalacaga/GPSx-diagnostics`
+repository (see `INSTALL_GP520.md`). Agents still never connect to, probe or
+sideload the GP520 themselves; they analyse the uploaded reports. Device reports
+carry `evidenceClass: DEVICE`; emulator reports stay `EMULATOR`.

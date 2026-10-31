@@ -1,3 +1,5 @@
 Cargo.lock text eol=lf
 *.sh text eol=lf
 tests/fixtures/*.json -text
+# Patches must keep their exact bytes to apply on upstream sources.
+*.patch -text

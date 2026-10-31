@@ -1,0 +1,15 @@
+# Moteur natif Pylux
+
+GPSx embarque le moteur natif Remote Play et cloud PlayStation Plus construit
+depuis [Pylux](https://github.com/ForWard-Technologies-LLC/Pylux), commit
+`ca87a49a12bab071948f565ca53ffdad790775d3`, sous licence AGPL-3.0-only avec
+l'exception OpenSSL (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
+
+`gpsx-pylux-ca87a49.patch` contient les modifications GPSx : surcharge Python
+protobuf pour hôte Windows, tests de nullité avant `display_sink.cantdisplay_cb`,
+aucune journalisation de session DEBUG par paquet, et indications basse latence
+du décodeur avec nouvel essai simple.
+
+Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
+avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et
+`docs/STREAM_TUNING.fr.md`.
