@@ -156,13 +156,13 @@ data class ControllerState(
     fun detachedCopy(): ControllerState = copy(touches = touches.map(ControllerTouch::copy).toTypedArray())
 }
 
-class Session(connectInfo: ConnectInfo) : AutoCloseable {
+class Session(connectInfo: ConnectInfo, logFile: String? = null) : AutoCloseable {
     private var nativePtr: Long
     var eventCallback: ((SessionEvent) -> Unit)? = null
 
     init {
         val result = ChiakiNative.CreateResult(0, 0)
-        ChiakiNative.sessionCreate(result, connectInfo, null, false, this)
+        ChiakiNative.sessionCreate(result, connectInfo, logFile, false, this)
         val error = ErrorCode(result.errorCode)
         if (!error.isSuccess) throw CreateError(error)
         nativePtr = result.ptr

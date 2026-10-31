@@ -9,6 +9,7 @@ import org.json.JSONObject
 /** Largest link that still gives a QR code a phone can scan from a TV screen. */
 internal const val MAX_QR_URL_LENGTH = 1_800
 internal const val DIAGNOSTICS_REPOSITORY = "xalacaga/GPSx-diagnostics"
+private const val MAX_QR_LOG_LINES = 6
 
 /** Repository path for a report file: results/YYYY/MM/<name>. */
 internal fun reportPath(fileName: String): String {
@@ -62,8 +63,15 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
         "decode ${stat("decodeLatencyMs")}",
         "video codec ${num(video.opt("decodedCodec"))} nodec ${num(video.opt("samplesWithoutDecoder"))} queued ${num(video.opt("samplesQueued"))} rendered ${num(video.opt("framesRendered"))} dropped ${num(video.opt("framesDroppedLate"))}",
         "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))} route ${num(audio.opt("route"))}",
-        "samples t fps mbps rtt loss lost audio",
     )
+    report.optJSONArray("log")?.let { log ->
+        for (index in 0 until minOf(log.length(), MAX_QR_LOG_LINES)) {
+            val entry = log.optJSONObject(index) ?: continue
+            val text = entry.optString("message").replace(Regex("[^A-Za-z0-9#.:_ -]"), "").replace(' ', '_').take(70)
+            lines += "log ${entry.optInt("count")} $text"
+        }
+    }
+    lines += "samples t fps mbps rtt loss lost audio"
     val samples = report.getJSONArray("samples")
     val count = samples.length()
     if (count > 0 && maxSamples > 0) {

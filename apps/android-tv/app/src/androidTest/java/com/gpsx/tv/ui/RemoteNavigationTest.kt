@@ -49,10 +49,10 @@ class RemoteNavigationTest {
             )
 
         destinations.forEach { (downPresses, navigationLabel, title) ->
-            repeat(10) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP) }
+            repeat(10) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_LEFT) }
             composeRule.onNode(hasText("Accueil") and hasClickAction()).assertIsFocused().assertIsSelected()
             repeat(downPresses) {
-                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN)
+                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT)
             }
             val navigationNode = composeRule.onNode(hasText(navigationLabel) and hasClickAction())
             navigationNode.assertIsFocused()
@@ -92,8 +92,8 @@ class RemoteNavigationTest {
     @OptIn(ExperimentalTestApi::class)
     fun registrationFieldsTraverseWithVerticalDpad() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        repeat(10) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP) }
-        repeat(2) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(10) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_LEFT) }
+        repeat(2) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT) }
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
         composeRule.waitUntil(timeoutMillis = 2_000) {
             composeRule.onAllNodesWithText("Session PS5").fetchSemanticsNodes().isNotEmpty()

@@ -36,7 +36,10 @@ import com.metallic.chiaki.lib.setDecoderLowLatencyHints
 import com.metallic.chiaki.lib.setPreferredAudioDevice
 import java.net.InetSocketAddress
 import java.net.Socket
+import com.gpsx.tv.diagnostics.LogDigestEntry
 import com.gpsx.tv.diagnostics.StreamTestRecorder
+import com.gpsx.tv.diagnostics.digestSessionLog
+import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -88,6 +91,9 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
     private var registration: Regist? = null
     private var session: Session? = null
     private var surface: Surface? = null
+
+    /** Native session log in app-private cache, summarised into the test report and then deleted. */
+    private val sessionLogFile = applicationContext?.let { File(it.cacheDir, "session.log") }
 
     private val settings = applicationContext?.getSharedPreferences("gpsx_engine_settings", Context.MODE_PRIVATE)
 
@@ -340,7 +346,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
                 runCatching { streamWifiLock?.acquire() }
                 runCatching { applyAudioApiPreference() }
                 runCatching { setDecoderLowLatencyHints(decoderLowLatency) }
-                val newSession = Session(connectInfo)
+                val newSession = Session(connectInfo, sessionLogFile?.absolutePath)
                 newSession.eventCallback = { event ->
                     when (event) {
                         ConnectedEvent -> {
@@ -505,7 +511,15 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             runCatching { owned.close() }
         }
         runCatching { if (streamWifiLock?.isHeld == true) streamWifiLock?.release() }
-        finishTestRecording()
+        // The native log is closed by close(); summarise it into the report, then delete it.
+        val digest =
+            if (owned == null) {
+                emptyList()
+            } else {
+                runCatching { sessionLogFile?.takeIf(File::exists)?.useLines(Charsets.UTF_8, ::digestSessionLog) }.getOrNull().orEmpty()
+            }
+        runCatching { sessionLogFile?.delete() }
+        finishTestRecording(digest)
     }
 
     private fun beginTestRecording(connectInfo: ConnectInfo) {
@@ -527,12 +541,12 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         }
     }
 
-    private fun finishTestRecording() {
+    private fun finishTestRecording(logDigest: List<LogDigestEntry> = emptyList()) {
         synchronized(lock) {
             sampling?.cancel(false)
             sampling = null
         }
-        testRecorder?.finish(endReason)
+        testRecorder?.finish(endReason, logDigest)
     }
 
     private fun publish(phase: RemotePlayPhase, detail: String, consoleName: String? = snapshot().consoleName) {

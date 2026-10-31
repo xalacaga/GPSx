@@ -77,6 +77,7 @@ fun buildStreamTestReport(
     endedAtIso: String,
     endReason: String,
     samples: List<StreamSample>,
+    logDigest: List<LogDigestEntry> = emptyList(),
 ): JSONObject {
     // The first 5 s are connection warm-up and are excluded from the summary.
     val steady = samples.filter { it.tSeconds >= WARMUP_SECONDS }
@@ -160,6 +161,12 @@ fun buildStreamTestReport(
                         .put("routes", JSONArray(samples.map { it.audioRoute }.filter(String::isNotEmpty).distinct()))
                         .put("api", when (samples.lastOrNull()?.audioState) { 1 -> "AAudio"; 3 -> "OpenSLES"; 2 -> "failed"; else -> "none" }),
                 ),
+        )
+        put(
+            "log",
+            JSONArray().apply {
+                logDigest.forEach { put(JSONObject().put("count", it.count).put("message", it.message)) }
+            },
         )
         put(
             "samples",

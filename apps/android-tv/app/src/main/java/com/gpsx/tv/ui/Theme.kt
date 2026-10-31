@@ -5,25 +5,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
-val Ink = Color(0xFF07131D)
-val DeepBlue = Color(0xFF0B1C28)
-val RaisedBlue = Color(0xFF112C3C)
-val Mint = Color(0xFF54F0BD)
-val Sky = Color(0xFF79AFFF)
-val SoftWhite = Color(0xFFF3F8FB)
-val Muted = Color(0xFF9CB0BC)
-val Amber = Color(0xFFFFC96B)
-val Danger = Color(0xFFFF7D86)
+// Arcade palette: near-black, warm off-white text and one signal colour for focus and action.
+// No gradients, no tinted glass: contrast that still reads on a projector at three metres.
+val Ink = Color(0xFF0C0C0D)
+val Panel = Color(0xFF161618)
+val PanelRaised = Color(0xFF202023)
+val Line = Color(0xFF2E2E33)
+val Signal = Color(0xFFFF5A1F)
+val Chalk = Color(0xFFC9C4BA)
+val SoftWhite = Color(0xFFF4F1EA)
+val Muted = Color(0xFF8D8A84)
+val Amber = Color(0xFFFFC400)
+val Danger = Color(0xFFFF3B3B)
+val Go = Color(0xFF3DDC84)
 
 private val GpsxColors =
     darkColorScheme(
-        primary = Mint,
+        primary = Signal,
         onPrimary = Ink,
-        secondary = Sky,
+        secondary = Chalk,
         onSecondary = Ink,
         background = Ink,
         onBackground = SoftWhite,
-        surface = DeepBlue,
+        surface = Panel,
         onSurface = SoftWhite,
         error = Danger,
     )
@@ -32,4 +36,3 @@ private val GpsxColors =
 fun GpsxTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = GpsxColors, content = content)
 }
-

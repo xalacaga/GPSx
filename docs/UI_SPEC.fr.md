@@ -6,11 +6,18 @@ session explicites avant toute autorisation de connexion à une console ou au GP
 
 ## Direction visuelle
 
-- Fond cinéma sombre, profondeur bleue discrète, focus menthe et alertes ambre.
-- Grande typographie et anneaux de focus contrastés lisibles à distance TV.
-- Rail persistant à six entrées : Accueil, Consoles, Lecture, Manettes, Diagnostics et Réglages.
-- Panneaux arrondis et mouvements sobres ; aucune animation décorative ne masque le focus ou n’ajoute de latence.
-- Toute valeur synthétique porte une mention visible `DONNÉES SIMULÉES`.
+- Direction « salle d’arcade » : fond quasi noir, texte blanc cassé chaud et un
+  seul orange signal pour le focus et l’action principale. Ni dégradés, ni verre
+  teinté, ni cartes arrondies.
+- Titres très grands, serrés et très gras, lisibles à trois mètres d’un projecteur.
+- Barre d’onglets horizontale en haut (un onglet par destination) avec le nombre
+  de manettes connectées ; elle disparaît pendant le stream, et remonter depuis
+  un écran ramène sur l’onglet actif.
+- Focus : tuiles et lignes prennent un cadre orange de 3 dp, boutons et onglets
+  se remplissent d’orange ; la tuile « Jouer » de l’Accueil devient orange.
+- Uniquement des données réelles : ni mesures simulées ni fonctions fictives.
+- Le G du logo est orange ; l’écran À propos s’ouvre sur la phrase du
+  propriétaire « Gaby's game », conservée telle quelle.
 
 ## Contrat d’interaction
 

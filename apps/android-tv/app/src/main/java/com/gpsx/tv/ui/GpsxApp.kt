@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,13 +42,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.key.Key
@@ -62,7 +63,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,7 +98,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val PanelShape = RoundedCornerShape(22.dp)
+private val PanelShape = RoundedCornerShape(3.dp)
 
 private data class ResponsiveLayout(
     val compact: Boolean,
@@ -175,33 +179,25 @@ fun GpsxApp(engine: RemotePlayEngine) {
         dispatch(UiAction.Navigate(Destination.HOME))
     }
 
-    BoxWithConstraints(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(Ink, Color(0xFF092336), Color(0xFF07131D)),
-                    ),
-                ),
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Ink)) {
         val responsive = ResponsiveLayout(compact = maxWidth < 1100.dp, short = maxHeight < 650.dp)
         CompositionLocalProvider(
             LocalContentColor provides SoftWhite,
             LocalResponsiveLayout provides responsive,
         ) {
-            Row(Modifier.fillMaxSize()) {
-                NavigationRail(
+            Column(Modifier.fillMaxSize()) {
+                TopBar(
                     state.destination,
                     firstLegalFocusRequester,
+                    controllerCount = controllers.size,
                     visible = !fullscreenStream,
                     onNavigate = { dispatch(UiAction.Navigate(it)) },
                 )
-                Box(Modifier.fillMaxSize().padding(start = if (fullscreenStream) 0.dp else 12.dp)) {
+                Box(Modifier.fillMaxSize()) {
                     key(state.destination) {
                         when (state.destination) {
-                            Destination.HOME -> HomeScreen(state, ::dispatch)
-                            Destination.CONSOLES -> ConsolesScreen(::dispatch)
+                            Destination.HOME -> HomeScreen(remote, controllers, cloudState, ::dispatch)
+                            Destination.CONSOLES -> ConsolesScreen(remote, ::dispatch)
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.CONTROLLERS ->
@@ -219,103 +215,108 @@ fun GpsxApp(engine: RemotePlayEngine) {
     }
 }
 
+/** Horizontal arcade bar: wordmark, one tab per destination, live pad count. Hidden while streaming. */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun NavigationRail(
+private fun TopBar(
     selected: Destination,
     firstLegalFocusRequester: FocusRequester,
+    controllerCount: Int,
     visible: Boolean = true,
     onNavigate: (Destination) -> Unit,
 ) {
     val responsive = LocalResponsiveLayout.current
     val homeFocusRequester = remember { FocusRequester() }
+    val tabRequesters = remember { Destination.entries.associateWith { FocusRequester() } }
+    // Kept in composition while streaming so focus is not reset to Home when the bar comes back.
     LaunchedEffect(homeFocusRequester) {
         homeFocusRequester.requestFocus()
     }
-
-    Column(
-        modifier =
-            Modifier
-                .width(if (!visible) 0.dp else if (responsive.compact) 180.dp else 224.dp)
-                .fillMaxHeight()
-                .background(Color(0xB3081823))
-                .padding(
-                    horizontal = if (responsive.compact) 16.dp else 24.dp,
-                    vertical = if (responsive.short) 16.dp else 28.dp,
-                ),
-    ) {
-        if (!visible) return@Column
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Mint),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("G", color = Ink, fontWeight = FontWeight.Black, fontSize = 24.sp)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text("GPSx", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("REMOTE PLAY", fontSize = 7.sp, color = Muted, letterSpacing = 1.2.sp, maxLines = 1)
-                Text("REPENSÉ", fontSize = 7.sp, color = Muted, letterSpacing = 1.2.sp, maxLines = 1)
-            }
-        }
-
-        Spacer(Modifier.height(if (responsive.short) 18.dp else 36.dp))
-        Destination.entries.forEach { destination ->
-            NavItem(
-                destination = destination,
-                selected = destination == selected,
-                onClick = { onNavigate(destination) },
-                modifier =
-                    when (destination) {
-                        Destination.HOME -> Modifier.focusRequester(homeFocusRequester)
-                        Destination.ABOUT -> Modifier.focusProperties { right = firstLegalFocusRequester }
-                        else -> Modifier
-                    },
+    if (!visible) return
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (responsive.compact) 24.dp else 44.dp,
+                vertical = if (responsive.short) 8.dp else 14.dp,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // The orange G is a quiet nod to Gaby; never spelled out in the UI (owner request).
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = Signal)) { append("G") }
+                    append("PSx")
+                },
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
             )
-            Spacer(Modifier.height(if (responsive.short) 3.dp else 7.dp))
+            Box(Modifier.padding(start = 3.dp, bottom = 10.dp).size(7.dp).background(Signal))
+            Spacer(Modifier.width(if (responsive.compact) 18.dp else 36.dp))
+            // Coming up from a screen lands on the active tab, not on whichever tab is nearest.
+            Row(
+                Modifier.weight(1f).focusProperties { enter = { tabRequesters.getValue(selected) } }.focusGroup(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Destination.entries.forEach { destination ->
+                    NavItem(
+                        destination = destination,
+                        selected = destination == selected,
+                        onClick = { onNavigate(destination) },
+                        modifier =
+                            when (destination) {
+                                Destination.HOME -> Modifier.focusRequester(homeFocusRequester)
+                                Destination.ABOUT -> Modifier.focusProperties { down = firstLegalFocusRequester }
+                                else -> Modifier
+                            }.focusRequester(tabRequesters.getValue(destination)),
+                    )
+                }
+            }
+            Text(
+                if (controllerCount == 0) "○ aucune manette" else "● $controllerCount manette${if (controllerCount > 1) "s" else ""}",
+                color = if (controllerCount == 0) Muted else SoftWhite,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
-
-        Spacer(Modifier.weight(1f))
-        StatusPill(stringResource(R.string.offline_badge), Mint)
-        Spacer(Modifier.height(10.dp))
-        Text(stringResource(R.string.no_hardware), color = Muted, fontSize = 11.sp)
-        Text("Prototype local · v0.1", color = Muted.copy(alpha = .65f), fontSize = 10.sp)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
     }
 }
 
 @Composable
 private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
-    val fill = when {
-        focused -> Color(0xFF1D4657)
-        selected -> Color(0xFF143344)
-        else -> Color.Transparent
-    }
-    Row(
+    Column(
         modifier =
             modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(fill)
-                .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(14.dp)) else Modifier)
                 .onFocusChanged { focused = it.isFocused }
                 .semantics { this.selected = selected }
                 .clickable(role = Role.Tab, onClick = onClick)
-                .padding(horizontal = 15.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
+                .background(if (focused) Signal else Color.Transparent)
+                .padding(horizontal = 9.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             stringResource(destination.labelRes),
-            color = if (selected || focused) SoftWhite else Muted,
-            fontSize = 14.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = when {
+                focused -> Ink
+                selected -> SoftWhite
+                else -> Muted
+            },
+            fontSize = 13.sp,
+            fontWeight = if (selected || focused) FontWeight.Black else FontWeight.Medium,
+            maxLines = 1,
         )
+        Spacer(Modifier.height(3.dp))
+        Box(Modifier.height(3.dp).width(if (selected) 18.dp else 0.dp).background(if (focused) Ink else Signal))
     }
 }
 
+/** Screen header: one big tight title, a short signal rule and a single muted line. */
 @Composable
 private fun ScreenFrame(
-    eyebrow: String,
+    @Suppress("UNUSED_PARAMETER") eyebrow: String,
     title: String,
     subtitle: String,
     fullscreen: Boolean = false,
@@ -326,24 +327,28 @@ private fun ScreenFrame(
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
-                start = if (fullscreen) 0.dp else if (responsive.compact) 22.dp else 38.dp,
-                end = if (fullscreen) 0.dp else if (responsive.compact) 24.dp else 46.dp,
-                top = if (fullscreen) 0.dp else if (responsive.short) 18.dp else 34.dp,
+                start = if (fullscreen) 0.dp else if (responsive.compact) 24.dp else 44.dp,
+                end = if (fullscreen) 0.dp else if (responsive.compact) 24.dp else 44.dp,
+                top = if (fullscreen) 0.dp else if (responsive.short) 14.dp else 28.dp,
                 bottom = if (fullscreen) 0.dp else if (responsive.short) 18.dp else 34.dp,
             ),
         verticalArrangement = Arrangement.spacedBy(if (responsive.short) 12.dp else 18.dp),
     ) {
         item {
             if (!fullscreen) {
-                Text(eyebrow.uppercase(), color = Mint, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                 Text(
                     title,
-                    fontSize = if (responsive.compact) 29.sp else 35.sp,
-                    lineHeight = if (responsive.compact) 34.sp else 40.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = if (responsive.compact) 38.sp else 50.sp,
+                    lineHeight = if (responsive.compact) 40.sp else 52.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-1.5).sp,
                 )
-                Spacer(Modifier.height(5.dp))
-                Text(subtitle, color = Muted, fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(28.dp).height(3.dp).background(Signal))
+                    Spacer(Modifier.width(12.dp))
+                    Text(subtitle, color = Muted, fontSize = 13.sp, maxLines = 2)
+                }
             }
         }
         item { content() }
@@ -351,136 +356,139 @@ private fun ScreenFrame(
 }
 
 @Composable
-private fun HomeScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
+private fun HomeScreen(
+    remote: RemotePlaySnapshot,
+    controllers: List<ConnectedGameController>,
+    cloudState: CloudSnapshot,
+    dispatch: (UiAction) -> Unit,
+) {
     val responsive = LocalResponsiveLayout.current
     ScreenFrame(
-        eyebrow = "Expérience salon",
+        eyebrow = "",
         title = "Bonsoir.",
-        subtitle = "Tout ce qui compte, immédiatement accessible à la télécommande ou à la DualSense.",
+        subtitle = remote.consoleName?.let { "$it · ${remote.phase.homeLabel()}" } ?: "Aucune PS5 associée : commencez par Session.",
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            HeroPanel(state, dispatch)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MetricCard("LATENCE LAN", "4,8 ms", "simulation", Mint, Modifier.weight(1f))
-                MetricCard("FLUIDITÉ", "59,9 fps", "simulation", Sky, Modifier.weight(1f))
-                if (!responsive.compact) {
-                    MetricCard("DÉCODAGE", "8,2 ms", "simulation", Amber, Modifier.weight(1f))
-                    MetricCard("PERTES", "0,02 %", "simulation", Mint, Modifier.weight(1f))
-                }
-                }
-                if (responsive.compact) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MetricCard("DÉCODAGE", "8,2 ms", "simulation", Amber, Modifier.weight(1f))
-                MetricCard("PERTES", "0,02 %", "simulation", Mint, Modifier.weight(1f))
-                }
+        val tileHeight = if (responsive.short) 92.dp else 118.dp
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PlayTile(
+                console = remote.consoleName ?: "PS5",
+                status = remote.phase.homeLabel(),
+                statusColor = remote.phase.homeColor(),
+                modifier = Modifier.weight(1.6f).height(tileHeight * 3 + 24.dp),
+            ) { dispatch(UiAction.StartDemo) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ArcadeTile(
+                    title = "Cloud",
+                    detail =
+                        when {
+                            !cloudState.signedIn -> "Connecter le compte PSN"
+                            cloudState.games.isEmpty() -> "Catalogue PlayStation Plus"
+                            else -> "${cloudState.games.count(CloudGame::playable)} jeux jouables"
+                        },
+                    modifier = Modifier.fillMaxWidth().height(tileHeight),
+                ) { dispatch(UiAction.Navigate(Destination.CLOUD)) }
+                ArcadeTile(
+                    title = "Manettes",
+                    detail =
+                        when (controllers.size) {
+                            0 -> "Aucune connectée"
+                            1 -> controllers.first().name
+                            else -> "${controllers.size} connectées"
+                        },
+                    modifier = Modifier.fillMaxWidth().height(tileHeight),
+                ) { dispatch(UiAction.Navigate(Destination.CONTROLLERS)) }
+                ArcadeTile(
+                    title = "Réglages",
+                    detail = "Image, son, mises à jour",
+                    modifier = Modifier.fillMaxWidth().height(tileHeight),
+                ) { dispatch(UiAction.Navigate(Destination.SETTINGS)) }
             }
-            SectionTitle("Accès rapide", "Fonctions essentielles et avancées")
-            FeatureGrid(
-                listOf(
-                    Triple("Connexion distante", "PSN · planifiée", "◎"),
-                    Triple("Inspecteur manette", "Entrées en direct", "✦"),
-                    Triple("Profils", "Utilisateurs multiples", "◉"),
-                    Triple("Exporter les réglages", "JSON sans secrets", "⇧"),
-                ),
-            )
+        }
+    }
+}
+
+/** The one big call to action: fills with the signal colour when focused. */
+@Composable
+private fun PlayTile(console: String, status: String, statusColor: Color, modifier: Modifier, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val ink = if (focused) Ink else SoftWhite
+    Column(
+        modifier
+            .background(if (focused) Signal else Panel)
+            .then(if (focused) Modifier else Modifier.border(1.dp, Line))
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(28.dp),
+    ) {
+        Text("▶", color = if (focused) Ink else Signal, fontSize = 30.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.weight(1f))
+        Text("Jouer", color = ink, fontSize = 64.sp, lineHeight = 64.sp, fontWeight = FontWeight.Black, letterSpacing = (-2.5).sp)
+        Spacer(Modifier.height(6.dp))
+        Text(console, color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(9.dp).background(if (focused) Ink else statusColor))
+            Spacer(Modifier.width(8.dp))
+            Text(status, color = if (focused) Ink else Chalk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun HeroPanel(state: AppUiState, dispatch: (UiAction) -> Unit) {
-    val responsive = LocalResponsiveLayout.current
+private fun ArcadeTile(title: String, detail: String, modifier: Modifier, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(if (responsive.compact) 220.dp else 246.dp)
-                .clip(PanelShape)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(Color(0xFF123A4A), Color(0xFF102B4B), Color(0xFF321E4D)),
-                    ),
-                )
-                .padding(28.dp),
+        modifier
+            .background(if (focused) PanelRaised else Panel)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            StatusPill(stringResource(R.string.offline_badge), Amber)
-            Spacer(Modifier.height(15.dp))
-            Text(stringResource(R.string.hero_title), fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(9.dp))
-            Text(
-                stringResource(R.string.hero_subtitle),
-                color = Color(0xFFC7D8E3),
-                fontSize = 13.sp,
-            )
-            Spacer(Modifier.weight(1f))
-            FocusButton(stringResource(R.string.start_demo), primary = true) { dispatch(UiAction.StartDemo) }
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
+            Text(detail, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (!responsive.compact) Box(Modifier.width(330.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier.size(225.dp).clip(CircleShape).background(Mint.copy(alpha = .08f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier.width(172.dp).height(108.dp).clip(RoundedCornerShape(29.dp))
-                        .border(2.dp, SoftWhite.copy(alpha = .75f), RoundedCornerShape(29.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("PS5", fontSize = 29.sp, fontWeight = FontWeight.Light, letterSpacing = 5.sp)
-                }
-            }
-            StatusPill(
-                if (state.sessionPhase == SessionPhase.STREAMING) {
-                    stringResource(R.string.streaming)
-                } else {
-                    stringResource(R.string.ready)
-                },
-                if (state.sessionPhase == SessionPhase.STREAMING) Mint else Sky,
-                modifier = Modifier.align(Alignment.BottomEnd),
-            )
-        }
+        Text("→", color = if (focused) Signal else Line, fontSize = 26.sp, fontWeight = FontWeight.Black)
     }
 }
 
+private fun RemotePlayPhase.homeLabel(): String =
+    when (this) {
+        RemotePlayPhase.NEEDS_REGISTRATION -> "à associer"
+        RemotePlayPhase.REGISTERING -> "association…"
+        RemotePlayPhase.READY -> "prête"
+        RemotePlayPhase.CONNECTING -> "connexion…"
+        RemotePlayPhase.STREAMING -> "en jeu"
+        RemotePlayPhase.LOGIN_PIN_REQUIRED -> "PIN demandé"
+        RemotePlayPhase.WAKING -> "réveil…"
+        RemotePlayPhase.STOPPING -> "arrêt…"
+        RemotePlayPhase.STOPPED -> "prête"
+        RemotePlayPhase.FAILED -> "échec, réessayer"
+    }
+
+private fun RemotePlayPhase.homeColor(): Color =
+    when (this) {
+        RemotePlayPhase.READY, RemotePlayPhase.STOPPED, RemotePlayPhase.STREAMING -> Go
+        RemotePlayPhase.FAILED -> Danger
+        RemotePlayPhase.NEEDS_REGISTRATION -> Muted
+        else -> Amber
+    }
+
 @Composable
-private fun ConsolesScreen(dispatch: (UiAction) -> Unit) {
-    val responsive = LocalResponsiveLayout.current
-    ScreenFrame("Bibliothèque", "Vos consoles", "Découverte locale, ajout manuel, réveil et accès distant seront réunis ici.") {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (responsive.compact) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ConsoleCard(
-                        stringResource(R.string.console_title),
-                        stringResource(R.string.console_subtitle),
-                        stringResource(R.string.offline_badge),
-                        Mint,
-                        Modifier.fillMaxWidth(),
-                    ) { dispatch(UiAction.StartDemo) }
-                    ConsoleCard("Ajouter une console", "Découverte ou adresse manuelle", "PLANIFIÉ", Sky, Modifier.fillMaxWidth()) {}
-                }
-            } else Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ConsoleCard(
-                    stringResource(R.string.console_title),
-                    stringResource(R.string.console_subtitle),
-                    stringResource(R.string.offline_badge),
-                    Mint,
-                    Modifier.weight(1f),
-                ) {
-                    dispatch(UiAction.StartDemo)
-                }
-                ConsoleCard("Ajouter une console", "Découverte ou adresse manuelle", "PLANIFIÉ", Sky, Modifier.weight(1f)) {}
-            }
-            SectionTitle("Modes de connexion", "Parité prévue avec les clients de référence")
-            if (responsive.compact) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MiniPanel("Réseau local", "Découverte automatique et réveil", "LAN", Modifier.fillMaxWidth())
-                    MiniPanel("À distance", "Connexion assistée par PSN", "WAN", Modifier.fillMaxWidth())
-                    MiniPanel("Enregistrement", "PIN et stockage sécurisé", "PAIR", Modifier.fillMaxWidth())
-                }
-            } else Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MiniPanel("Réseau local", "Découverte automatique et réveil", "LAN", Modifier.weight(1f))
-                MiniPanel("À distance", "Connexion assistée par PSN", "WAN", Modifier.weight(1f))
-                MiniPanel("Enregistrement", "PIN et stockage sécurisé", "PAIR", Modifier.weight(1f))
+private fun ConsolesScreen(remote: RemotePlaySnapshot, dispatch: (UiAction) -> Unit) {
+    ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx. L’association se fait depuis Session.") {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val name = remote.consoleName
+            ConsoleCard(
+                name ?: "Aucune PS5 associée",
+                remote.discoveredHost?.let { "Réseau local · $it" } ?: "Associer depuis Session",
+                remote.phase.homeLabel().uppercase(),
+                remote.phase.homeColor(),
+                Modifier.fillMaxWidth(),
+            ) {
+                dispatch(if (name == null) UiAction.Navigate(Destination.SESSION) else UiAction.StartDemo)
             }
         }
     }
@@ -555,7 +563,7 @@ private fun SessionScreen(
                         fontSize = 11.sp,
                         modifier =
                             Modifier.align(Alignment.BottomStart).padding(18.dp)
-                                .clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
+                                .clip(RoundedCornerShape(3.dp)).background(Color(0xD90C0C0D))
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 } else if (!fullscreen) {
@@ -611,14 +619,6 @@ private fun SessionScreen(
                 }
             }
 
-            if (!fullscreen) FeatureGrid(
-                listOf(
-                    Triple("Vidéo", "MediaCodec natif · H.264 · ${state.quality.label}", "V"),
-                    Triple("Audio", "Décodage et sortie natifs", "A"),
-                    Triple("Manette", "Événements Android vers l’état unifié", "J1"),
-                ),
-                columns = if (responsive.compact) 1 else 3,
-            )
             }
         }
     }
@@ -673,7 +673,7 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
         color = SoftWhite,
         fontSize = 11.sp,
         modifier =
-            modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
+            modifier.clip(RoundedCornerShape(3.dp)).background(Color(0xD90C0C0D))
                 .padding(horizontal = 12.dp, vertical = 8.dp).testTag("stream-metrics"),
     )
 }
@@ -757,11 +757,11 @@ private fun RemotePlaySurface(engine: RemotePlayEngine, modifier: Modifier = Mod
 @Composable
 private fun RegistrationGuide() {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
-            .background(Color(0xAD102835)).padding(17.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp))
+            .background(Panel).padding(17.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Où trouver les informations", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("Où trouver les informations", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Text(
             "1. Sur la PS5 : Paramètres → Système → Lecture à distance → Associer l’appareil. " +
                 "Recopiez ici le code à 8 chiffres avant son expiration.",
@@ -798,7 +798,7 @@ private fun LabeledInput(
     testTag: String? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(3.dp)
     Column(modifier) {
         Text(label, color = Muted, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
@@ -831,8 +831,8 @@ private fun LabeledInput(
                     }
                     .onFocusChanged { focused = it.isFocused }
                     .clip(shape)
-                    .background(Color(0xFF102835))
-                    .border(if (focused) 3.dp else 1.dp, if (focused) Mint else Color(0xFF315263), shape)
+                    .background(Panel)
+                    .border(if (focused) 3.dp else 1.dp, if (focused) Signal else PanelRaised, shape)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
         )
     }
@@ -875,7 +875,7 @@ private fun ControllersScreen(
                         status = if (controller == null) stringResource(R.string.controller_waiting) else "CONNECTÉE",
                         detail = controller?.let { "${it.kind.label} · VID %04X · PID %04X".format(it.vendorId, it.productId) }
                             ?: stringResource(R.string.controller_merge_note),
-                        accent = if (index == 0) Mint else Sky,
+                        accent = if (index == 0) Signal else Chalk,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -890,7 +890,7 @@ private fun ControllersScreen(
                             controller?.let {
                                 "${it.kind.label} · VID %04X · PID %04X".format(it.vendorId, it.productId)
                             } ?: stringResource(R.string.controller_merge_note),
-                        accent = if (index == 0) Mint else Sky,
+                        accent = if (index == 0) Signal else Chalk,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -911,14 +911,14 @@ private fun ControllerSlot(
     accent: Color,
     modifier: Modifier,
 ) {
-    Column(modifier.clip(PanelShape).background(Color(0xC0102835)).padding(22.dp)) {
+    Column(modifier.background(Panel).border(1.dp, Line).padding(22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp).clip(CircleShape).background(accent.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                Text(number, color = accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Box(Modifier.size(52.dp).background(accent), contentAlignment = Alignment.Center) {
+                Text(number, color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
             }
-            Spacer(Modifier.width(15.dp))
+            Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
-                Text(name, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text(name, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.6).sp)
             }
             StatusPill(status, accent)
         }
@@ -952,47 +952,9 @@ private fun CapabilityGrid() {
 
 @Composable
 private fun DiagnosticsScreen(engine: RemotePlayEngine) {
-    val responsive = LocalResponsiveLayout.current
-    ScreenFrame("Observabilité", stringResource(R.string.diagnostic_title), "Les preuves émulateur, Android et GP520 resteront toujours séparées.") {
+    ScreenFrame("", stringResource(R.string.diagnostic_title), "Rapports de vos sessions, à envoyer depuis le téléphone.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TestResultsPanel(engine)
-            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
-                    HealthCard("Vidéo", "Simulation", "FPS · files · rendu · erreurs", Sky, Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HealthCard("Audio", "Simulation", "Route · buffer · underruns", Amber, Modifier.weight(1f))
-                    HealthCard("Entrées", "Simulation", "P50 · P95 · P99 · événements", Mint, Modifier.weight(1f))
-                }
-            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HealthCard("Réseau", "Simulation", "RTT · gigue · pertes · débit", Mint, Modifier.weight(1f))
-                HealthCard("Vidéo", "Simulation", "FPS · files · rendu · erreurs", Sky, Modifier.weight(1f))
-                HealthCard("Audio", "Simulation", "Route · buffer · underruns", Amber, Modifier.weight(1f))
-                HealthCard("Entrées", "Simulation", "P50 · P95 · P99 · événements", Mint, Modifier.weight(1f))
-            }
-            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                MiniPanel("Performance", "Superposition, percentiles et comparaison de référence", "P95", Modifier.fillMaxWidth())
-                MiniPanel("Journaux", "Structurés, filtrables et expurgés", "JOURNAL", Modifier.fillMaxWidth())
-                MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.fillMaxWidth())
-            } else Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MiniPanel("Performance", "Superposition, percentiles et comparaison de référence", "P95", Modifier.weight(1f))
-                MiniPanel("Journaux", "Structurés, filtrables et expurgés", "JOURNAL", Modifier.weight(1f))
-                MiniPanel("Export JSONL", "Mesures exploitables sans secret", "{ }", Modifier.weight(1f))
-            }
-            MiniPanel(
-                "Coexistence Bluetooth",
-                "DualSense J1 + DualSense J2 + télécommande TV + route audio, avec événements corrélés",
-                "4 APPAREILS",
-                Modifier.fillMaxWidth(),
-            )
-            MiniPanel(
-                "Laboratoire de mesure",
-                "Tests guidés 2/10/30/60 min · export expurgé · comparaison GitHub privée",
-                "RÉFÉRENCE → CANDIDAT",
-                Modifier.fillMaxWidth(),
-            )
-            EvidenceBanner()
         }
     }
 }
@@ -1084,7 +1046,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
     shown?.let { (report, url) ->
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             if (url != null) {
-                Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp)) {
+                Box(Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(8.dp)) {
                     QrCode(url, 300.dp)
                 }
             }
@@ -1127,8 +1089,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
     var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
-    val responsive = LocalResponsiveLayout.current
-    ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
+    ScreenFrame("", stringResource(R.string.settings_title), "Appliqués à la session suivante.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
             SettingRow(
@@ -1139,31 +1100,13 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
                 decoderLowLatency = !decoderLowLatency
                 engine.decoderLowLatency = decoderLowLatency
             }
-            SettingRow("Télémétrie locale", "Mesures structurées sans données personnelles", yesNo(state.telemetryEnabled)) { dispatch(UiAction.ToggleTelemetry) }
-            SettingRow("Microphone", "Désactivé par défaut", yesNo(state.microphoneEnabled)) { dispatch(UiAction.ToggleMicrophone) }
             SettingRow(
                 "Sortie audio",
-                "Auto : AAudio puis OpenSL ES si muet · Compatibilité : OpenSL ES directement (barres de son, TV capricieuses)",
+                "Auto : AAudio, OpenSL ES dès qu’une sortie Bluetooth est active · Compatibilité : OpenSL ES toujours",
                 if (audioCompatibility) "COMPATIBILITÉ" else "AUTO",
             ) {
                 audioCompatibility = !audioCompatibility
                 engine.audioCompatibility = audioCompatibility
-            }
-            SectionTitle("Fonctions avancées", "Prévues pour la parité complète")
-            if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MiniPanel("Image", "HDR · cadrage · zoom · étirement", "HDR", Modifier.weight(1f))
-                    MiniPanel("Audio", "Sortie · tampon · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
-                    MiniPanel("Données", "Importer · exporter · réinitialiser", "DONNÉES", Modifier.weight(1f))
-                }
-            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MiniPanel("Image", "HDR · cadrage · zoom · étirement", "HDR", Modifier.weight(1f))
-                MiniPanel("Audio", "Sortie · tampon · micro · réduction de bruit", "AUDIO", Modifier.weight(1f))
-                MiniPanel("Profils", "Réglages locaux/distants par console", "PROFIL", Modifier.weight(1f))
-                MiniPanel("Données", "Importer · exporter · réinitialiser", "DONNÉES", Modifier.weight(1f))
             }
             UpdatePanel()
         }
@@ -1178,6 +1121,8 @@ private fun AboutScreen(firstLegalFocusRequester: FocusRequester) {
         stringResource(R.string.about_subtitle),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Owner's own words; keep them verbatim.
+            Text("Gaby's game", color = Signal, fontSize = 30.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
             LegalPanel(
                 stringResource(R.string.legal_copyright),
                 stringResource(R.string.legal_license),
@@ -1212,84 +1157,41 @@ private fun FocusButton(
 ) {
     var focused by remember { mutableStateOf(false) }
     val background = when {
-        focused -> SoftWhite
-        primary -> Mint
-        else -> Color(0xFF1A3948)
+        focused -> Signal
+        primary -> SoftWhite
+        else -> Color.Transparent
     }
     val foreground = if (focused || primary) Ink else SoftWhite
     Box(
         modifier =
-            modifier.clip(RoundedCornerShape(13.dp)).background(background)
-                .then(if (focused) Modifier.border(BorderStroke(3.dp, Mint), RoundedCornerShape(13.dp)) else Modifier)
+            modifier.background(background)
+                .then(if (!focused && !primary) Modifier.border(2.dp, Line) else Modifier)
                 .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 18.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = foreground, fontSize = 13.sp, fontWeight = FontWeight.Black)
     }
 }
 
-@Composable
-private fun MetricCard(label: String, value: String, detail: String, accent: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xB3112937)).padding(18.dp),
-    ) {
-        Text(label, color = Muted, fontSize = 9.sp, letterSpacing = 1.1.sp)
-        Spacer(Modifier.height(8.dp))
-        Text(value, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text(detail.uppercase(), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-    }
-}
 
-@Composable
-private fun FeatureCard(glyph: String, title: String, subtitle: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier.height(86.dp).clip(RoundedCornerShape(18.dp))
-            .background(Color(0xAA102633)).padding(15.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Mint.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
-            Text(glyph, color = Mint, fontSize = 18.sp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = Muted, fontSize = 10.sp, maxLines = 2)
-        }
-    }
-}
 
-@Composable
-private fun FeatureGrid(items: List<Triple<String, String, String>>, columns: Int = 2) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items.chunked(columns).forEach { rowItems ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                rowItems.forEach { (title, subtitle, glyph) ->
-                    FeatureCard(glyph, title, subtitle, Modifier.weight(1f))
-                }
-                repeat(columns - rowItems.size) {
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun ConsoleCard(title: String, subtitle: String, status: String, accent: Color, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
-        modifier.clip(PanelShape).background(if (focused) Color(0xFF173B4C) else Color(0xC0102835))
-            .then(if (focused) Modifier.border(2.dp, accent, PanelShape) else Modifier)
+        modifier.clip(PanelShape).background(if (focused) PanelRaised else Panel)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
             .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(78.dp).clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-            Text("PS", color = accent, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Box(Modifier.size(78.dp).background(Ink).border(1.dp, Line), contentAlignment = Alignment.Center) {
+            Text("PS5", color = SoftWhite, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
         }
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
             Text(subtitle, color = Muted, fontSize = 12.sp)
         }
         StatusPill(status, accent)
@@ -1298,8 +1200,8 @@ private fun ConsoleCard(title: String, subtitle: String, status: String, accent:
 
 @Composable
 private fun MiniPanel(title: String, subtitle: String, badge: String, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(17.dp)).background(Color(0xAD102835)).padding(17.dp)) {
-        Text(badge, color = Mint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    Column(modifier.clip(RoundedCornerShape(3.dp)).background(Panel).padding(17.dp)) {
+        Text(badge, color = Signal, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(10.dp))
         Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Text(subtitle, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
@@ -1310,77 +1212,57 @@ private fun MiniPanel(title: String, subtitle: String, badge: String, modifier: 
 private fun LegalPanel(title: String, subtitle: String, badge: String, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
-            .background(if (focused) Color(0xFF193E4F) else Color(0xAD102835))
-            .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(17.dp)) else Modifier)
+        modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp))
+            .background(if (focused) PanelRaised else Panel)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
             .onFocusChanged { focused = it.isFocused }.semantics(mergeDescendants = true) {}
             .focusable().padding(17.dp),
     ) {
-        Text(badge, color = Mint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(badge, color = Signal, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(10.dp))
         Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Text(subtitle, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
     }
 }
 
-@Composable
-private fun HealthCard(title: String, status: String, detail: String, accent: Color, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xB5102835)).padding(18.dp)) {
-        Box(Modifier.size(9.dp).clip(CircleShape).background(accent))
-        Spacer(Modifier.height(16.dp))
-        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text(status.uppercase(), color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        Text(detail, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
-    }
-}
 
 @Composable
 private fun SettingRow(title: String, detail: String, value: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
-            .background(if (focused) Color(0xFF193E4F) else Color(0xA9102835))
-            .then(if (focused) Modifier.border(2.dp, Mint, RoundedCornerShape(17.dp)) else Modifier)
-            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(18.dp),
+        Modifier.fillMaxWidth()
+            .background(if (focused) PanelRaised else Panel)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
+            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(detail, color = Muted, fontSize = 10.sp)
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text(detail, color = Muted, fontSize = 11.sp)
         }
-        Text(value, color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(16.dp))
+        Text(value, color = if (focused) Signal else Chalk, fontSize = 14.sp, fontWeight = FontWeight.Black)
     }
 }
 
-@Composable
-private fun EvidenceBanner() {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Amber.copy(alpha = .09f))
-            .border(1.dp, Amber.copy(alpha = .3f), RoundedCornerShape(18.dp)).padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("!", color = Amber, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(15.dp))
-        Column {
-            Text("Frontière de preuve", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text("Ces valeurs sont synthétiques. Elles ne constituent aucune preuve Android réelle ni GP520.", color = Muted, fontSize = 11.sp)
-        }
-    }
-}
 
 @Composable
 private fun StatusPill(text: String, color: Color, modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = .14f)).padding(horizontal = 10.dp, vertical = 6.dp)) {
-        Text(text, color = color, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
+    Box(modifier.background(color).padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Text(text, color = Ink, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = .6.sp)
     }
 }
 
 @Composable
 private fun SectionTitle(title: String, subtitle: String) {
-    Column {
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = Muted, fontSize = 11.sp)
+    Column(Modifier.padding(top = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).background(Signal))
+            Spacer(Modifier.width(10.dp))
+            Text(title, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.6).sp)
+        }
+        Text(subtitle, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(start = 18.dp))
     }
 }
 
@@ -1413,10 +1295,10 @@ private fun PsnSignInPanel(cloud: CloudPlayController) {
         runCatching { if (relay != null) cancelFocus.requestFocus() else signInFocus.requestFocus() }
     }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(Color(0xAD102835)).padding(17.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(Panel).padding(17.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Connexion PlayStation Network", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("Connexion PlayStation Network", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Text(
             "Un abonnement PlayStation Plus Premium est nécessaire. Scannez le QR code avec votre téléphone, " +
                 "connectez-vous à votre compte Sony, puis GPSx récupère la session automatiquement.",
@@ -1468,7 +1350,7 @@ private fun PsnSignInPanel(cloud: CloudPlayController) {
         }
     } else {
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp)) {
+            Box(Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(8.dp)) {
                 QrCode(current.loginUrl, 240.dp)
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1543,17 +1425,17 @@ private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayControl
 @Composable
 private fun CloudGameCard(game: CloudGame, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    val accent = if (game.category == CloudCategory.OWNED) Mint else Sky
+    val accent = if (game.category == CloudCategory.OWNED) Signal else Chalk
     Row(
-        modifier.height(86.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (focused) Color(0xFF173B4C) else Color(0xAA102633))
-            .then(if (focused) Modifier.border(2.dp, accent, RoundedCornerShape(18.dp)) else Modifier)
+        modifier.height(86.dp).clip(RoundedCornerShape(3.dp))
+            .background(if (focused) PanelRaised else Panel)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
             .onFocusChanged { focused = it.isFocused }
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(42.dp).clip(RoundedCornerShape(3.dp)).background(accent.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
             Text(game.platform.uppercase().ifEmpty { "PS" }, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.width(12.dp))
@@ -1586,18 +1468,18 @@ private fun RemotePlayPhase.toSessionPhase(): SessionPhase =
         RemotePlayPhase.FAILED -> SessionPhase.FAILED
     }
 
-private fun RemotePlayPhase.label(): String = name.replace('_', ' ')
+private fun RemotePlayPhase.label(): String = homeLabel().uppercase()
 
 private fun RemotePlayPhase.accent(): Color =
     when (this) {
         RemotePlayPhase.STREAMING,
         RemotePlayPhase.READY,
-        -> Mint
-        RemotePlayPhase.FAILED -> Color(0xFFFF6B6B)
+        -> Signal
+        RemotePlayPhase.FAILED -> Danger
         RemotePlayPhase.NEEDS_REGISTRATION,
         RemotePlayPhase.LOGIN_PIN_REQUIRED,
         -> Amber
-        else -> Sky
+        else -> Chalk
     }
 
 private fun yesNo(value: Boolean): String = if (value) "ACTIVÉ" else "DÉSACTIVÉ"

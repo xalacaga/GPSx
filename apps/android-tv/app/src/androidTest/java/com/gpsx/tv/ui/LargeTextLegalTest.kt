@@ -36,14 +36,13 @@ class LargeTextLegalTest {
         }
 
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        repeat(7) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(7) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT) }
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
 
-        composeRule.onNodeWithText("LOGICIEL LIBRE").assertIsDisplayed()
         composeRule.onNodeWithText("À propos de GPSx").assertIsDisplayed()
         composeRule.onNodeWithText("Informations légales et source exacte de cette version.").assertIsDisplayed()
 
-        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN)
         composeRule.onNodeWithText("Copyright © 2026 contributeurs GPSx").assertIsDisplayed()
         composeRule.onNodeWithText(
             "GPSx est un logiciel libre sous GNU AGPL-3.0-only avec permission additionnelle OpenSSL.",

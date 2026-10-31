@@ -73,6 +73,15 @@ class StreamTestReportTest {
     }
 
     @Test
+    fun `compact report lists the native log digest before the samples`() {
+        val digest = listOf(LogDigestEntry(2, "[W] Detected missing or corrupt frame(s) from # to #"))
+        val text = compactReport(buildStreamTestReport(context, "a", "b", "fin", samples(10), digest), 6)
+        val logLine = text.lines().indexOfFirst { it.startsWith("log 2 ") }
+        assertTrue(logLine >= 0)
+        assertTrue(logLine < text.lines().indexOfFirst { it.startsWith("samples") })
+    }
+
+    @Test
     fun `report keeps the last and every distinct audio route`() {
         val routed = samples(10).mapIndexed { i, s -> s.copy(audioRoute = if (i < 5) "HDMI" else "Bluetooth") }
         val audio = buildStreamTestReport(context, "a", "b", "fin", routed).getJSONObject("summary").getJSONObject("audio")

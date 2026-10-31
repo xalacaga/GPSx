@@ -6,11 +6,17 @@ console or GP520 connection is permitted.
 
 ## Visual direction
 
-- Dark cinematic canvas with restrained blue depth, mint focus and amber warnings.
-- Large type and high-contrast focus rings intended for television distance.
-- A persistent six-item rail: Home, Consoles, Play, Controllers, Diagnostics and Settings.
-- Rounded panels and sparse motion; no decorative animation may obscure focus or add stream latency.
-- Synthetic values always carry a visible `SIMULATED DATA` label.
+- Arcade direction: near-black canvas, warm off-white text and one signal orange
+  for focus and the main action. No gradients, tinted glass or rounded cards.
+- Very large, tight black-weight titles readable at three metres from a projector.
+- A horizontal tab bar at the top (one tab per destination) with a live controller
+  count; it hides while streaming, and moving up from a screen returns to the
+  active tab.
+- Focus: tiles and rows gain a 3 dp orange frame, buttons and tabs fill orange;
+  the Home "Jouer" tile fills orange.
+- Only real data is shown: no simulated metrics or placeholder features.
+- The wordmark's G is orange; the About screen opens with the owner's line
+  "Gaby's game", kept verbatim.
 
 ## Interaction contract
 

@@ -84,7 +84,7 @@ class StreamTestRecorder(context: Context) {
         }
 
     /** Writes the report when at least [MIN_SAMPLES] seconds were recorded. */
-    fun finish(endReason: String) {
+    fun finish(endReason: String, logDigest: List<LogDigestEntry> = emptyList()) {
         val (context, recorded, start) =
             synchronized(lock) {
                 val current = active ?: return
@@ -95,7 +95,7 @@ class StreamTestRecorder(context: Context) {
         runCatching {
             directory.mkdirs()
             val stamp = fileStamp(start)
-            val json = buildStreamTestReport(context, iso(start), iso(System.currentTimeMillis()), endReason, recorded)
+            val json = buildStreamTestReport(context, iso(start), iso(System.currentTimeMillis()), endReason, recorded, logDigest)
             File(directory, "$stamp-${context.sessionKind}.json").writeText(json.toString(), Charsets.UTF_8)
             prune()
         }
