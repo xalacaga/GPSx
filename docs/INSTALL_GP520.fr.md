@@ -53,10 +53,16 @@ monde peut lire les rapports, qui ne contiennent que les données listées
 ci-dessous.
 
 1. GPSx → **Diagnostics** → *Résultats de tests* : choisissez un rapport.
-2. Scannez le QR code avec un téléphone connecté à GitHub (navigateur ou
-   application GitHub). Il ouvre un nouveau ticket dans
-   `xalacaga/GPSx-diagnostics`, prérempli avec le rapport et l'étiquette `report`.
+2. Scannez le QR code avec un téléphone déjà connecté à github.com dans son
+   navigateur. Il ouvre un nouveau ticket dans `xalacaga/GPSx-diagnostics`,
+   prérempli avec le rapport et l'étiquette `report`. L'application GitHub perd
+   le formulaire prérempli : sur iPhone, ouvrez le lien dans Safari (appui long,
+   ou lien `github.com` en haut à droite une fois l'application ouverte). Une
+   connexion en cours de route a déjà renvoyé une erreur HTTP 500.
 3. Appuyez sur **Submit new issue**.
+4. *Effacer tous les rapports* (deux appuis pour confirmer) supprime tous les
+   rapports enregistrés, pour ne garder que les nouveaux tests. La version
+   installée est affichée au-dessus de la liste.
 
 Aucun identifiant n'est stocké sur le GP520 ni dans l'APK. Le fichier du QR code
 est un résumé texte compact (statistiques, API et compteurs audio, jusqu'à 30 échantillons répartis) ;

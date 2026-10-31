@@ -115,6 +115,10 @@ class StreamTestRecorder(context: Context) {
     fun load(report: StoredReport): org.json.JSONObject? =
         runCatching { org.json.JSONObject(report.file.readText(Charsets.UTF_8)) }.getOrNull()
 
+    /** Deletes every stored report; returns how many were removed. A session in progress still saves its own. */
+    fun deleteAll(): Int =
+        directory.listFiles { file -> file.name.endsWith(".json") }?.count(File::delete) ?: 0
+
     private fun prune() {
         directory.listFiles()?.sortedByDescending(File::getName)?.drop(MAX_REPORTS)?.forEach(File::delete)
     }

@@ -52,10 +52,15 @@ It is **public** for now by owner choice: anyone can read the reports, which
 contain only the data listed below.
 
 1. GPSx → **Diagnostics** → *Résultats de tests*: select a report.
-2. Scan the QR code with a phone signed in to GitHub (browser or GitHub app).
-   It opens a new issue in `xalacaga/GPSx-diagnostics` pre-filled with the
-   report and the `report` label.
+2. Scan the QR code with a phone already signed in to github.com in its
+   browser. It opens a new issue in `xalacaga/GPSx-diagnostics` pre-filled with
+   the report and the `report` label. The GitHub app drops the pre-filled form:
+   on iPhone, open the link in Safari (long press, or the `github.com` link at the
+   top right once the app opens). Signing in midway returned HTTP 500 once.
 3. Tap **Submit new issue**.
+4. *Effacer tous les rapports* (press twice to confirm) removes every stored
+   report, so the list only shows new tests. The installed version is shown
+   above the list.
 
 No credential is stored on the GP520 or in the APK. The QR file is a compact text
 summary (statistics, audio API and counters, up to 30 evenly spaced samples); the full JSON report

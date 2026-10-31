@@ -1044,6 +1044,8 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
     val recorder = engine.testRecorder ?: return
     var reports by remember { mutableStateOf(emptyList<StoredReport>()) }
     var shown by remember { mutableStateOf<Pair<StoredReport, String?>?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(recorder) {
         reports = withContext(Dispatchers.IO) { recorder.list() }
     }
@@ -1052,8 +1054,29 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
         "Chaque session stream enregistre un rapport. Choisissez-en un, scannez le QR code avec le téléphone " +
             "connecté à GitHub et appuyez sur « Submit » : le rapport arrive en ticket dans xalacaga/GPSx-diagnostics.",
     )
+    Text("Version installée : GPSx ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 12.sp)
     if (reports.isEmpty()) {
         Text("Aucun rapport : lancez un stream d’au moins quelques secondes.", color = Muted, fontSize = 12.sp)
+    } else {
+        // Two presses: the first only arms the deletion, so a stray OK never wipes the reports.
+        FocusButton(
+            if (confirmDelete) "Confirmer : effacer les ${reports.size} rapports" else "Effacer tous les rapports",
+            modifier = Modifier.testTag("reports-delete-all"),
+        ) {
+            if (!confirmDelete) {
+                confirmDelete = true
+            } else {
+                confirmDelete = false
+                shown = null
+                scope.launch {
+                    reports =
+                        withContext(Dispatchers.IO) {
+                            recorder.deleteAll()
+                            recorder.list()
+                        }
+                }
+            }
+        }
     }
     shown?.let { (report, url) ->
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {

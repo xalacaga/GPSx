@@ -343,9 +343,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
-    "mtime": 1793444813.0704076,
-    "seen": 1793445070.2342265,
-    "ast_hash": "63f24089d66d7a9bc1c9d1742ac34d46",
+    "mtime": 1793466548.9597106,
+    "seen": 1793470078.5956604,
+    "ast_hash": "71db171d97eef9fa35ae642cacf3e0fa",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
@@ -361,9 +361,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1793465849.1498528,
-    "seen": 1793465966.6110828,
-    "ast_hash": "b5cb595a7767c70ca8aeb83071d7fb43",
+    "mtime": 1793470018.2113237,
+    "seen": 1793470078.5957167,
+    "ast_hash": "bd286e1e86f654cbb805c2c3868b728a",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -1183,9 +1183,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/diagnostics/StreamTestRecorder.kt": {
-    "mtime": 1793465842.3036962,
-    "seen": 1793465966.61103,
-    "ast_hash": "c35cf0c938d03871e3e156c9cd351c67",
+    "mtime": 1793470018.2103212,
+    "seen": 1793470078.595685,
+    "ast_hash": "1dac4dc5f2d04184ff234d2ebc3911ec",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/diagnostics/StreamTestReport.kt": {
@@ -1243,15 +1243,15 @@
     "semantic_hash": ""
   },
   "docs/INSTALL_GP520.fr.md": {
-    "mtime": 1793465899.6578789,
-    "seen": 1793465966.6114562,
-    "ast_hash": "e892c81245edf698d8795f043f9d5472",
+    "mtime": 1793470039.32205,
+    "seen": 1793470078.5959232,
+    "ast_hash": "242fd6f72c6f60dd363661a38fdcb328",
     "semantic_hash": ""
   },
   "docs/INSTALL_GP520.md": {
-    "mtime": 1793465899.6578789,
-    "seen": 1793465966.611459,
-    "ast_hash": "91d6dc087657e3d709ab62c6e3ffc2d5",
+    "mtime": 1793470039.3210428,
+    "seen": 1793470078.5959249,
+    "ast_hash": "31fa8a447c8259367426b94dd4048f1a",
     "semantic_hash": ""
   },
   "third_party/pylux/LICENSE-AGPL-3.0-only-OpenSSL.txt": {
