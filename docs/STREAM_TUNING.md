@@ -22,7 +22,7 @@ Status: implemented 2026-10-31; emulator-measured, GP520 NOT_TESTED.
 | Frame rate | `Surface.setFrameRate(60, FIXED_SOURCE)` (API 30) | Keeps the panel at 60 Hz without judder conversion |
 | Codec | AUTO picks HEVC 1080p60 when a hardware HEVC decoder supports it, else H.264; the emulator stays on H.264 | Better picture at the same 15 Mbit/s |
 | Metrics | Real FPS, bitrate, RTT, loss, lost frames and audio state shown during the stream | Diagnose Wi-Fi problems on screen |
-| Audio | Shared Oboe stream (low latency, then default), Game usage, reopened after a route change such as a Bluetooth speaker (re)connecting; underflow/overflow/reopen counters in reports | The original engine never reopened a disconnected stream and requested exclusive mode, which Bluetooth A2DP lacks |
+| Audio | AAudio, then OpenSL ES when AAudio opens but never pulls audio for 1.5 s (or OpenSL ES forced in Settings); shared Oboe stream (low latency, then default), Game usage, reopened after a route change such as a Bluetooth speaker (re)connecting; underflow/overflow/reopen counters in reports | The original engine never reopened a disconnected stream and requested exclusive mode, which Bluetooth A2DP lacks |
 
 ## Owner settings on the GP520
 

@@ -71,7 +71,7 @@ class StreamTestRecorder(context: Context) {
             samples +=
                 StreamSample(
                     t, metrics.fps, metrics.bitrateMbps, metrics.rttMs, metrics.packetLoss, metrics.framesLost, metrics.width, metrics.height,
-                    metrics.audioState, metrics.audioUnderflows, metrics.audioOverflows, metrics.audioReopens,
+                    metrics.audioState, metrics.audioUnderflows, metrics.audioOverflows, metrics.audioReopens, metrics.audioCallbacks,
                 )
         }
 

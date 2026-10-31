@@ -28,6 +28,7 @@ import com.metallic.chiaki.lib.Session
 import com.metallic.chiaki.lib.StreamMetrics
 import com.metallic.chiaki.lib.Target
 import com.metallic.chiaki.lib.discoveryWakeup
+import com.metallic.chiaki.lib.setAudioCompatibilityMode
 import java.net.InetSocketAddress
 import java.net.Socket
 import com.gpsx.tv.diagnostics.StreamTestRecorder
@@ -82,6 +83,15 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
     private var registration: Regist? = null
     private var session: Session? = null
     private var surface: Surface? = null
+
+    private val settings = applicationContext?.getSharedPreferences("gpsx_engine_settings", Context.MODE_PRIVATE)
+
+    /** Forces OpenSL ES audio output (for TVs whose AAudio stays silent). Applies to the next session. */
+    var audioCompatibility: Boolean
+        get() = settings?.getBoolean("audio_compatibility", false) ?: false
+        set(value) {
+            settings?.edit()?.putBoolean("audio_compatibility", value)?.apply()
+        }
 
     /** Per-session test reports, uploaded on request from the Diagnostics screen. */
     val testRecorder: StreamTestRecorder? = applicationContext?.let(::StreamTestRecorder)
@@ -299,6 +309,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             try {
                 stopSession()
                 runCatching { streamWifiLock?.acquire() }
+                runCatching { setAudioCompatibilityMode(audioCompatibility) }
                 val newSession = Session(connectInfo)
                 newSession.eventCallback = { event ->
                     when (event) {

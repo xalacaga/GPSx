@@ -57,7 +57,7 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
         "mbps ${stat("bitrateMbps")}",
         "rtt ${stat("rttMs")}",
         "loss ${stat("packetLoss")}",
-        "lost ${num(summary.opt("framesLost"))} audio state ${num(audio.opt("finalState"))} played ${num(audio.opt("everPlayed"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))}",
+        "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))}",
         "samples t fps mbps rtt loss lost audio",
     )
     val samples = report.getJSONArray("samples")
@@ -74,16 +74,17 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
 }
 
 /**
- * GitHub "new file" link that pre-fills the compact report; the owner opens it on a
- * signed-in phone and commits it. No credential ever reaches the device.
- * Returns null when even a sample-free summary does not fit [MAX_QR_URL_LENGTH].
+ * GitHub "new issue" link pre-filled with the compact report; the owner opens it on a
+ * signed-in phone (browser or GitHub app) and submits it. No credential ever reaches
+ * the device. Returns null when even a sample-free summary does not fit [MAX_QR_URL_LENGTH].
  */
 fun reportUploadUrl(report: JSONObject, fileName: String, repository: String = DIAGNOSTICS_REPOSITORY): String? {
-    val path = reportPath(fileName.removeSuffix(".json") + ".txt")
+    val title = "report " + fileName.removeSuffix(".json")
     for (samples in listOf(30, 20, 12, 6, 0)) {
+        val body = "```\n" + compactReport(report, samples) + "```\n"
         val url =
-            "https://github.com/$repository/new/main?filename=" + URLEncoder.encode(path, "UTF-8") +
-                "&value=" + URLEncoder.encode(compactReport(report, samples), "UTF-8")
+            "https://github.com/$repository/issues/new?title=" + URLEncoder.encode(title, "UTF-8") +
+                "&labels=report&body=" + URLEncoder.encode(body, "UTF-8")
         if (url.length <= MAX_QR_URL_LENGTH) return url
     }
     return null

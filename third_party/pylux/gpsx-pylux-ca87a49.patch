@@ -13,7 +13,7 @@ index b31dcd9..ec2f75c 100755
  
  if(CHIAKI_USE_SYSTEM_NANOPB)
 diff --git a/android/app/src/main/cpp/audio-output.cpp b/android/app/src/main/cpp/audio-output.cpp
-index 53157f1..6e94a98 100644
+index 53157f1..79d1e4c 100644
 --- a/android/app/src/main/cpp/audio-output.cpp
 +++ b/android/app/src/main/cpp/audio-output.cpp
 @@ -9,6 +9,11 @@
@@ -28,71 +28,146 @@ index 53157f1..6e94a98 100644
  #define BUFFER_CHUNK_SIZE 1024
  #define BUFFER_CHUNKS_COUNT 32
  
-@@ -28,16 +33,63 @@ public:
+@@ -28,16 +33,138 @@ public:
  	void onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error) override;
  };
  
 +// GPSx: state reported through android_chiaki_audio_output_stats().
-+enum AudioOutputState { AUDIO_STATE_NONE = 0, AUDIO_STATE_RUNNING = 1, AUDIO_STATE_FAILED = 2 };
++enum AudioOutputState
++{
++	AUDIO_STATE_NONE = 0,
++	AUDIO_STATE_AAUDIO = 1,
++	AUDIO_STATE_FAILED = 2,
++	AUDIO_STATE_OPENSLES = 3,
++};
++
++// GPSx: 0 = automatic (AAudio, then OpenSL ES), 1 = always OpenSL ES. Set from Kotlin before a session.
++static std::atomic<int> g_audio_api_preference { 0 };
++
++// AAudio implementations on some TV SoCs open and start without ever pulling audio.
++#define AUDIO_WATCHDOG_MS 1500
 +
  struct AudioOutput
  {
  	ChiakiLog *log;
-+	std::mutex mutex; // guards stream, channels, rate and reopen_thread
++	std::mutex mutex; // guards stream, channels, rate, force_opensles and reopen_thread
  	oboe::ManagedStream stream;
  	AudioOutputCallback stream_callback;
  	AudioBuffer buf;
 +	uint32_t channels = 0;
 +	uint32_t rate = 0;
++	bool force_opensles = false;
 +	std::thread reopen_thread;
 +	std::atomic<bool> closing { false };
 +	std::atomic<int> state { AUDIO_STATE_NONE };
 +	std::atomic<uint32_t> underflows { 0 };
 +	std::atomic<uint32_t> overflows { 0 };
 +	std::atomic<uint32_t> reopens { 0 };
++	std::atomic<uint32_t> callbacks { 0 };
  
  	AudioOutput() : stream_callback(this) {}
  };
  
 +// GPSx: shared mode works on every route (Bluetooth A2DP has no exclusive/MMAP path).
-+// Low latency is tried first, then the default mode. Caller holds ao->mutex.
++// Tries AAudio (unless OpenSL ES is forced), then OpenSL ES; low latency first, then default.
++// Caller holds ao->mutex.
 +static bool open_stream_locked(AudioOutput *ao)
 +{
++	bool opensles_only = ao->force_opensles || g_audio_api_preference.load() == 1;
++	const oboe::AudioApi apis[] = { oboe::AudioApi::AAudio, oboe::AudioApi::OpenSLES };
 +	const oboe::PerformanceMode modes[] = { oboe::PerformanceMode::LowLatency, oboe::PerformanceMode::None };
-+	for(auto mode : modes)
++	for(auto api : apis)
 +	{
-+		oboe::AudioStreamBuilder builder;
-+		builder.setPerformanceMode(mode)
-+			->setSharingMode(oboe::SharingMode::Shared)
-+			->setUsage(oboe::Usage::Game)
-+			->setContentType(oboe::ContentType::Music)
-+			->setFormat(oboe::AudioFormat::I16)
-+			->setChannelCount(ao->channels)
-+			->setSampleRate(ao->rate)
-+			->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
-+			->setCallback(&ao->stream_callback);
-+		oboe::Result result = builder.openManagedStream(ao->stream);
-+		if(result == oboe::Result::OK)
-+			result = ao->stream->requestStart();
-+		if(result == oboe::Result::OK)
++		if(opensles_only && api == oboe::AudioApi::AAudio)
++			continue;
++		if(api == oboe::AudioApi::AAudio && !oboe::AudioStreamBuilder::isAAudioRecommended())
++			continue;
++		for(auto mode : modes)
 +		{
-+			CHIAKI_LOGI(ao->log, "Audio Output started Oboe stream (%s, %d Hz, buffer %d frames)",
-+				mode == oboe::PerformanceMode::LowLatency ? "low latency" : "default",
-+				ao->stream->getSampleRate(), ao->stream->getBufferSizeInFrames());
-+			ao->state = AUDIO_STATE_RUNNING;
-+			return true;
++			oboe::AudioStreamBuilder builder;
++			builder.setAudioApi(api)
++				->setPerformanceMode(mode)
++				->setSharingMode(oboe::SharingMode::Shared)
++				->setUsage(oboe::Usage::Game)
++				->setContentType(oboe::ContentType::Music)
++				->setFormat(oboe::AudioFormat::I16)
++				->setChannelCount(ao->channels)
++				->setSampleRate(ao->rate)
++				->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
++				->setCallback(&ao->stream_callback);
++			oboe::Result result = builder.openManagedStream(ao->stream);
++			if(result == oboe::Result::OK)
++				result = ao->stream->requestStart();
++			if(result == oboe::Result::OK)
++			{
++				bool aaudio = ao->stream->getAudioApi() == oboe::AudioApi::AAudio;
++				CHIAKI_LOGI(ao->log, "Audio Output started Oboe stream (%s, %s, %d Hz, buffer %d frames)",
++					aaudio ? "AAudio" : "OpenSL ES",
++					mode == oboe::PerformanceMode::LowLatency ? "low latency" : "default",
++					ao->stream->getSampleRate(), ao->stream->getBufferSizeInFrames());
++				ao->state = aaudio ? AUDIO_STATE_AAUDIO : AUDIO_STATE_OPENSLES;
++				return true;
++			}
++			CHIAKI_LOGE(ao->log, "Audio Output failed to open/start Oboe stream: %s", oboe::convertToText(result));
++			ao->stream = nullptr;
 +		}
-+		CHIAKI_LOGE(ao->log, "Audio Output failed to open/start Oboe stream: %s", oboe::convertToText(result));
-+		ao->stream = nullptr;
 +	}
 +	ao->state = AUDIO_STATE_FAILED;
 +	return false;
 +}
 +
++/**
++ * Replaces any pending reopen thread with [task] run after [delay_ms].
++ * Must be called without holding ao->mutex; the task takes it itself.
++ */
++template<typename Task>
++static void schedule_locked_task(AudioOutput *ao, int delay_ms, Task task)
++{
++	std::thread previous;
++	{
++		std::lock_guard<std::mutex> lock(ao->mutex);
++		previous = std::move(ao->reopen_thread);
++	}
++	// Join outside the lock: the previous task takes the same mutex.
++	if(previous.joinable())
++		previous.join();
++	std::lock_guard<std::mutex> lock(ao->mutex);
++	if(ao->closing)
++		return;
++	ao->reopen_thread = std::thread([ao, delay_ms, task]() {
++		std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
++		std::lock_guard<std::mutex> task_lock(ao->mutex);
++		if(!ao->closing)
++			task();
++	});
++}
++
++/** Falls back to OpenSL ES when an AAudio stream never pulls audio. */
++static void schedule_watchdog(AudioOutput *ao)
++{
++	if(ao->state.load() != AUDIO_STATE_AAUDIO)
++		return;
++	uint32_t start = ao->callbacks.load();
++	schedule_locked_task(ao, AUDIO_WATCHDOG_MS, [ao, start]() {
++		if(ao->state.load() != AUDIO_STATE_AAUDIO || ao->callbacks.load() != start)
++			return;
++		CHIAKI_LOGW(ao->log, "Audio Output: AAudio stream silent, switching to OpenSL ES");
++		ao->force_opensles = true;
++		ao->reopens++;
++		ao->stream = nullptr;
++		open_stream_locked(ao);
++	});
++}
++
++extern "C" void android_chiaki_audio_output_set_api_preference(int preference)
++{
++	g_audio_api_preference = preference == 1 ? 1 : 0;
++}
++
  extern "C" void *android_chiaki_audio_output_new(ChiakiLog *log)
  {
  	auto r = new AudioOutput();
-@@ -50,33 +102,29 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
+@@ -50,33 +177,32 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
  	if(!audio_output)
  		return;
  	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
@@ -135,15 +210,18 @@ index 53157f1..6e94a98 100644
 -		CHIAKI_LOGI(ao->log, "Audio Output started Oboe stream");
 -	else
 -		CHIAKI_LOGE(ao->log, "Audio Output failed to start Oboe stream: %s", oboe::convertToText(result));
-+	std::lock_guard<std::mutex> lock(ao->mutex);
-+	ao->channels = channels;
-+	ao->rate = rate;
-+	ao->stream = nullptr;
-+	open_stream_locked(ao);
++	{
++		std::lock_guard<std::mutex> lock(ao->mutex);
++		ao->channels = channels;
++		ao->rate = rate;
++		ao->stream = nullptr;
++		open_stream_locked(ao);
++	}
++	schedule_watchdog(ao);
  }
  
  extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output)
-@@ -86,7 +134,16 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
+@@ -86,11 +212,22 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
  	size_t buf_size = samples_count * sizeof(int16_t);
  	size_t pushed = ao->buf.Push(reinterpret_cast<uint8_t *>(buf), buf_size);
  	if(pushed < buf_size)
@@ -151,17 +229,23 @@ index 53157f1..6e94a98 100644
 +		ao->overflows++;
 +}
 +
-+extern "C" void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[4])
++extern "C" void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[5])
 +{
 +	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
 +	out[0] = ao ? (uint32_t)ao->state.load() : 0;
 +	out[1] = ao ? ao->underflows.load() : 0;
 +	out[2] = ao ? ao->overflows.load() : 0;
 +	out[3] = ao ? ao->reopens.load() : 0;
++	out[4] = ao ? ao->callbacks.load() : 0;
  }
  
  oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *stream, void *audio_data, int32_t num_frames)
-@@ -102,11 +159,10 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
+ {
++	audio_output->callbacks++;
+ 	if(stream->getFormat() != oboe::AudioFormat::I16)
+ 	{
+ 		CHIAKI_LOGE(audio_output->log, "Oboe stream has invalid format in callback");
+@@ -102,11 +239,10 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
  	auto buf = reinterpret_cast<uint8_t *>(audio_data);
  
  	size_t buf_size_delivered = audio_output->buf.Pop(buf, buf_size_requested);
@@ -174,53 +258,40 @@ index 53157f1..6e94a98 100644
  		memset(buf + buf_size_delivered, 0, buf_size_requested - buf_size_delivered);
  	}
  
-@@ -121,4 +177,31 @@ void AudioOutputCallback::onErrorBeforeClose(oboe::AudioStream *stream, oboe::Re
+@@ -121,4 +257,16 @@ void AudioOutputCallback::onErrorBeforeClose(oboe::AudioStream *stream, oboe::Re
  void AudioOutputCallback::onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error)
  {
  	CHIAKI_LOGE(audio_output->log, "Oboe reported error after close: %s", oboe::convertToText(error));
 +	// GPSx: a route change (Bluetooth speaker connected or reconnected) disconnects the stream.
-+	// Reopen it on a separate thread; Oboe forbids reopening from the callback thread.
++	// Reopen it on a separate thread after the route settles; Oboe forbids reopening from here.
 +	AudioOutput *ao = audio_output;
 +	if(ao->closing)
 +		return;
 +	ao->state = AUDIO_STATE_FAILED;
-+	std::thread previous;
-+	{
-+		std::lock_guard<std::mutex> lock(ao->mutex);
-+		previous = std::move(ao->reopen_thread);
-+	}
-+	// Join outside the lock: the previous reopen thread takes the same mutex.
-+	if(previous.joinable())
-+		previous.join();
-+	std::lock_guard<std::mutex> lock(ao->mutex);
-+	if(ao->closing)
-+		return;
 +	ao->reopens++;
-+	ao->reopen_thread = std::thread([ao]() {
-+		// Let this callback return and the new audio route settle before replacing the stream.
-+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
-+		std::lock_guard<std::mutex> reopen_lock(ao->mutex);
-+		if(ao->closing)
-+			return;
++	schedule_locked_task(ao, 300, [ao]() {
 +		ao->stream = nullptr;
-+		open_stream_locked(ao);
++		if(open_stream_locked(ao) && ao->state.load() == AUDIO_STATE_AAUDIO)
++			CHIAKI_LOGI(ao->log, "Audio Output reopened after route change");
 +	});
  }
 diff --git a/android/app/src/main/cpp/audio-output.h b/android/app/src/main/cpp/audio-output.h
-index b521ebe..fcf6bde 100644
+index b521ebe..490624f 100644
 --- a/android/app/src/main/cpp/audio-output.h
 +++ b/android/app/src/main/cpp/audio-output.h
-@@ -14,6 +14,8 @@ void *android_chiaki_audio_output_new(ChiakiLog *log);
+@@ -14,6 +14,10 @@ void *android_chiaki_audio_output_new(ChiakiLog *log);
  void android_chiaki_audio_output_free(void *audio_output);
  void android_chiaki_audio_output_settings(uint32_t channels, uint32_t rate, void *audio_output);
  void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output);
-+// GPSx: out = { state (0 none, 1 running, 2 failed), underflows, overflows, reopens }.
-+void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[4]);
++// GPSx: out = { state (0 none, 1 AAudio, 2 failed, 3 OpenSL ES), underflows, overflows, reopens, callbacks }.
++void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[5]);
++// GPSx: 0 = automatic (AAudio, then OpenSL ES), 1 = always OpenSL ES.
++void android_chiaki_audio_output_set_api_preference(int preference);
  
  #ifdef __cplusplus
  }
 diff --git a/android/app/src/main/cpp/chiaki-jni.c b/android/app/src/main/cpp/chiaki-jni.c
-index 039a4d9..4a6d25e 100644
+index 039a4d9..c75dda4 100644
 --- a/android/app/src/main/cpp/chiaki-jni.c
 +++ b/android/app/src/main/cpp/chiaki-jni.c
 @@ -436,7 +436,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject
@@ -233,30 +304,38 @@ index 039a4d9..4a6d25e 100644
  	if(log_file)
  		E->ReleaseStringUTFChars(env, log_file_str, log_file);
  
-@@ -850,7 +851,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
+@@ -848,9 +849,16 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
+ // Cheap best-effort read (same as Qt's polling timer); video_receiver-derived
+ // values go through locked accessors, the rest are unlocked scalar reads. Only
  // called while a session is live and the overlay is toggled on.
++// GPSx: audio API preference for sessions created afterwards (0 automatic, 1 OpenSL ES).
++JNIEXPORT void JNICALL JNI_FCN(audioSetApiPreference)(JNIEnv *env, jobject obj, jint preference)
++{
++	android_chiaki_audio_output_set_api_preference((int)preference);
++}
++
  JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject obj, jlong ptr)
  {
 -	jdouble vals[7] = { 0 };
-+	// GPSx: values 7-10 carry the audio output state, underflows, overflows and reopens.
-+	jdouble vals[11] = { 0 };
++	// GPSx: values 7-11 carry the audio output state, underflows, overflows, reopens and callbacks.
++	jdouble vals[12] = { 0 };
  	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
  	if(session)
  	{
-@@ -872,10 +874,14 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
+@@ -872,10 +880,14 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
  			vals[5] = (jdouble)session->session.connect_info.video_profile.width;
  			vals[6] = (jdouble)session->session.connect_info.video_profile.height;
  		}
-+		uint32_t audio[4] = { 0 };
++		uint32_t audio[5] = { 0 };
 +		android_chiaki_audio_output_stats(session->audio_output, audio);
-+		for(int i = 0; i < 4; i++)
++		for(int i = 0; i < 5; i++)
 +			vals[7 + i] = (jdouble)audio[i];
  	}
 -	jdoubleArray arr = E->NewDoubleArray(env, 7);
-+	jdoubleArray arr = E->NewDoubleArray(env, 11);
++	jdoubleArray arr = E->NewDoubleArray(env, 12);
  	if(arr)
 -		E->SetDoubleArrayRegion(env, arr, 0, 7, vals);
-+		E->SetDoubleArrayRegion(env, arr, 0, 11, vals);
++		E->SetDoubleArrayRegion(env, arr, 0, 12, vals);
  	return arr;
  }
  

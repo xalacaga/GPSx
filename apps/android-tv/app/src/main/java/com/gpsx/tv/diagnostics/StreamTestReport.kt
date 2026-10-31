@@ -19,6 +19,7 @@ data class StreamSample(
     val audioUnderflows: Long = 0,
     val audioOverflows: Long = 0,
     val audioReopens: Long = 0,
+    val audioCallbacks: Long = 0,
 )
 
 /** Non-secret context captured with a test. Never holds addresses, names, keys or tokens. */
@@ -132,7 +133,9 @@ fun buildStreamTestReport(
                         .put("finalState", samples.lastOrNull()?.audioState ?: 0)
                         .put("underflows", samples.lastOrNull()?.audioUnderflows ?: 0L)
                         .put("overflows", samples.lastOrNull()?.audioOverflows ?: 0L)
-                        .put("reopens", samples.lastOrNull()?.audioReopens ?: 0L),
+                        .put("reopens", samples.lastOrNull()?.audioReopens ?: 0L)
+                        .put("callbacks", samples.lastOrNull()?.audioCallbacks ?: 0L)
+                        .put("api", when (samples.lastOrNull()?.audioState) { 1 -> "AAudio"; 3 -> "OpenSLES"; 2 -> "failed"; else -> "none" }),
                 ),
         )
         put(

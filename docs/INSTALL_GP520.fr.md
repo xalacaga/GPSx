@@ -24,6 +24,11 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
 
 ## 3. Réglages conseillés du projecteur et du réseau
 
+- Pas de son (par exemple avec une barre de son Bluetooth) : GPSx passe
+  automatiquement d'AAudio à OpenSL ES si la sortie reste muette ; Paramètres →
+  **Sortie audio → Compatibilité** force OpenSL ES dès le départ. L'affichage du
+  stream indique l'API audio utilisée.
+
 - Mode d'image **Jeu** et **Game Boost** activés.
 - Wi-Fi 5 GHz ou 6 GHz, PS5 en Ethernet sur la box si possible, projecteur en
   vue du point d'accès. Voir `STREAM_TUNING.fr.md`.
@@ -43,13 +48,13 @@ monde peut lire les rapports, qui ne contiennent que les données listées
 ci-dessous.
 
 1. GPSx → **Diagnostics** → *Résultats de tests* : choisissez un rapport.
-2. Scannez le QR code avec un téléphone connecté à github.com. Il ouvre la page
-   GitHub « nouveau fichier » avec le rapport prérempli dans
-   `results/AAAA/MM/<date>-<type>.txt`.
-3. Appuyez sur **Commit changes**.
+2. Scannez le QR code avec un téléphone connecté à GitHub (navigateur ou
+   application GitHub). Il ouvre un nouveau ticket dans
+   `xalacaga/GPSx-diagnostics`, prérempli avec le rapport et l'étiquette `report`.
+3. Appuyez sur **Submit new issue**.
 
 Aucun identifiant n'est stocké sur le GP520 ni dans l'APK. Le fichier du QR code
-est un résumé texte compact (statistiques et jusqu'à 30 échantillons répartis) ;
+est un résumé texte compact (statistiques, API et compteurs audio, jusqu'à 30 échantillons répartis) ;
 le rapport JSON complet reste sur l'appareil. Les rapports contiennent uniquement
 des mesures, le modèle de l'appareil, la version d'Android, la bande/le lien/le
 RSSI Wi-Fi et l'état du son : ni SSID, ni BSSID, ni adresse IP, ni nom de

@@ -68,11 +68,13 @@ data class StreamMetrics(
     val rttMs: Double,
     val width: Int,
     val height: Int,
-    /** 0 not opened yet, 1 playing, 2 failed (engines without audio stats report 0). */
+    /** 0 not opened yet, 1 AAudio, 2 failed, 3 OpenSL ES (engines without audio stats report 0). */
     val audioState: Int = 0,
     val audioUnderflows: Long = 0,
     val audioOverflows: Long = 0,
     val audioReopens: Long = 0,
+    /** Audio callbacks so far; stays at 0 when the output never pulls audio. */
+    val audioCallbacks: Long = 0,
 )
 
 class ErrorCode(val value: Int) {
@@ -164,7 +166,7 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
         fun at(index: Int): Double = values.getOrElse(index) { 0.0 }
         return StreamMetrics(
             values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt(),
-            at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(),
+            at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(), at(11).toLong(),
         )
     }
 
@@ -318,6 +320,9 @@ data class CloudProvisionRequest(
 fun discoveryWakeup(host: String, userCredential: Long, ps5: Boolean): ErrorCode =
     ErrorCode(ChiakiNative.discoveryServiceWakeup(0L, host, userCredential, ps5))
 
+/** Audio API for sessions created afterwards: false = automatic (AAudio, then OpenSL ES), true = OpenSL ES only. */
+fun setAudioCompatibilityMode(enabled: Boolean) = ChiakiNative.audioSetApiPreference(if (enabled) 1 else 0)
+
 /** Installs the CA bundle used by the native HTTPS client. Call once before cloud requests. */
 fun initNativeSsl(cacheDir: String) = ChiakiNative.initNativeSsl(cacheDir)
 
@@ -377,6 +382,7 @@ private class ChiakiNative {
         @JvmStatic external fun sessionSetControllerState(ptr: Long, state: ControllerState)
         @JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
         @JvmStatic external fun sessionGetMetrics(ptr: Long): DoubleArray?
+        @JvmStatic external fun audioSetApiPreference(preference: Int)
         @JvmStatic external fun registStart(result: CreateResult, info: RegistInfo, log: ChiakiLog, regist: Regist)
         @JvmStatic external fun registStop(ptr: Long)
         @JvmStatic external fun registFree(ptr: Long)

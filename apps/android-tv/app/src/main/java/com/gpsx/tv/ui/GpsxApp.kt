@@ -209,7 +209,7 @@ fun GpsxApp(engine: RemotePlayEngine) {
                                     context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                                 }
                             Destination.DIAGNOSTICS -> DiagnosticsScreen(engine)
-                            Destination.SETTINGS -> SettingsScreen(state, ::dispatch)
+                            Destination.SETTINGS -> SettingsScreen(state, engine, ::dispatch)
                             Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
                         }
                     }
@@ -665,11 +665,7 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
             current.rttMs,
             current.packetLoss * 100,
             current.framesLost,
-            when (current.audioState) {
-                1 -> if (current.audioReopens > 0) "OK (${current.audioReopens} reprise(s))" else "OK"
-                2 -> "ÉCHEC"
-                else -> "en attente"
-            },
+            audioLabel(current),
         ),
         color = SoftWhite,
         fontSize = 11.sp,
@@ -677,6 +673,18 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
             modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x99081823))
                 .padding(horizontal = 12.dp, vertical = 8.dp).testTag("stream-metrics"),
     )
+}
+
+private fun audioLabel(metrics: StreamMetrics): String {
+    val api = when (metrics.audioState) {
+        1 -> "AAudio"
+        3 -> "OpenSL ES"
+        2 -> return "ÉCHEC"
+        else -> return "en attente"
+    }
+    val playing = if (metrics.audioCallbacks > 0) "OK" else "muet"
+    val reopened = if (metrics.audioReopens > 0) ", ${metrics.audioReopens} reprise(s)" else ""
+    return "$playing ($api$reopened)"
 }
 
 /**
@@ -1042,7 +1050,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
     SectionTitle(
         "Résultats de tests",
         "Chaque session stream enregistre un rapport. Choisissez-en un, scannez le QR code avec le téléphone " +
-            "connecté à GitHub et validez « Commit » : le rapport arrive dans xalacaga/GPSx-diagnostics.",
+            "connecté à GitHub et appuyez sur « Submit » : le rapport arrive en ticket dans xalacaga/GPSx-diagnostics.",
     )
     if (reports.isEmpty()) {
         Text("Aucun rapport : lancez un stream d’au moins quelques secondes.", color = Muted, fontSize = 12.sp)
@@ -1058,7 +1066,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
                 Text(report.name.removeSuffix(".json"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
                     if (url != null) {
-                        "1. Scannez avec le téléphone (connecté à github.com).\n2. Appuyez sur « Commit changes »."
+                        "1. Scannez avec le téléphone (connecté à GitHub).\n2. Appuyez sur « Submit new issue »."
                     } else {
                         "Rapport trop volumineux pour un QR code."
                     },
@@ -1090,7 +1098,8 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 }
 
 @Composable
-private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
+private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
+    var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
     val responsive = LocalResponsiveLayout.current
     ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1098,6 +1107,14 @@ private fun SettingsScreen(state: AppUiState, dispatch: (UiAction) -> Unit) {
             SettingRow("Mode faible latence", "Demandé au décodeur quand il est réellement supporté", yesNo(state.lowLatency)) { dispatch(UiAction.ToggleLowLatency) }
             SettingRow("Télémétrie locale", "Mesures structurées sans données personnelles", yesNo(state.telemetryEnabled)) { dispatch(UiAction.ToggleTelemetry) }
             SettingRow("Microphone", "Désactivé par défaut", yesNo(state.microphoneEnabled)) { dispatch(UiAction.ToggleMicrophone) }
+            SettingRow(
+                "Sortie audio",
+                "Auto : AAudio puis OpenSL ES si muet · Compatibilité : OpenSL ES directement (barres de son, TV capricieuses)",
+                if (audioCompatibility) "COMPATIBILITÉ" else "AUTO",
+            ) {
+                audioCompatibility = !audioCompatibility
+                engine.audioCompatibility = audioCompatibility
+            }
             SectionTitle("Fonctions avancées", "Prévues pour la parité complète")
             if (responsive.compact) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

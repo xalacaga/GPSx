@@ -86,7 +86,8 @@ PlayStation Plus cloud streaming) with four local patches: the Windows-host
 no per-packet `DEBUG` session logging in `android/app/src/main/cpp/chiaki-jni.c`;
 low-latency decoder hints with a plain retry in
 `android/app/src/main/cpp/video-decoder.c`; and a shared, reopening Oboe audio output
-with stats exported through `sessionGetMetrics` in `audio-output.cpp`/`.h`. Libraries are built `RelWithDebInfo`
+with an AAudio-to-OpenSL ES watchdog, an `audioSetApiPreference` JNI entry and stats
+exported through `sessionGetMetrics` in `audio-output.cpp`/`.h` and `chiaki-jni.c`. Libraries are built `RelWithDebInfo`
 and stripped. See `CLOUD_GAMING_PLAN.md` and `STREAM_TUNING.md`. `ANDROID_NATIVE_ADAPTER.md` records scope and
 evidence. Platform files intentionally remain outside the protocol-crate table
 enforced by ProvenanceGuard.

@@ -24,6 +24,11 @@ Android may ask to allow GPSx as an install source.
 
 ## 3. Recommended projector and network settings
 
+- No sound (for example with a Bluetooth soundbar): GPSx falls back from AAudio to
+  OpenSL ES automatically when the output stays silent; Settings → **Sortie audio
+  → Compatibilité** forces OpenSL ES from the start. The stream overlay shows the
+  audio API in use.
+
 - Picture mode **Game** and **Game Boost** on.
 - 5 GHz or 6 GHz Wi-Fi, PS5 wired to the router if possible, projector in sight
   of the access point. See `STREAM_TUNING.md`.
@@ -42,13 +47,13 @@ It is **public** for now by owner choice: anyone can read the reports, which
 contain only the data listed below.
 
 1. GPSx → **Diagnostics** → *Résultats de tests*: select a report.
-2. Scan the QR code with a phone that is signed in to github.com. It opens
-   GitHub's "new file" page with the report pre-filled under
-   `results/YYYY/MM/<date>-<kind>.txt`.
-3. Tap **Commit changes**.
+2. Scan the QR code with a phone signed in to GitHub (browser or GitHub app).
+   It opens a new issue in `xalacaga/GPSx-diagnostics` pre-filled with the
+   report and the `report` label.
+3. Tap **Submit new issue**.
 
 No credential is stored on the GP520 or in the APK. The QR file is a compact text
-summary (statistics plus up to 30 evenly spaced samples); the full JSON report
+summary (statistics, audio API and counters, up to 30 evenly spaced samples); the full JSON report
 stays on the device. Reports contain measurements, device model, Android version,
 Wi-Fi band/link/RSSI and audio state only: no SSID, BSSID, IP address, console
 name, registration key or PSN token.

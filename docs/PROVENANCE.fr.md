@@ -88,8 +88,9 @@ dans `lib/src/ctrl.c`, que le JNI Android ne renseigne jamais ; aucune
 journalisation de session `DEBUG` par paquet dans
 `android/app/src/main/cpp/chiaki-jni.c` ; et des indications basse latence du
 décodeur avec nouvel essai simple dans `android/app/src/main/cpp/video-decoder.c` ;
-et une sortie audio Oboe partagée qui se rouvre, avec statistiques exportées par
-`sessionGetMetrics`, dans `audio-output.cpp`/`.h`.
+et une sortie audio Oboe partagée qui se rouvre, avec bascule AAudio vers OpenSL ES,
+une entrée JNI `audioSetApiPreference` et des statistiques exportées par
+`sessionGetMetrics`, dans `audio-output.cpp`/`.h` et `chiaki-jni.c`.
 Les bibliothèques sont construites en `RelWithDebInfo` puis strippées. Voir
 `CLOUD_GAMING_PLAN.fr.md` et `STREAM_TUNING.fr.md`. `ANDROID_NATIVE_ADAPTER.fr.md`
 consigne le périmètre et les preuves. Les fichiers plateforme restent hors du
