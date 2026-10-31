@@ -658,8 +658,9 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
     Text(
         String.format(
             java.util.Locale.FRANCE,
-            "%dp · %.1f fps · affichées %d · décodage %.0f ms · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d · son %s",
+            "%dp %s · %.1f fps · affichées %d · décodage %.0f ms · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d · son %s",
             current.height,
+            com.gpsx.tv.diagnostics.decodedCodecLabel(current.videoDecodedCodec),
             current.fps,
             current.videoFramesRendered,
             current.videoDecodeLatencyMs,
@@ -1125,11 +1126,19 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 @Composable
 private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
+    var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
     val responsive = LocalResponsiveLayout.current
     ScreenFrame("Personnalisation", stringResource(R.string.settings_title), "Des choix lisibles, avec des valeurs sûres par défaut et des options avancées à la demande.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
-            SettingRow("Mode faible latence", "Demandé au décodeur quand il est réellement supporté", yesNo(state.lowLatency)) { dispatch(UiAction.ToggleLowLatency) }
+            SettingRow(
+                "Mode faible latence",
+                "Options faible latence du décodeur vidéo · à couper si l’image se fige (session suivante)",
+                yesNo(decoderLowLatency),
+            ) {
+                decoderLowLatency = !decoderLowLatency
+                engine.decoderLowLatency = decoderLowLatency
+            }
             SettingRow("Télémétrie locale", "Mesures structurées sans données personnelles", yesNo(state.telemetryEnabled)) { dispatch(UiAction.ToggleTelemetry) }
             SettingRow("Microphone", "Désactivé par défaut", yesNo(state.microphoneEnabled)) { dispatch(UiAction.ToggleMicrophone) }
             SettingRow(

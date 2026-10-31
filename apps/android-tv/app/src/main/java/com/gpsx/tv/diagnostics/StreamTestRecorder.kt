@@ -77,6 +77,8 @@ class StreamTestRecorder(context: Context) {
                     metrics.videoSamplesQueued,
                     metrics.videoFramesRendered,
                     metrics.videoDecodeLatencyMs,
+                    metrics.videoFramesDroppedLate,
+                    metrics.videoDecodedCodec,
                     probeRttMs,
                 )
         }

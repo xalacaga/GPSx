@@ -13,7 +13,10 @@ rouvre après un changement de sortie (et à la demande de GPSx quand une sortie
 Bluetooth apparaît), peut cibler un appareil de sortie donné, et signale son état
 et son appareil ; des compteurs du décodeur vidéo (échantillons reçus avant le
 décodeur, mis en file, affichés) et une correction de `set_surface(NULL)` qui
-rendait la main sans libérer le verrou du codec.
+rendait la main sans libérer le verrou du codec (et le reprenait dans
+`kill_decoder`) ; le codec est créé au premier échantillon avec le format lu dans le
+flux ; les images décodées en retard sont sautées ; options faible latence du
+décodeur désactivables.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

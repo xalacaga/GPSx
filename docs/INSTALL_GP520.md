@@ -37,6 +37,13 @@ Android may ask to allow GPSx as an install source.
   If the overlay still says HDMI, start the session after the Bluetooth device is
   connected and send a test report.
 
+- Video format: the decoder is created on the first video packet and follows the
+  codec the console or cloud server actually sends (H.264 or H.265), whatever was
+  requested; the overlay shows it next to the resolution.
+- Frozen picture with game sound (seen on PS4 cloud games, H.264): Settings →
+  **Mode faible latence → DÉSACTIVÉ** starts the next session without the
+  low-latency decoder hints. The overlay's *affichées* count shows whether frames
+  still reach the screen.
 - Picture mode **Game** and **Game Boost** on.
 - 5 GHz or 6 GHz Wi-Fi, PS5 wired to the router if possible, projector in sight
   of the access point. See `STREAM_TUNING.md`.

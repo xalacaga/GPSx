@@ -60,7 +60,7 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
         "loss ${stat("packetLoss")}",
         "probe ${summary.optJSONObject("probeRttMs")?.let { s -> listOf("p50", "p95", "p99", "min", "max").joinToString(" ") { num(s.opt(it)) } } ?: "na"}",
         "decode ${stat("decodeLatencyMs")}",
-        "video nodec ${num(video.opt("samplesWithoutDecoder"))} queued ${num(video.opt("samplesQueued"))} rendered ${num(video.opt("framesRendered"))}",
+        "video codec ${num(video.opt("decodedCodec"))} nodec ${num(video.opt("samplesWithoutDecoder"))} queued ${num(video.opt("samplesQueued"))} rendered ${num(video.opt("framesRendered"))} dropped ${num(video.opt("framesDroppedLate"))}",
         "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))} route ${num(audio.opt("route"))}",
         "samples t fps mbps rtt loss lost audio",
     )

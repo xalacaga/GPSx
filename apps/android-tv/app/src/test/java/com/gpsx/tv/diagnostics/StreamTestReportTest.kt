@@ -57,7 +57,7 @@ class StreamTestReportTest {
     fun `report summarises video decoder counters and the console probe`() {
         val probed =
             samples(20).mapIndexed { i, s ->
-                s.copy(videoSamplesWithoutDecoder = 3, videoSamplesQueued = 100L + i, videoFramesRendered = 90L + i, videoDecodeLatencyMs = 25.0, probeRttMs = if (i % 2 == 0) 4.0 else null)
+                s.copy(videoSamplesWithoutDecoder = 3, videoSamplesQueued = 100L + i, videoFramesRendered = 90L + i, videoDecodeLatencyMs = 25.0, videoFramesDroppedLate = 7, videoDecodedCodec = 1, probeRttMs = if (i % 2 == 0) 4.0 else null)
             }
         val report = buildStreamTestReport(context, "a", "b", "fin", probed)
         val summary = report.getJSONObject("summary")
@@ -67,7 +67,7 @@ class StreamTestReportTest {
         assertEquals(109L, video.getLong("framesRendered"))
         assertEquals(4.0, summary.getJSONObject("probeRttMs").getDouble("p50"), 0.0)
         val text = compactReport(report, 6)
-        assertTrue(text.contains("video nodec 3 queued 119 rendered 109"))
+        assertTrue(text.contains("video codec H264 nodec 3 queued 119 rendered 109 dropped 7"))
         assertTrue(text.contains("probe 4 4 4 4 4"))
         assertTrue(text.contains("decode 25 25 25 25 25"))
     }

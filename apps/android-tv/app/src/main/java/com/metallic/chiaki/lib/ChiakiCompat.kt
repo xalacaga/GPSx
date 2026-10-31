@@ -84,6 +84,10 @@ data class StreamMetrics(
     val videoFramesRendered: Long = 0,
     /** Smoothed time from queueing a sample to its decoded frame (ms); 0 before the first frame. */
     val videoDecodeLatencyMs: Double = 0.0,
+    /** Decoded frames skipped because a newer one was already ready (catching up after a stall). */
+    val videoFramesDroppedLate: Long = 0,
+    /** Codec actually decoded, read from the stream: 0 none yet, 1 H.264, 2 H.265. */
+    val videoDecodedCodec: Int = 0,
 )
 
 class ErrorCode(val value: Int) {
@@ -179,7 +183,7 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
         return StreamMetrics(
             values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt(),
             at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(), at(11).toLong(), at(12).toInt(),
-            at(13).toLong(), at(14).toLong(), at(15).toLong(), at(16),
+            at(13).toLong(), at(14).toLong(), at(15).toLong(), at(16), at(17).toLong(), at(18).toInt(),
         )
     }
 
@@ -336,6 +340,9 @@ fun discoveryWakeup(host: String, userCredential: Long, ps5: Boolean): ErrorCode
 /** Audio API for sessions created afterwards: false = automatic (AAudio, then OpenSL ES), true = OpenSL ES only. */
 fun setAudioCompatibilityMode(enabled: Boolean) = ChiakiNative.audioSetApiPreference(if (enabled) 1 else 0)
 
+/** Whether decoders created afterwards try the low-latency MediaCodec hints first. */
+fun setDecoderLowLatencyHints(enabled: Boolean) = ChiakiNative.videoSetLowLatencyHints(enabled)
+
 /** Android output device ID for AAudio streams opened afterwards; 0 leaves routing to the system. */
 fun setPreferredAudioDevice(deviceId: Int) = ChiakiNative.audioSetPreferredDevice(deviceId)
 
@@ -400,6 +407,7 @@ private class ChiakiNative {
         @JvmStatic external fun sessionGetMetrics(ptr: Long): DoubleArray?
         @JvmStatic external fun audioSetApiPreference(preference: Int)
         @JvmStatic external fun audioSetPreferredDevice(deviceId: Int)
+        @JvmStatic external fun videoSetLowLatencyHints(enabled: Boolean)
         @JvmStatic external fun sessionRestartAudio(ptr: Long)
         @JvmStatic external fun registStart(result: CreateResult, info: RegistInfo, log: ChiakiLog, regist: Regist)
         @JvmStatic external fun registStop(ptr: Long)

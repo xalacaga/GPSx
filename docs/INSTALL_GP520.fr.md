@@ -37,6 +37,13 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
   l'affichage indique toujours HDMI, lancez la session une fois l'appareil
   Bluetooth connecté et envoyez un rapport de test.
 
+- Format vidéo : le décodeur est créé au premier paquet vidéo et suit le codec
+  réellement envoyé par la console ou le serveur cloud (H.264 ou H.265), quel que
+  soit celui demandé ; l'affichage du stream l'indique à côté de la résolution.
+- Image figée avec le son du jeu (vu sur les jeux cloud PS4, en H.264) :
+  Paramètres → **Mode faible latence → DÉSACTIVÉ** lance la session suivante sans
+  les options faible latence du décodeur. Le compteur *affichées* de l'affichage
+  du stream indique si les images arrivent encore à l'écran.
 - Mode d'image **Jeu** et **Game Boost** activés.
 - Wi-Fi 5 GHz ou 6 GHz, PS5 en Ethernet sur la box si possible, projecteur en
   vue du point d'accès. Voir `STREAM_TUNING.fr.md`.

@@ -32,6 +32,7 @@ import com.metallic.chiaki.lib.StreamMetrics
 import com.metallic.chiaki.lib.Target
 import com.metallic.chiaki.lib.discoveryWakeup
 import com.metallic.chiaki.lib.setAudioCompatibilityMode
+import com.metallic.chiaki.lib.setDecoderLowLatencyHints
 import com.metallic.chiaki.lib.setPreferredAudioDevice
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -108,6 +109,13 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) = onAudioRouteChanged(addedDevices)
             override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) = onAudioRouteChanged(removedDevices)
+        }
+
+    /** Low-latency MediaCodec hints (on by default). Applies to the next session. */
+    var decoderLowLatency: Boolean
+        get() = settings?.getBoolean("decoder_low_latency", true) ?: true
+        set(value) {
+            settings?.edit()?.putBoolean("decoder_low_latency", value)?.apply()
         }
 
     /** Per-session test reports, uploaded on request from the Diagnostics screen. */
@@ -331,6 +339,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
                 stopSession()
                 runCatching { streamWifiLock?.acquire() }
                 runCatching { applyAudioApiPreference() }
+                runCatching { setDecoderLowLatencyHints(decoderLowLatency) }
                 val newSession = Session(connectInfo)
                 newSession.eventCallback = { event ->
                     when (event) {

@@ -26,6 +26,8 @@ data class StreamSample(
     val videoSamplesQueued: Long = 0,
     val videoFramesRendered: Long = 0,
     val videoDecodeLatencyMs: Double = 0.0,
+    val videoFramesDroppedLate: Long = 0,
+    val videoDecodedCodec: Int = 0,
     /** TCP connect time from the TV to the console, measured by GPSx; null for cloud or failed probes. */
     val probeRttMs: Double? = null,
 )
@@ -141,7 +143,9 @@ fun buildStreamTestReport(
                     JSONObject()
                         .put("samplesWithoutDecoder", samples.lastOrNull()?.videoSamplesWithoutDecoder ?: 0L)
                         .put("samplesQueued", samples.lastOrNull()?.videoSamplesQueued ?: 0L)
-                        .put("framesRendered", samples.lastOrNull()?.videoFramesRendered ?: 0L),
+                        .put("framesRendered", samples.lastOrNull()?.videoFramesRendered ?: 0L)
+                        .put("framesDroppedLate", samples.lastOrNull()?.videoFramesDroppedLate ?: 0L)
+                        .put("decodedCodec", decodedCodecLabel(samples.lastOrNull()?.videoDecodedCodec ?: 0)),
                 )
                 .put(
                     "audio",
@@ -180,6 +184,13 @@ fun buildStreamTestReport(
         put("sampleFields", JSONArray(listOf("t", "fps", "bitrateMbps", "rttMs", "packetLoss", "framesLost", "width", "height", "audioState", "audioUnderflows")))
     }
 }
+
+internal fun decodedCodecLabel(value: Int): String =
+    when (value) {
+        1 -> "H264"
+        2 -> "H265"
+        else -> "none"
+    }
 
 private fun probeStats(steady: List<StreamSample>): JSONObject {
     val values = steady.mapNotNull(StreamSample::probeRttMs)
