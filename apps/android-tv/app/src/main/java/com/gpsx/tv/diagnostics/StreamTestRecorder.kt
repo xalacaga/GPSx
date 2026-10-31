@@ -24,7 +24,6 @@ data class StoredReport(
     val durationSeconds: Double,
     val fpsP50: Double?,
     val rttP95: Double?,
-    val uploaded: Boolean,
 )
 
 /**
@@ -34,7 +33,6 @@ data class StoredReport(
 class StreamTestRecorder(context: Context) {
     private val appContext = context.applicationContext
     private val directory = File(appContext.filesDir, "test-reports")
-    private val uploadedPrefs = appContext.getSharedPreferences("gpsx_uploaded_reports", Context.MODE_PRIVATE)
     private val lock = Any()
     private var active: StreamTestContext? = null
     private var startedAt = 0L
@@ -70,7 +68,11 @@ class StreamTestRecorder(context: Context) {
         synchronized(lock) {
             if (active == null || samples.size >= MAX_SAMPLES) return@synchronized
             val t = (SystemClock.elapsedRealtime() - startedElapsed) / 1000.0
-            samples += StreamSample(t, metrics.fps, metrics.bitrateMbps, metrics.rttMs, metrics.packetLoss, metrics.framesLost, metrics.width, metrics.height)
+            samples +=
+                StreamSample(
+                    t, metrics.fps, metrics.bitrateMbps, metrics.rttMs, metrics.packetLoss, metrics.framesLost, metrics.width, metrics.height,
+                    metrics.audioState, metrics.audioUnderflows, metrics.audioOverflows, metrics.audioReopens,
+                )
         }
 
     /** Writes the report when at least [MIN_SAMPLES] seconds were recorded. */
@@ -105,20 +107,15 @@ class StreamTestRecorder(context: Context) {
                         durationSeconds = summary.optDouble("durationSeconds", 0.0),
                         fpsP50 = summary.getJSONObject("fps").optDouble("p50").takeUnless(Double::isNaN),
                         rttP95 = summary.getJSONObject("rttMs").optDouble("p95").takeUnless(Double::isNaN),
-                        uploaded = uploadedPrefs.getBoolean(file.name, false),
                     )
                 }.getOrNull()
             }.orEmpty()
 
-    fun markUploaded(name: String) {
-        uploadedPrefs.edit().putBoolean(name, true).apply()
-    }
+    fun load(report: StoredReport): org.json.JSONObject? =
+        runCatching { org.json.JSONObject(report.file.readText(Charsets.UTF_8)) }.getOrNull()
 
     private fun prune() {
-        directory.listFiles()?.sortedByDescending(File::getName)?.drop(MAX_REPORTS)?.forEach { old ->
-            uploadedPrefs.edit().remove(old.name).apply()
-            old.delete()
-        }
+        directory.listFiles()?.sortedByDescending(File::getName)?.drop(MAX_REPORTS)?.forEach(File::delete)
     }
 
     @Suppress("DEPRECATION")

@@ -35,26 +35,31 @@ Android may ask to allow GPSx as an install source.
    least 2 minutes; 10 minutes gives a more useful comparison.
 3. Press Back to stop. Every session of 5 s or more writes one report.
 
-## 5. Send results to GitHub
+## 5. Send results to GitHub (QR code, no token)
 
 Results go to `xalacaga/GPSx-diagnostics`, separate from the source repository.
 It is **public** for now by owner choice: anyone can read the reports, which
 contain only the data listed below.
 
-1. On github.com: Settings → Developer settings → Fine-grained tokens →
-   *Generate new token*; repository access **Only select repositories →
-   GPSx-diagnostics**; permission **Contents: Read and write**; expiration
-   30 days.
-2. In GPSx → **Diagnostics** → *Résultats de tests*: keep the repository
-   `xalacaga/GPSx-diagnostics`, paste the token (the Google TV phone app can
-   paste text) and press **Enregistrer**.
-3. Press **Envoyer les résultats sur GitHub**. Each report lands in
-   `results/YYYY/MM/<date>-<kind>.json`.
+1. GPSx → **Diagnostics** → *Résultats de tests*: select a report.
+2. Scan the QR code with a phone that is signed in to github.com. It opens
+   GitHub's "new file" page with the report pre-filled under
+   `results/YYYY/MM/<date>-<kind>.txt`.
+3. Tap **Commit changes**.
 
-The token is encrypted with Android Keystore, never logged or exported, and can
-be removed with **Supprimer le jeton**. Reports contain measurements, device
-model, Android version and Wi-Fi band/link/RSSI only: no SSID, BSSID, IP address,
-console name, registration key or PSN token.
+No credential is stored on the GP520 or in the APK. The QR file is a compact text
+summary (statistics plus up to 30 evenly spaced samples); the full JSON report
+stays on the device. Reports contain measurements, device model, Android version,
+Wi-Fi band/link/RSSI and audio state only: no SSID, BSSID, IP address, console
+name, registration key or PSN token.
+
+## 6. Cloud sign-in (QR code)
+
+Cloud → **Se connecter avec le téléphone (QR code)**, scan, sign in to Sony on the
+phone; GPSx picks up the session within a few seconds. As in Pylux, this goes
+through the Pylux relay `xbgamestream.com`, which receives the PSN session token
+(NPSSO) to hand it to the TV. GPSx encrypts it on the device and never logs it.
+Manual NPSSO entry stays available as a fallback.
 
 ## Report format
 

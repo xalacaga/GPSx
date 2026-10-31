@@ -84,8 +84,9 @@ PlayStation Plus cloud streaming) with four local patches: the Windows-host
 `GPSX_PROTOBUF_PYTHON` override in `CMakeLists.txt`; null checks before
 `display_sink.cantdisplay_cb` in `lib/src/ctrl.c`, which the Android JNI never sets;
 no per-packet `DEBUG` session logging in `android/app/src/main/cpp/chiaki-jni.c`;
-and low-latency decoder hints with a plain retry in
-`android/app/src/main/cpp/video-decoder.c`. Libraries are built `RelWithDebInfo`
+low-latency decoder hints with a plain retry in
+`android/app/src/main/cpp/video-decoder.c`; and a shared, reopening Oboe audio output
+with stats exported through `sessionGetMetrics` in `audio-output.cpp`/`.h`. Libraries are built `RelWithDebInfo`
 and stripped. See `CLOUD_GAMING_PLAN.md` and `STREAM_TUNING.md`. `ANDROID_NATIVE_ADAPTER.md` records scope and
 evidence. Platform files intentionally remain outside the protocol-crate table
 enforced by ProvenanceGuard.

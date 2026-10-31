@@ -12,8 +12,215 @@ index b31dcd9..ec2f75c 100755
  find_package(PythonInterp 3 REQUIRED) # Make sure nanopb doesn't find Python 2.7 because Python 2 should just die.
  
  if(CHIAKI_USE_SYSTEM_NANOPB)
+diff --git a/android/app/src/main/cpp/audio-output.cpp b/android/app/src/main/cpp/audio-output.cpp
+index 53157f1..6e94a98 100644
+--- a/android/app/src/main/cpp/audio-output.cpp
++++ b/android/app/src/main/cpp/audio-output.cpp
+@@ -9,6 +9,11 @@
+ 
+ #include <oboe/Oboe.h>
+ 
++#include <atomic>
++#include <chrono>
++#include <mutex>
++#include <thread>
++
+ #define BUFFER_CHUNK_SIZE 1024
+ #define BUFFER_CHUNKS_COUNT 32
+ 
+@@ -28,16 +33,63 @@ public:
+ 	void onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error) override;
+ };
+ 
++// GPSx: state reported through android_chiaki_audio_output_stats().
++enum AudioOutputState { AUDIO_STATE_NONE = 0, AUDIO_STATE_RUNNING = 1, AUDIO_STATE_FAILED = 2 };
++
+ struct AudioOutput
+ {
+ 	ChiakiLog *log;
++	std::mutex mutex; // guards stream, channels, rate and reopen_thread
+ 	oboe::ManagedStream stream;
+ 	AudioOutputCallback stream_callback;
+ 	AudioBuffer buf;
++	uint32_t channels = 0;
++	uint32_t rate = 0;
++	std::thread reopen_thread;
++	std::atomic<bool> closing { false };
++	std::atomic<int> state { AUDIO_STATE_NONE };
++	std::atomic<uint32_t> underflows { 0 };
++	std::atomic<uint32_t> overflows { 0 };
++	std::atomic<uint32_t> reopens { 0 };
+ 
+ 	AudioOutput() : stream_callback(this) {}
+ };
+ 
++// GPSx: shared mode works on every route (Bluetooth A2DP has no exclusive/MMAP path).
++// Low latency is tried first, then the default mode. Caller holds ao->mutex.
++static bool open_stream_locked(AudioOutput *ao)
++{
++	const oboe::PerformanceMode modes[] = { oboe::PerformanceMode::LowLatency, oboe::PerformanceMode::None };
++	for(auto mode : modes)
++	{
++		oboe::AudioStreamBuilder builder;
++		builder.setPerformanceMode(mode)
++			->setSharingMode(oboe::SharingMode::Shared)
++			->setUsage(oboe::Usage::Game)
++			->setContentType(oboe::ContentType::Music)
++			->setFormat(oboe::AudioFormat::I16)
++			->setChannelCount(ao->channels)
++			->setSampleRate(ao->rate)
++			->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
++			->setCallback(&ao->stream_callback);
++		oboe::Result result = builder.openManagedStream(ao->stream);
++		if(result == oboe::Result::OK)
++			result = ao->stream->requestStart();
++		if(result == oboe::Result::OK)
++		{
++			CHIAKI_LOGI(ao->log, "Audio Output started Oboe stream (%s, %d Hz, buffer %d frames)",
++				mode == oboe::PerformanceMode::LowLatency ? "low latency" : "default",
++				ao->stream->getSampleRate(), ao->stream->getBufferSizeInFrames());
++			ao->state = AUDIO_STATE_RUNNING;
++			return true;
++		}
++		CHIAKI_LOGE(ao->log, "Audio Output failed to open/start Oboe stream: %s", oboe::convertToText(result));
++		ao->stream = nullptr;
++	}
++	ao->state = AUDIO_STATE_FAILED;
++	return false;
++}
++
+ extern "C" void *android_chiaki_audio_output_new(ChiakiLog *log)
+ {
+ 	auto r = new AudioOutput();
+@@ -50,33 +102,29 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
+ 	if(!audio_output)
+ 		return;
+ 	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
+-	ao->stream = nullptr;
++	ao->closing = true;
++	std::thread pending;
++	{
++		std::lock_guard<std::mutex> lock(ao->mutex);
++		pending = std::move(ao->reopen_thread);
++	}
++	if(pending.joinable())
++		pending.join();
++	{
++		std::lock_guard<std::mutex> lock(ao->mutex);
++		ao->stream = nullptr;
++	}
+ 	delete ao;
+ }
+ 
+ extern "C" void android_chiaki_audio_output_settings(uint32_t channels, uint32_t rate, void *audio_output)
+ {
+ 	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
+-
+-	oboe::AudioStreamBuilder builder;
+-	builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
+-		->setSharingMode(oboe::SharingMode::Exclusive)
+-		->setFormat(oboe::AudioFormat::I16)
+-		->setChannelCount(channels)
+-		->setSampleRate(rate)
+-		->setCallback(&ao->stream_callback);
+-
+-	auto result = builder.openManagedStream(ao->stream);
+-	if(result == oboe::Result::OK)
+-		CHIAKI_LOGI(ao->log, "Audio Output opened Oboe stream");
+-	else
+-		CHIAKI_LOGE(ao->log, "Audio Output failed to open Oboe stream: %s", oboe::convertToText(result));
+-
+-	result = ao->stream->start();
+-	if(result == oboe::Result::OK)
+-		CHIAKI_LOGI(ao->log, "Audio Output started Oboe stream");
+-	else
+-		CHIAKI_LOGE(ao->log, "Audio Output failed to start Oboe stream: %s", oboe::convertToText(result));
++	std::lock_guard<std::mutex> lock(ao->mutex);
++	ao->channels = channels;
++	ao->rate = rate;
++	ao->stream = nullptr;
++	open_stream_locked(ao);
+ }
+ 
+ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output)
+@@ -86,7 +134,16 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
+ 	size_t buf_size = samples_count * sizeof(int16_t);
+ 	size_t pushed = ao->buf.Push(reinterpret_cast<uint8_t *>(buf), buf_size);
+ 	if(pushed < buf_size)
+-		CHIAKI_LOGW(ao->log, "Audio Output Buffer Overflow!");
++		ao->overflows++;
++}
++
++extern "C" void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[4])
++{
++	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
++	out[0] = ao ? (uint32_t)ao->state.load() : 0;
++	out[1] = ao ? ao->underflows.load() : 0;
++	out[2] = ao ? ao->overflows.load() : 0;
++	out[3] = ao ? ao->reopens.load() : 0;
+ }
+ 
+ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *stream, void *audio_data, int32_t num_frames)
+@@ -102,11 +159,10 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
+ 	auto buf = reinterpret_cast<uint8_t *>(audio_data);
+ 
+ 	size_t buf_size_delivered = audio_output->buf.Pop(buf, buf_size_requested);
+-	//CHIAKI_LOGW(audio_output->log, "Delivered %llu", (unsigned long long)buf_size_delivered);
+ 
+ 	if(buf_size_delivered < buf_size_requested)
+ 	{
+-		CHIAKI_LOGV(audio_output->log, "Audio Output Buffer Underflow!");
++		audio_output->underflows++;
+ 		memset(buf + buf_size_delivered, 0, buf_size_requested - buf_size_delivered);
+ 	}
+ 
+@@ -121,4 +177,31 @@ void AudioOutputCallback::onErrorBeforeClose(oboe::AudioStream *stream, oboe::Re
+ void AudioOutputCallback::onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error)
+ {
+ 	CHIAKI_LOGE(audio_output->log, "Oboe reported error after close: %s", oboe::convertToText(error));
++	// GPSx: a route change (Bluetooth speaker connected or reconnected) disconnects the stream.
++	// Reopen it on a separate thread; Oboe forbids reopening from the callback thread.
++	AudioOutput *ao = audio_output;
++	if(ao->closing)
++		return;
++	ao->state = AUDIO_STATE_FAILED;
++	std::thread previous;
++	{
++		std::lock_guard<std::mutex> lock(ao->mutex);
++		previous = std::move(ao->reopen_thread);
++	}
++	// Join outside the lock: the previous reopen thread takes the same mutex.
++	if(previous.joinable())
++		previous.join();
++	std::lock_guard<std::mutex> lock(ao->mutex);
++	if(ao->closing)
++		return;
++	ao->reopens++;
++	ao->reopen_thread = std::thread([ao]() {
++		// Let this callback return and the new audio route settle before replacing the stream.
++		std::this_thread::sleep_for(std::chrono::milliseconds(300));
++		std::lock_guard<std::mutex> reopen_lock(ao->mutex);
++		if(ao->closing)
++			return;
++		ao->stream = nullptr;
++		open_stream_locked(ao);
++	});
+ }
+diff --git a/android/app/src/main/cpp/audio-output.h b/android/app/src/main/cpp/audio-output.h
+index b521ebe..fcf6bde 100644
+--- a/android/app/src/main/cpp/audio-output.h
++++ b/android/app/src/main/cpp/audio-output.h
+@@ -14,6 +14,8 @@ void *android_chiaki_audio_output_new(ChiakiLog *log);
+ void android_chiaki_audio_output_free(void *audio_output);
+ void android_chiaki_audio_output_settings(uint32_t channels, uint32_t rate, void *audio_output);
+ void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output);
++// GPSx: out = { state (0 none, 1 running, 2 failed), underflows, overflows, reopens }.
++void android_chiaki_audio_output_stats(void *audio_output, uint32_t out[4]);
+ 
+ #ifdef __cplusplus
+ }
 diff --git a/android/app/src/main/cpp/chiaki-jni.c b/android/app/src/main/cpp/chiaki-jni.c
-index 039a4d9..31c89ac 100644
+index 039a4d9..4a6d25e 100644
 --- a/android/app/src/main/cpp/chiaki-jni.c
 +++ b/android/app/src/main/cpp/chiaki-jni.c
 @@ -436,7 +436,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject
@@ -25,6 +232,33 @@ index 039a4d9..31c89ac 100644
 +	android_chiaki_file_log_init(log, log_verbose ? CHIAKI_LOG_ALL : (CHIAKI_LOG_ALL & ~(CHIAKI_LOG_VERBOSE | CHIAKI_LOG_DEBUG)), log_file);
  	if(log_file)
  		E->ReleaseStringUTFChars(env, log_file_str, log_file);
+ 
+@@ -850,7 +851,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
+ // called while a session is live and the overlay is toggled on.
+ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject obj, jlong ptr)
+ {
+-	jdouble vals[7] = { 0 };
++	// GPSx: values 7-10 carry the audio output state, underflows, overflows and reopens.
++	jdouble vals[11] = { 0 };
+ 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+ 	if(session)
+ 	{
+@@ -872,10 +874,14 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
+ 			vals[5] = (jdouble)session->session.connect_info.video_profile.width;
+ 			vals[6] = (jdouble)session->session.connect_info.video_profile.height;
+ 		}
++		uint32_t audio[4] = { 0 };
++		android_chiaki_audio_output_stats(session->audio_output, audio);
++		for(int i = 0; i < 4; i++)
++			vals[7 + i] = (jdouble)audio[i];
+ 	}
+-	jdoubleArray arr = E->NewDoubleArray(env, 7);
++	jdoubleArray arr = E->NewDoubleArray(env, 11);
+ 	if(arr)
+-		E->SetDoubleArrayRegion(env, arr, 0, 7, vals);
++		E->SetDoubleArrayRegion(env, arr, 0, 11, vals);
+ 	return arr;
+ }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
 index a256204..b947733 100644

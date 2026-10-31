@@ -82,11 +82,10 @@ import com.gpsx.tv.remoteplay.cloud.CloudCategory
 import com.gpsx.tv.remoteplay.cloud.CloudGame
 import com.gpsx.tv.remoteplay.cloud.CloudPlayController
 import com.gpsx.tv.remoteplay.cloud.CloudSnapshot
-import com.gpsx.tv.remoteplay.cloud.PsnLoginView
+import com.gpsx.tv.remoteplay.cloud.PsnRelayLogin
 import com.metallic.chiaki.lib.StreamMetrics
-import com.gpsx.tv.diagnostics.GitHubResultUploader
 import com.gpsx.tv.diagnostics.StoredReport
-import com.gpsx.tv.diagnostics.UploadResult
+import com.gpsx.tv.diagnostics.reportUploadUrl
 import com.gpsx.tv.update.AppUpdater
 import com.gpsx.tv.update.ReleaseManifest
 import com.gpsx.tv.update.UpdateCheck
@@ -659,13 +658,18 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
     Text(
         String.format(
             java.util.Locale.FRANCE,
-            "%dp · %.1f fps · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d",
+            "%dp · %.1f fps · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d · son %s",
             current.height,
             current.fps,
             current.bitrateMbps,
             current.rttMs,
             current.packetLoss * 100,
             current.framesLost,
+            when (current.audioState) {
+                1 -> if (current.audioReopens > 0) "OK (${current.audioReopens} reprise(s))" else "OK"
+                2 -> "ÉCHEC"
+                else -> "en attente"
+            },
         ),
         color = SoftWhite,
         fontSize = 11.sp,
@@ -1029,89 +1033,60 @@ private fun UpdatePanel() {
 
 @Composable
 private fun TestResultsPanel(engine: RemotePlayEngine) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val recorder = engine.testRecorder ?: return
-    val uploader = remember(context) { GitHubResultUploader(context) }
     var reports by remember { mutableStateOf(emptyList<StoredReport>()) }
-    var hasToken by remember { mutableStateOf(false) }
-    var token by remember { mutableStateOf("") }
-    var repository by remember { mutableStateOf(uploader.repository) }
-    var status by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+    var shown by remember { mutableStateOf<Pair<StoredReport, String?>?>(null) }
     LaunchedEffect(recorder) {
         reports = withContext(Dispatchers.IO) { recorder.list() }
-        hasToken = withContext(Dispatchers.IO) { uploader.hasToken() }
     }
     SectionTitle(
         "Résultats de tests",
-        "Chaque session stream enregistre un rapport (mesures, appareil, Wi-Fi) sans adresse, nom ni secret",
+        "Chaque session stream enregistre un rapport. Choisissez-en un, scannez le QR code avec le téléphone " +
+            "connecté à GitHub et validez « Commit » : le rapport arrive dans xalacaga/GPSx-diagnostics.",
     )
     if (reports.isEmpty()) {
         Text("Aucun rapport : lancez un stream d’au moins quelques secondes.", color = Muted, fontSize = 12.sp)
     }
+    shown?.let { (report, url) ->
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (url != null) {
+                Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp)) {
+                    QrCode(url, 300.dp)
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(report.name.removeSuffix(".json"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (url != null) {
+                        "1. Scannez avec le téléphone (connecté à github.com).\n2. Appuyez sur « Commit changes »."
+                    } else {
+                        "Rapport trop volumineux pour un QR code."
+                    },
+                    color = SoftWhite,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+                FocusButton("Fermer le QR code") { shown = null }
+            }
+        }
+    }
     reports.take(8).forEach { report ->
-        Text(
+        FocusButton(
             String.format(
                 java.util.Locale.FRANCE,
-                "%s · %s · %.0f s · %s fps · RTT p95 %s ms%s",
+                "%s · %s · %.0f s · %s fps · RTT p95 %s ms",
                 report.name.removeSuffix(".json"),
                 report.kind,
                 report.durationSeconds,
                 report.fpsP50?.let { "%.1f".format(java.util.Locale.FRANCE, it) } ?: "–",
                 report.rttP95?.let { "%.0f".format(java.util.Locale.FRANCE, it) } ?: "–",
-                if (report.uploaded) " · envoyé" else "",
             ),
-            color = if (report.uploaded) Muted else SoftWhite,
-            fontSize = 11.sp,
-        )
-    }
-    if (hasToken) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            FocusButton(if (busy) "Envoi…" else "Envoyer les résultats sur GitHub", primary = true, modifier = Modifier.testTag("upload-results")) {
-                if (busy) return@FocusButton
-                busy = true
-                scope.launch {
-                    val result = withContext(Dispatchers.IO) { uploader.uploadPending(recorder) }
-                    status =
-                        when (result) {
-                            is UploadResult.Sent -> if (result.count == 0) "Rien de nouveau à envoyer." else "${result.count} rapport(s) envoyé(s) vers ${uploader.repository}."
-                            is UploadResult.Failed -> result.message
-                        }
-                    reports = withContext(Dispatchers.IO) { recorder.list() }
-                    busy = false
-                }
-            }
-            FocusButton("Supprimer le jeton") {
-                uploader.clearToken()
-                hasToken = false
-                status = "Jeton supprimé de l’appareil."
-            }
-        }
-    } else {
-        Text(
-            "Créez sur GitHub un jeton « fine-grained » limité au dépôt de diagnostics, droit Contents : lecture et écriture, " +
-                "expiration 30 jours, puis collez-le ici (l’application Google TV du téléphone permet de coller).",
-            color = Muted,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
-            LabeledInput("Dépôt (propriétaire/nom)", repository, { repository = it.take(140) }, Modifier.weight(1f), testTag = "results-repository")
-            LabeledInput("Jeton GitHub", token, { token = it.take(300) }, Modifier.weight(1.4f), testTag = "github-token")
-            FocusButton("Enregistrer") {
-                uploader.repository = repository
-                if (uploader.saveToken(token)) {
-                    token = ""
-                    hasToken = true
-                    status = "Jeton chiffré sur l’appareil. Dépôt : ${uploader.repository}."
-                } else {
-                    status = "Jeton GitHub invalide."
-                }
-            }
+            modifier = Modifier.testTag("report-${report.name}"),
+        ) {
+            val json = recorder.load(report)
+            shown = report to json?.let { reportUploadUrl(it, report.name) }
         }
     }
-    if (status.isNotEmpty()) Text(status, color = Amber, fontSize = 11.sp)
 }
 
 @Composable
@@ -1374,52 +1349,92 @@ private fun CloudScreen(cloudState: CloudSnapshot, cloud: CloudPlayController) {
 
 @Composable
 private fun PsnSignInPanel(cloud: CloudPlayController) {
-    var showWebLogin by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var relay by remember { mutableStateOf<PsnRelayLogin?>(null) }
+    var relayStatus by remember { mutableStateOf("") }
     var manualToken by remember { mutableStateOf("") }
+    val cancelFocus = remember { FocusRequester() }
+    val signInFocus = remember { FocusRequester() }
+    var relayTouched by remember { mutableStateOf(false) }
+    // Keep D-pad focus inside the panel when the sign-in button and the QR code swap places.
+    LaunchedEffect(relay) {
+        if (!relayTouched) return@LaunchedEffect
+        runCatching { if (relay != null) cancelFocus.requestFocus() else signInFocus.requestFocus() }
+    }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(Color(0xAD102835)).padding(17.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Connexion PlayStation Network", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Un abonnement PlayStation Plus Premium est nécessaire pour streamer le catalogue cloud. " +
-                "La connexion se fait directement sur la page de Sony ; GPSx ne voit pas votre mot de passe.",
+            "Un abonnement PlayStation Plus Premium est nécessaire. Scannez le QR code avec votre téléphone, " +
+                "connectez-vous à votre compte Sony, puis GPSx récupère la session automatiquement.",
             color = SoftWhite,
             fontSize = 11.sp,
             lineHeight = 16.sp,
         )
         Text(
-            "Le jeton de session est chiffré sur l’appareil et n’est jamais journalisé. " +
-                "L’usage d’un client non officiel se fait aux risques du titulaire du compte.",
+            "Comme dans Pylux, la connexion passe par le serveur xbgamestream.com (équipe Pylux), qui reçoit votre " +
+                "jeton de session PSN pour le transmettre à la TV. GPSx le chiffre ensuite sur l’appareil et ne le journalise jamais. " +
+                "Client non officiel : usage aux risques du titulaire du compte.",
             color = Amber,
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
+            lineHeight = 15.sp,
         )
     }
-    FocusButton(
-        if (showWebLogin) "Fermer la page Sony" else "Essayer la page de connexion Sony",
-        modifier = Modifier.testTag("psn-sign-in"),
-    ) {
-        showWebLogin = !showWebLogin
-    }
-    if (showWebLogin) {
-        Box(Modifier.fillMaxWidth().height(520.dp).clip(PanelShape).background(Color.White)) {
-            AndroidView(
-                factory = { context ->
-                    PsnLoginView(context) { token ->
+    val current = relay
+    if (current == null) {
+        FocusButton(
+            "Se connecter avec le téléphone (QR code)",
+            primary = true,
+            modifier = Modifier.focusRequester(signInFocus).testTag("psn-relay-sign-in"),
+        ) {
+            relayTouched = true
+            val login = PsnRelayLogin()
+            relay = login
+            relayStatus = "Préparation du code…"
+            scope.launch {
+                if (!withContext(Dispatchers.IO) { login.register() }) {
+                    relayStatus = "Le serveur de connexion ne répond pas. Réessayez plus tard."
+                    return@launch
+                }
+                relayStatus = "Scannez le QR code et connectez-vous sur le téléphone. En attente…"
+                // Poll for up to 10 minutes; leaving the screen cancels the coroutine.
+                repeat(200) {
+                    delay(3_000)
+                    if (relay !== login) return@launch
+                    val token = withContext(Dispatchers.IO) { login.poll() }
+                    if (token != null) {
+                        relay = null
+                        relayStatus = ""
                         cloud.signIn(token)
-                        showWebLogin = false
-                    }.apply { start() }
-                },
-                onRelease = { it.destroy() },
-                modifier = Modifier.fillMaxSize(),
-            )
+                        return@launch
+                    }
+                }
+                relayStatus = "Code expiré. Recommencez."
+            }
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp)) {
+                QrCode(current.loginUrl, 240.dp)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Code : ${current.code}", fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+                Text(current.loginUrl.removePrefix("https://"), color = Muted, fontSize = 11.sp)
+                Text(relayStatus, color = SoftWhite, fontSize = 12.sp)
+                FocusButton("Annuler", modifier = Modifier.focusRequester(cancelFocus)) {
+                    relay = null
+                    relayStatus = ""
+                }
+            }
         }
     }
+    if (current == null && relayStatus.isNotEmpty()) Text(relayStatus, color = Amber, fontSize = 11.sp)
     SectionTitle(
-        "Saisie du jeton NPSSO",
-        "Sur un ordinateur ou un téléphone connecté à playstation.com, ouvrez ca.account.sony.com/api/v1/ssocookie " +
-            "et collez ici la valeur npsso (ou toute la réponse). L’application Google TV du téléphone permet de coller du texte.",
+        "Saisie du jeton NPSSO (secours)",
+        "Sur un appareil connecté à playstation.com, ouvrez ca.account.sony.com/api/v1/ssocookie et collez la valeur npsso.",
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
         LabeledInput("Jeton NPSSO", manualToken, { manualToken = it.take(512) }, Modifier.weight(1f), testTag = "npsso-input")

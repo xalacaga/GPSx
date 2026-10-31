@@ -15,6 +15,10 @@ data class StreamSample(
     val framesLost: Long,
     val width: Int,
     val height: Int,
+    val audioState: Int = 0,
+    val audioUnderflows: Long = 0,
+    val audioOverflows: Long = 0,
+    val audioReopens: Long = 0,
 )
 
 /** Non-secret context captured with a test. Never holds addresses, names, keys or tokens. */
@@ -120,7 +124,16 @@ fun buildStreamTestReport(
                 .put("bitrateMbps", stats { it.bitrateMbps })
                 .put("rttMs", stats { it.rttMs })
                 .put("packetLoss", stats { it.packetLoss })
-                .put("framesLost", samples.lastOrNull()?.framesLost ?: 0L),
+                .put("framesLost", samples.lastOrNull()?.framesLost ?: 0L)
+                .put(
+                    "audio",
+                    JSONObject()
+                        .put("everPlayed", samples.any { it.audioState == 1 })
+                        .put("finalState", samples.lastOrNull()?.audioState ?: 0)
+                        .put("underflows", samples.lastOrNull()?.audioUnderflows ?: 0L)
+                        .put("overflows", samples.lastOrNull()?.audioOverflows ?: 0L)
+                        .put("reopens", samples.lastOrNull()?.audioReopens ?: 0L),
+                ),
         )
         put(
             "samples",
@@ -135,12 +148,14 @@ fun buildStreamTestReport(
                             .put(s.packetLoss)
                             .put(s.framesLost)
                             .put(s.width)
-                            .put(s.height),
+                            .put(s.height)
+                            .put(s.audioState)
+                            .put(s.audioUnderflows),
                     )
                 }
             },
         )
-        put("sampleFields", JSONArray(listOf("t", "fps", "bitrateMbps", "rttMs", "packetLoss", "framesLost", "width", "height")))
+        put("sampleFields", JSONArray(listOf("t", "fps", "bitrateMbps", "rttMs", "packetLoss", "framesLost", "width", "height", "audioState", "audioUnderflows")))
     }
 }
 

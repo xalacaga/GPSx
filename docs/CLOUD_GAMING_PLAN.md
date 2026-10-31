@@ -55,6 +55,7 @@ by name.
 
 ## What GPSx does differently
 
+- **Update 2026-10-31:** by owner decision GPSx now also offers Pylux's relay sign-in (QR code, `xbgamestream.com` receives the NPSSO), with an explicit warning; it never logs the token or the code, uses a CSPRNG code and renders the QR locally. The original direction below remains the fallback.
 - **PSN login stays between the device and Sony.** On TV, Pylux sends the user
   to `xbgamestream.com`, which returns the NPSSO token, and it logs the response
   body. GPSx does not use that relay. It signs in through an in-app WebView on

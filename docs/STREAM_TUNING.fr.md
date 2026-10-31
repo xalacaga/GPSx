@@ -21,7 +21,8 @@ Statut : implémenté le 2026-10-31 ; mesuré sur émulateur, GP520 NOT_TESTED.
 | Affichage | `preferMinimalPostProcessing` (API 30) et écran maintenu allumé pendant le stream | Demander le mode jeu de l'écran |
 | Fréquence | `Surface.setFrameRate(60, FIXED_SOURCE)` (API 30) | Garder l'écran à 60 Hz sans conversion saccadée |
 | Codec | AUTO choisit HEVC 1080p60 si un décodeur HEVC matériel le supporte, sinon H.264 ; l'émulateur reste en H.264 | Meilleure image au même débit de 15 Mbit/s |
-| Mesures | FPS, débit, RTT, pertes et images perdues réels affichés pendant le stream | Diagnostiquer le Wi-Fi à l'écran |
+| Mesures | FPS, débit, RTT, pertes, images perdues et état du son réels affichés pendant le stream | Diagnostiquer le Wi-Fi à l'écran |
+| Audio | Flux Oboe partagé (basse latence, puis défaut), usage Jeu, rouvert après un changement de sortie comme une barre de son Bluetooth qui se (re)connecte ; compteurs underflow/overflow/réouverture dans les rapports | Le moteur d'origine ne rouvrait jamais un flux déconnecté et demandait le mode exclusif, absent en Bluetooth A2DP |
 
 ## Réglages du propriétaire sur le GP520
 

@@ -35,27 +35,33 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
    au moins 2 minutes ; 10 minutes donnent une comparaison plus utile.
 3. Appuyez sur Retour pour arrêter. Chaque session de 5 s ou plus écrit un rapport.
 
-## 5. Envoyer les résultats sur GitHub
+## 5. Envoyer les résultats sur GitHub (QR code, sans jeton)
 
 Les résultats vont dans le dépôt `xalacaga/GPSx-diagnostics`, séparé du dépôt
 source. Il est **public** pour l'instant par choix du propriétaire : tout le
 monde peut lire les rapports, qui ne contiennent que les données listées
 ci-dessous.
 
-1. Sur github.com : Settings → Developer settings → Fine-grained tokens →
-   *Generate new token* ; accès **Only select repositories → GPSx-diagnostics** ;
-   permission **Contents : Read and write** ; expiration 30 jours.
-2. Dans GPSx → **Diagnostics** → *Résultats de tests* : gardez le dépôt
-   `xalacaga/GPSx-diagnostics`, collez le jeton (l'application Google TV du
-   téléphone permet de coller du texte) et appuyez sur **Enregistrer**.
-3. Appuyez sur **Envoyer les résultats sur GitHub**. Chaque rapport arrive dans
-   `results/AAAA/MM/<date>-<type>.json`.
+1. GPSx → **Diagnostics** → *Résultats de tests* : choisissez un rapport.
+2. Scannez le QR code avec un téléphone connecté à github.com. Il ouvre la page
+   GitHub « nouveau fichier » avec le rapport prérempli dans
+   `results/AAAA/MM/<date>-<type>.txt`.
+3. Appuyez sur **Commit changes**.
 
-Le jeton est chiffré par Android Keystore, jamais journalisé ni exporté, et
-supprimable avec **Supprimer le jeton**. Les rapports contiennent uniquement des
-mesures, le modèle de l'appareil, la version d'Android et la bande/le lien/le
-RSSI Wi-Fi : ni SSID, ni BSSID, ni adresse IP, ni nom de console, ni clé
-d'enregistrement, ni jeton PSN.
+Aucun identifiant n'est stocké sur le GP520 ni dans l'APK. Le fichier du QR code
+est un résumé texte compact (statistiques et jusqu'à 30 échantillons répartis) ;
+le rapport JSON complet reste sur l'appareil. Les rapports contiennent uniquement
+des mesures, le modèle de l'appareil, la version d'Android, la bande/le lien/le
+RSSI Wi-Fi et l'état du son : ni SSID, ni BSSID, ni adresse IP, ni nom de
+console, ni clé d'enregistrement, ni jeton PSN.
+
+## 6. Connexion cloud (QR code)
+
+Cloud → **Se connecter avec le téléphone (QR code)**, scannez, connectez-vous à
+Sony sur le téléphone ; GPSx récupère la session en quelques secondes. Comme dans
+Pylux, cela passe par le relais Pylux `xbgamestream.com`, qui reçoit le jeton de
+session PSN (NPSSO) pour le transmettre à la TV. GPSx le chiffre sur l'appareil et
+ne le journalise jamais. La saisie manuelle du NPSSO reste disponible en secours.
 
 ## Format des rapports
 

@@ -70,8 +70,8 @@ android {
         applicationId = "com.gpsx.tv"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
 
         buildConfigField("String", "SOURCE_REPOSITORY_URL", "\"https://github.com/xalacaga/GPSx\"")
         buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
@@ -239,6 +239,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.tv:tv-material:1.1.0")
+    // On-device QR codes (Apache-2.0); no network QR service sees the encoded links.
+    implementation("com.google.zxing:core:3.5.3")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

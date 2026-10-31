@@ -68,6 +68,11 @@ data class StreamMetrics(
     val rttMs: Double,
     val width: Int,
     val height: Int,
+    /** 0 not opened yet, 1 playing, 2 failed (engines without audio stats report 0). */
+    val audioState: Int = 0,
+    val audioUnderflows: Long = 0,
+    val audioOverflows: Long = 0,
+    val audioReopens: Long = 0,
 )
 
 class ErrorCode(val value: Int) {
@@ -156,7 +161,11 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
 
     fun metrics(): StreamMetrics? {
         val values = ChiakiNative.sessionGetMetrics(nativePtr)?.takeIf { it.size >= 7 } ?: return null
-        return StreamMetrics(values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt())
+        fun at(index: Int): Double = values.getOrElse(index) { 0.0 }
+        return StreamMetrics(
+            values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt(),
+            at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(),
+        )
     }
 
     override fun close() {

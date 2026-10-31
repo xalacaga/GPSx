@@ -62,15 +62,16 @@ class StreamTestReportTest {
     }
 
     @Test
-    fun `github token, repository and path validation`() {
-        assertTrue(isPlausibleGitHubToken("github_pat_" + "A1".repeat(20)))
-        assertTrue(isPlausibleGitHubToken("ghp_" + "a".repeat(36)))
-        assertFalse(isPlausibleGitHubToken("password123"))
-        assertFalse(isPlausibleGitHubToken(""))
-        assertTrue(isValidRepository("xalacaga/GPSx-diagnostics"))
-        assertFalse(isValidRepository("../etc"))
-        assertFalse(isValidRepository("a/b/c"))
-        assertEquals("results/2026/10/20261031-100000-console.json", reportPath("20261031-100000-console.json"))
-        assertEquals("results/odd.json", reportPath("odd.json"))
+    fun `qr link pre-fills a compact report in the diagnostics repository`() {
+        val report = buildStreamTestReport(context, "2026-10-31T10:00:00Z", "2026-10-31T10:10:00Z", "Arrêt", samples(600))
+        val url = reportUploadUrl(report, "20261031-100000-console.json")!!
+        assertTrue(url.startsWith("https://github.com/xalacaga/GPSx-diagnostics/new/main?filename=results%2F2026%2F10%2F20261031-100000-console.txt&value="))
+        assertTrue(url.length <= MAX_QR_URL_LENGTH)
+        val text = compactReport(report, 60)
+        assertTrue(text.startsWith("gpsx-stream-test/1 compact\n"))
+        assertTrue(text.contains("device BenQ GP520 android 11 sdk 30 DEVICE"))
+        assertTrue(text.contains("net wifi 5180MHz 866Mbps -52dBm 802.11ax"))
+        assertEquals(60, text.lines().dropWhile { !it.startsWith("samples") }.drop(1).count(String::isNotBlank))
+        assertEquals("results/odd.txt", reportPath("odd.txt"))
     }
 }
