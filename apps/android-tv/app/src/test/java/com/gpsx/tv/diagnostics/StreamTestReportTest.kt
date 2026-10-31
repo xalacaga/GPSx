@@ -54,6 +54,25 @@ class StreamTestReportTest {
     }
 
     @Test
+    fun `report summarises video decoder counters and the console probe`() {
+        val probed =
+            samples(20).mapIndexed { i, s ->
+                s.copy(videoSamplesWithoutDecoder = 3, videoSamplesQueued = 100L + i, videoFramesRendered = 90L + i, videoDecodeLatencyMs = 25.0, probeRttMs = if (i % 2 == 0) 4.0 else null)
+            }
+        val report = buildStreamTestReport(context, "a", "b", "fin", probed)
+        val summary = report.getJSONObject("summary")
+        val video = summary.getJSONObject("video")
+        assertEquals(3L, video.getLong("samplesWithoutDecoder"))
+        assertEquals(119L, video.getLong("samplesQueued"))
+        assertEquals(109L, video.getLong("framesRendered"))
+        assertEquals(4.0, summary.getJSONObject("probeRttMs").getDouble("p50"), 0.0)
+        val text = compactReport(report, 6)
+        assertTrue(text.contains("video nodec 3 queued 119 rendered 109"))
+        assertTrue(text.contains("probe 4 4 4 4 4"))
+        assertTrue(text.contains("decode 25 25 25 25 25"))
+    }
+
+    @Test
     fun `report keeps the last and every distinct audio route`() {
         val routed = samples(10).mapIndexed { i, s -> s.copy(audioRoute = if (i < 5) "HDMI" else "Bluetooth") }
         val audio = buildStreamTestReport(context, "a", "b", "fin", routed).getJSONObject("summary").getJSONObject("audio")

@@ -330,7 +330,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             try {
                 stopSession()
                 runCatching { streamWifiLock?.acquire() }
-                runCatching { setAudioCompatibilityMode(audioCompatibility) }
+                runCatching { applyAudioApiPreference() }
                 val newSession = Session(connectInfo)
                 newSession.eventCallback = { event ->
                     when (event) {
@@ -348,6 +348,13 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
                         }
                         else -> Unit
                     }
+                }
+                // The decoder is created with the Surface. The stream header (SPS/PPS) arrives only once,
+                // at the start of the stream, so a decoder created later never shows a picture
+                // (HYPOTHESIS for the black cloud screen). Wait briefly for the session screen's Surface.
+                val surfaceDeadline = System.nanoTime() + SURFACE_WAIT_NANOS
+                while (synchronized(lock) { surface } == null && System.nanoTime() < surfaceDeadline && !closed.get()) {
+                    Thread.sleep(SURFACE_POLL_MILLIS)
                 }
                 synchronized(lock) {
                     session = newSession
@@ -454,10 +461,21 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         if (closed.get() || devices.none { it.isSink }) return
         val manager = audioManager ?: return
         runCatching { setPreferredAudioDevice(preferredAudioOutput(manager)) }
+        runCatching { applyAudioApiPreference() }
         worker.execute {
             // Under the lock: stopSession() detaches the session under the same lock before freeing it.
             synchronized(lock) { session?.let { runCatching(it::restartAudio) } }
         }
+    }
+
+    /**
+     * OpenSL ES when the user forced it or a Bluetooth output is active. FACT (GP520 report, 0.2.4):
+     * an AAudio stream routed to a Bluetooth soundbar ran without being heard, while video apps were.
+     * Low latency gains nothing over A2DP, whose own delay is far larger.
+     */
+    private fun applyAudioApiPreference() {
+        val bluetooth = audioManager?.let(::bluetoothOutputActive) ?: false
+        setAudioCompatibilityMode(audioCompatibility || bluetooth)
     }
 
     /** Label of the output the native stream reports, for the overlay and test reports. */
@@ -485,11 +503,14 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         val recorder = testRecorder ?: return
         endReason = "Arrêt demandé par l’utilisateur."
         recorder.begin(if (connectInfo.serviceType != null) "cloud" else "console", connectInfo.videoProfile, autoHevc)
+        val probeHost = connectInfo.host.takeIf { connectInfo.serviceType == null }
         synchronized(lock) {
             sampling?.cancel(false)
             sampling =
                 sampler.scheduleWithFixedDelay(
-                    { metrics()?.let { recorder.sample(it, audioRouteLabel(it.audioDeviceId)) } },
+                    {
+                        metrics()?.let { recorder.sample(it, audioRouteLabel(it.audioDeviceId), probeHost?.let(::probeConnectMillis)) }
+                    },
                     1,
                     1,
                     TimeUnit.SECONDS,
@@ -546,9 +567,25 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
 
 private const val SESSION_PORT = 9295
 private const val QUICK_PROBE_MILLIS = 800
+private const val SURFACE_WAIT_NANOS = 3_000_000_000L
+private const val SURFACE_POLL_MILLIS = 20L
+private const val LATENCY_PROBE_TIMEOUT_MILLIS = 1_000
 private const val PROBE_MILLIS = 1_000
 private const val PROBE_INTERVAL_MILLIS = 1_500L
 private const val WAKE_TIMEOUT_MILLIS = 60_000L
+
+/**
+ * TCP handshake time to the console's session port: one network round trip measured by GPSx
+ * itself, to compare with the RTT the console reports. Null when the probe fails.
+ */
+private fun probeConnectMillis(host: String): Double? =
+    runCatching {
+        Socket().use {
+            val start = System.nanoTime()
+            it.connect(InetSocketAddress(host, SESSION_PORT), LATENCY_PROBE_TIMEOUT_MILLIS)
+            (System.nanoTime() - start) / 1_000_000.0
+        }
+    }.getOrNull()
 
 private fun isSessionPortOpen(host: String, timeoutMillis: Int): Boolean =
     runCatching { Socket().use { it.connect(InetSocketAddress(host, SESSION_PORT), timeoutMillis) } }.isSuccess
@@ -582,6 +619,11 @@ private val PERSONAL_AUDIO_OUTPUTS =
         AudioDeviceInfo.TYPE_WIRED_HEADSET,
         AudioDeviceInfo.TYPE_USB_HEADSET,
     )
+
+internal fun bluetoothOutputActive(manager: AudioManager): Boolean =
+    manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
+        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER
+    }
 
 /** Output device ID AAudio should target: a connected personal output first, otherwise 0 (system routing). */
 internal fun preferredAudioOutput(manager: AudioManager): Int {

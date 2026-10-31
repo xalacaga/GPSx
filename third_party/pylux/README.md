@@ -9,7 +9,9 @@ OpenSSL exception (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
 override, null checks before `display_sink.cantdisplay_cb`, no per-packet DEBUG
 session logging, low-latency decoder hints with a plain retry, and a shared Oboe audio output
 that reopens after route changes (and on request from GPSx when a Bluetooth output
-appears), can target a given output device, and reports its state and device.
+appears), can target a given output device, and reports its state and device;
+video decoder counters (samples before the decoder exists, queued, rendered) and a
+fix for `set_surface(NULL)` returning with the codec mutex still locked.
 
 Rebuild the stripped `RelWithDebInfo` libraries for all ABIs with
 `tools/powershell/build-pylux-native.ps1`. See `docs/PROVENANCE.md` and

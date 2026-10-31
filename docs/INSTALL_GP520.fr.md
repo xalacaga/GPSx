@@ -29,8 +29,11 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
   **Sortie audio → Compatibilité** force OpenSL ES dès le départ. L'affichage du
   stream indique l'API audio utilisée et la sortie qu'elle signale (Bluetooth,
   HDMI, ou « système » quand OpenSL ES ne la précise pas).
-- Casque ou enceinte Bluetooth : à chaque connexion ou déconnexion, GPSx le cible
-  et rouvre le flux audio en une seconde environ, en réessayant d'abord AAudio. Si
+- Casque, enceinte ou barre de son Bluetooth : GPSx joue via OpenSL ES en usage
+  média, le chemin des applis vidéo (un flux AAudio vers une barre de son Bose
+  restait inaudible sur le GP520). À chaque connexion ou déconnexion, le flux se
+  rouvre en une seconde environ. Le Bluetooth ajoute son propre retard ; une
+  liaison HDMI ARC ou optique l'évite. Si
   l'affichage indique toujours HDMI, lancez la session une fois l'appareil
   Bluetooth connecté et envoyez un rapport de test.
 

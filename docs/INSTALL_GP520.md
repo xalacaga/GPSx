@@ -29,8 +29,11 @@ Android may ask to allow GPSx as an install source.
   → Compatibilité** forces OpenSL ES from the start. The stream overlay shows the
   audio API in use and the output it reports (Bluetooth, HDMI, or "système" when
   OpenSL ES does not say).
-- Bluetooth headphones or speaker: when one connects or disconnects, GPSx targets
-  it and reopens the audio stream within about a second, retrying AAudio first.
+- Bluetooth headphones, speaker or soundbar: GPSx plays through OpenSL ES with
+  media usage, the path video apps use (an AAudio stream to a Bose soundbar ran
+  unheard on the GP520). When a device connects or disconnects, the stream
+  reopens within about a second. Bluetooth adds its own delay; an HDMI ARC or
+  optical link avoids it.
   If the overlay still says HDMI, start the session after the Bluetooth device is
   connected and send a test report.
 

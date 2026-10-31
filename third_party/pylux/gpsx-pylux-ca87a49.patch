@@ -13,7 +13,7 @@ index b31dcd9..ec2f75c 100755
  
  if(CHIAKI_USE_SYSTEM_NANOPB)
 diff --git a/android/app/src/main/cpp/audio-output.cpp b/android/app/src/main/cpp/audio-output.cpp
-index 53157f1..567c600 100644
+index 53157f1..199222a 100644
 --- a/android/app/src/main/cpp/audio-output.cpp
 +++ b/android/app/src/main/cpp/audio-output.cpp
 @@ -9,6 +9,11 @@
@@ -93,7 +93,7 @@ index 53157f1..567c600 100644
 +				->setDeviceId(api == oboe::AudioApi::AAudio ? g_preferred_device_id.load() : oboe::kUnspecified)
 +				->setPerformanceMode(mode)
 +				->setSharingMode(oboe::SharingMode::Shared)
-+				->setUsage(oboe::Usage::Game)
++				->setUsage(oboe::Usage::Media) // GPSx: same routing as video apps; Game stayed silent on a Bluetooth soundbar
 +				->setContentType(oboe::ContentType::Music)
 +				->setFormat(oboe::AudioFormat::I16)
 +				->setChannelCount(ao->channels)
@@ -351,7 +351,7 @@ index b521ebe..5fa4475 100644
  #ifdef __cplusplus
  }
 diff --git a/android/app/src/main/cpp/chiaki-jni.c b/android/app/src/main/cpp/chiaki-jni.c
-index 039a4d9..d84ec4b 100644
+index 039a4d9..29c2c14 100644
 --- a/android/app/src/main/cpp/chiaki-jni.c
 +++ b/android/app/src/main/cpp/chiaki-jni.c
 @@ -436,7 +436,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject
@@ -364,7 +364,7 @@ index 039a4d9..d84ec4b 100644
  	if(log_file)
  		E->ReleaseStringUTFChars(env, log_file_str, log_file);
  
-@@ -848,9 +849,30 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
+@@ -848,9 +849,32 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
  // Cheap best-effort read (same as Qt's polling timer); video_receiver-derived
  // values go through locked accessors, the rest are unlocked scalar reads. Only
  // called while a session is live and the overlay is toggled on.
@@ -391,12 +391,14 @@ index 039a4d9..d84ec4b 100644
  JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject obj, jlong ptr)
  {
 -	jdouble vals[7] = { 0 };
-+	// GPSx: values 7-12 carry the audio output state, underflows, overflows, reopens, callbacks and device ID.
-+	jdouble vals[13] = { 0 };
++	// GPSx: values 7-12 carry the audio output state, underflows, overflows, reopens, callbacks and device ID;
++	// 13-15 the video samples dropped before the decoder existed, samples queued and frames rendered;
++	// 16 the smoothed decoder latency in milliseconds.
++	jdouble vals[17] = { 0 };
  	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
  	if(session)
  	{
-@@ -872,10 +894,14 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
+@@ -872,10 +896,18 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
  			vals[5] = (jdouble)session->session.connect_info.video_profile.width;
  			vals[6] = (jdouble)session->session.connect_info.video_profile.height;
  		}
@@ -404,20 +406,54 @@ index 039a4d9..d84ec4b 100644
 +		android_chiaki_audio_output_stats(session->audio_output, audio);
 +		for(int i = 0; i < 6; i++)
 +			vals[7 + i] = (jdouble)audio[i];
++		vals[13] = (jdouble)session->video_decoder.samples_without_codec;
++		vals[14] = (jdouble)session->video_decoder.samples_queued;
++		vals[15] = (jdouble)session->video_decoder.frames_rendered;
++		vals[16] = (jdouble)session->video_decoder.decode_latency_us / 1000.0;
  	}
 -	jdoubleArray arr = E->NewDoubleArray(env, 7);
-+	jdoubleArray arr = E->NewDoubleArray(env, 13);
++	jdoubleArray arr = E->NewDoubleArray(env, 17);
  	if(arr)
 -		E->SetDoubleArrayRegion(env, arr, 0, 7, vals);
-+		E->SetDoubleArrayRegion(env, arr, 0, 13, vals);
++		E->SetDoubleArrayRegion(env, arr, 0, 17, vals);
  	return arr;
  }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..b947733 100644
+index a256204..bd39b9d 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
-@@ -102,11 +102,36 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -10,6 +10,8 @@
+ 
+ #include <string.h>
+ 
++#include <chiaki/time.h>
++
+ #define INPUT_BUFFER_TIMEOUT_MS 10
+ 
+ static void *android_chiaki_video_decoder_output_thread_func(void *user);
+@@ -23,6 +25,11 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
+ 	decoder->target_height = target_height;
+ 	decoder->target_codec = codec;
+ 	decoder->shutdown_output = false;
++	decoder->samples_without_codec = 0;
++	decoder->samples_queued = 0;
++	decoder->frames_rendered = 0;
++	memset(decoder->queued_at_us, 0, sizeof(decoder->queued_at_us));
++	decoder->decode_latency_us = 0;
+ 	return chiaki_mutex_init(&decoder->codec_mutex, false);
+ }
+ 
+@@ -68,7 +75,7 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+ 			kill_decoder(decoder);
+ 			CHIAKI_LOGI(decoder->log, "Decoder shut down after surface was removed");
+ 		}
+-		return;
++		goto beach; // GPSx: release codec_mutex (a bare return left it locked)
+ 	}
+ 
+ 	if(decoder->codec)
+@@ -102,11 +109,36 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
  
@@ -455,6 +491,63 @@ index a256204..b947733 100644
  		goto error_codec;
  	}
  
+@@ -152,8 +184,10 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+ 	if(!decoder->codec)
+ 	{
+ 		CHIAKI_LOGE(decoder->log, "Received video data, but decoder is not initialized!");
++		decoder->samples_without_codec++;
+ 		goto beach;
+ 	}
++	decoder->samples_queued++;
+ 
+ 	while(buf_size > 0)
+ 	{
+@@ -180,6 +214,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+ 			codec_sample_size = codec_buf_size;
+ 		}
+ 		memcpy(codec_buf, buf, codec_sample_size);
++		decoder->queued_at_us[decoder->timestamp_cur % 64] = chiaki_time_now_monotonic_us();
+ 		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
+ 		if(status != AMEDIA_OK)
+ 		{
+@@ -205,6 +240,19 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+ 		if(status >= 0)
+ 		{
+ 			AMediaCodec_releaseOutputBuffer(decoder->codec, (size_t)status, info.size != 0);
++			if(info.size != 0)
++			{
++				decoder->frames_rendered++;
++				// GPSx: input timestamps are consecutive integers, so the ring slot identifies the sample.
++				uint64_t queued = decoder->queued_at_us[(uint64_t)info.presentationTimeUs % 64];
++				uint64_t now = chiaki_time_now_monotonic_us();
++				if(queued != 0 && now > queued && now - queued < 2000000)
++				{
++					uint32_t sample = (uint32_t)(now - queued);
++					uint32_t prev = decoder->decode_latency_us;
++					decoder->decode_latency_us = prev == 0 ? sample : (uint32_t)((prev * 7ULL + sample) / 8);
++				}
++			}
+ 			if(info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM)
+ 			{
+ 				CHIAKI_LOGI(decoder->log, "AMediaCodec reported EOS");
+diff --git a/android/app/src/main/cpp/video-decoder.h b/android/app/src/main/cpp/video-decoder.h
+index f2ea0e5..fef1fea 100644
+--- a/android/app/src/main/cpp/video-decoder.h
++++ b/android/app/src/main/cpp/video-decoder.h
+@@ -23,6 +23,13 @@ typedef struct android_chiaki_video_decoder_t
+ 	int32_t target_width;
+ 	int32_t target_height;
+ 	ChiakiCodec target_codec;
++	// GPSx: best-effort counters read by sessionGetMetrics (written under codec_mutex or by the output thread).
++	volatile uint32_t samples_without_codec;
++	volatile uint32_t samples_queued;
++	volatile uint32_t frames_rendered;
++	// GPSx: queue time per input timestamp (ring) and the smoothed queue-to-output decoder latency.
++	uint64_t queued_at_us[64];
++	volatile uint32_t decode_latency_us;
+ } AndroidChiakiVideoDecoder;
+ 
+ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec);
 diff --git a/lib/src/ctrl.c b/lib/src/ctrl.c
 index 9e3625b..6b6d94d 100644
 --- a/lib/src/ctrl.c

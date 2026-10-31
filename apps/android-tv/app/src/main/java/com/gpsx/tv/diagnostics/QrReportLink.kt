@@ -41,6 +41,7 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
     val net = report.getJSONObject("network")
     val summary = report.getJSONObject("summary")
     val audio = summary.optJSONObject("audio") ?: JSONObject()
+    val video = summary.optJSONObject("video") ?: JSONObject()
     fun stat(name: String): String {
         val s = summary.getJSONObject(name)
         return listOf("p50", "p95", "p99", "min", "max").joinToString(" ") { num(s.opt(it)) }
@@ -57,6 +58,9 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
         "mbps ${stat("bitrateMbps")}",
         "rtt ${stat("rttMs")}",
         "loss ${stat("packetLoss")}",
+        "probe ${summary.optJSONObject("probeRttMs")?.let { s -> listOf("p50", "p95", "p99", "min", "max").joinToString(" ") { num(s.opt(it)) } } ?: "na"}",
+        "decode ${stat("decodeLatencyMs")}",
+        "video nodec ${num(video.opt("samplesWithoutDecoder"))} queued ${num(video.opt("samplesQueued"))} rendered ${num(video.opt("framesRendered"))}",
         "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))} route ${num(audio.opt("route"))}",
         "samples t fps mbps rtt loss lost audio",
     )

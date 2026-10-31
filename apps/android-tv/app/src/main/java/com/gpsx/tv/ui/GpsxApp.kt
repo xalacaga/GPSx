@@ -658,9 +658,11 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
     Text(
         String.format(
             java.util.Locale.FRANCE,
-            "%dp · %.1f fps · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d · son %s",
+            "%dp · %.1f fps · affichées %d · décodage %.0f ms · %.1f Mb/s · RTT %.0f ms · pertes %.1f %% · images perdues %d · son %s",
             current.height,
             current.fps,
+            current.videoFramesRendered,
+            current.videoDecodeLatencyMs,
             current.bitrateMbps,
             current.rttMs,
             current.packetLoss * 100,

@@ -22,6 +22,12 @@ data class StreamSample(
     val audioCallbacks: Long = 0,
     /** Output the stream reported ("Bluetooth", "HDMI", "système" when the API does not say). */
     val audioRoute: String = "",
+    val videoSamplesWithoutDecoder: Long = 0,
+    val videoSamplesQueued: Long = 0,
+    val videoFramesRendered: Long = 0,
+    val videoDecodeLatencyMs: Double = 0.0,
+    /** TCP connect time from the TV to the console, measured by GPSx; null for cloud or failed probes. */
+    val probeRttMs: Double? = null,
 )
 
 /** Non-secret context captured with a test. Never holds addresses, names, keys or tokens. */
@@ -126,8 +132,17 @@ fun buildStreamTestReport(
                 .put("fps", stats { it.fps })
                 .put("bitrateMbps", stats { it.bitrateMbps })
                 .put("rttMs", stats { it.rttMs })
+                .put("probeRttMs", probeStats(steady))
+                .put("decodeLatencyMs", stats { it.videoDecodeLatencyMs })
                 .put("packetLoss", stats { it.packetLoss })
                 .put("framesLost", samples.lastOrNull()?.framesLost ?: 0L)
+                .put(
+                    "video",
+                    JSONObject()
+                        .put("samplesWithoutDecoder", samples.lastOrNull()?.videoSamplesWithoutDecoder ?: 0L)
+                        .put("samplesQueued", samples.lastOrNull()?.videoSamplesQueued ?: 0L)
+                        .put("framesRendered", samples.lastOrNull()?.videoFramesRendered ?: 0L),
+                )
                 .put(
                     "audio",
                     JSONObject()
@@ -163,6 +178,17 @@ fun buildStreamTestReport(
             },
         )
         put("sampleFields", JSONArray(listOf("t", "fps", "bitrateMbps", "rttMs", "packetLoss", "framesLost", "width", "height", "audioState", "audioUnderflows")))
+    }
+}
+
+private fun probeStats(steady: List<StreamSample>): JSONObject {
+    val values = steady.mapNotNull(StreamSample::probeRttMs)
+    return JSONObject().apply {
+        put("p50", percentile(values, 50.0) ?: JSONObject.NULL)
+        put("p95", percentile(values, 95.0) ?: JSONObject.NULL)
+        put("p99", percentile(values, 99.0) ?: JSONObject.NULL)
+        put("min", values.minOrNull() ?: JSONObject.NULL)
+        put("max", values.maxOrNull() ?: JSONObject.NULL)
     }
 }
 

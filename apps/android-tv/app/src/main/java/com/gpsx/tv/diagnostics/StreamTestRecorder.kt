@@ -64,7 +64,7 @@ class StreamTestRecorder(context: Context) {
             samples.clear()
         }
 
-    fun sample(metrics: StreamMetrics, audioRoute: String) =
+    fun sample(metrics: StreamMetrics, audioRoute: String, probeRttMs: Double?) =
         synchronized(lock) {
             if (active == null || samples.size >= MAX_SAMPLES) return@synchronized
             val t = (SystemClock.elapsedRealtime() - startedElapsed) / 1000.0
@@ -73,6 +73,11 @@ class StreamTestRecorder(context: Context) {
                     t, metrics.fps, metrics.bitrateMbps, metrics.rttMs, metrics.packetLoss, metrics.framesLost, metrics.width, metrics.height,
                     metrics.audioState, metrics.audioUnderflows, metrics.audioOverflows, metrics.audioReopens, metrics.audioCallbacks,
                     audioRoute,
+                    metrics.videoSamplesWithoutDecoder,
+                    metrics.videoSamplesQueued,
+                    metrics.videoFramesRendered,
+                    metrics.videoDecodeLatencyMs,
+                    probeRttMs,
                 )
         }
 

@@ -77,6 +77,13 @@ data class StreamMetrics(
     val audioCallbacks: Long = 0,
     /** Android output device ID the audio stream reports (0 unknown or system default). */
     val audioDeviceId: Int = 0,
+    /** Video samples dropped because no decoder existed yet (no Surface). */
+    val videoSamplesWithoutDecoder: Long = 0,
+    val videoSamplesQueued: Long = 0,
+    /** Decoded frames sent to the Surface; stays at 0 when nothing is displayed. */
+    val videoFramesRendered: Long = 0,
+    /** Smoothed time from queueing a sample to its decoded frame (ms); 0 before the first frame. */
+    val videoDecodeLatencyMs: Double = 0.0,
 )
 
 class ErrorCode(val value: Int) {
@@ -172,6 +179,7 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
         return StreamMetrics(
             values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt(),
             at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(), at(11).toLong(), at(12).toInt(),
+            at(13).toLong(), at(14).toLong(), at(15).toLong(), at(16),
         )
     }
 
