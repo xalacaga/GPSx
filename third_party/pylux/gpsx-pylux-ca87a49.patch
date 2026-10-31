@@ -431,7 +431,7 @@ index 039a4d9..f1b1a82 100644
  }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..61c64ff 100644
+index a256204..732a141 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
 @@ -10,8 +10,18 @@
@@ -481,7 +481,8 @@ index a256204..61c64ff 100644
 -	chiaki_mutex_lock(&decoder->codec_mutex);
 -
 -	if(!surface)
--	{
++	if(decoder->window)
+ 	{
 -		if(decoder->codec)
 -		{
 -			kill_decoder(decoder);
@@ -491,8 +492,7 @@ index a256204..61c64ff 100644
 -	}
 -
 -	if(decoder->codec)
-+	if(decoder->window)
- 	{
+-	{
 -#if __ANDROID_API__ >= 23
 -		CHIAKI_LOGI(decoder->log, "Video decoder already initialized, swapping surface");
 -		ANativeWindow *new_window = surface ? ANativeWindow_fromSurface(env, surface) : NULL;
@@ -575,7 +575,7 @@ index a256204..61c64ff 100644
  		goto error_codec;
  	}
  
-@@ -125,15 +159,82 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -125,15 +159,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  		goto error_codec;
  	}
  
@@ -597,6 +597,23 @@ index a256204..61c64ff 100644
 + * with parameter sets, so the first sample identifies the codec actually sent, whatever was
 + * requested (PS4 and PS5 consoles and cloud servers do not all send the same one).
 + */
++/**
++ * GPSx: stops the running codec and creates one for decoder->target_codec. Caller holds
++ * codec_mutex; it is released while the output thread exits (that thread takes it on errors).
++ */
++static bool recreate_codec_locked(AndroidChiakiVideoDecoder *decoder)
++{
++	decoder->shutdown_output = true;
++	AMediaCodec_stop(decoder->codec);
++	chiaki_mutex_unlock(&decoder->codec_mutex);
++	chiaki_thread_join(&decoder->output_thread, NULL);
++	chiaki_mutex_lock(&decoder->codec_mutex);
++	AMediaCodec_delete(decoder->codec);
++	decoder->codec = NULL;
++	decoder->shutdown_output = false;
++	return create_codec_locked(decoder);
++}
++
 +static int sniff_codec(const uint8_t *buf, size_t size)
 +{
 +	for(size_t i = 0; i + 3 < size && i < 64; i++)
@@ -655,14 +672,19 @@ index a256204..61c64ff 100644
 +		goto beach;
 +	}
 +
-+	// GPSx: keep the window; the codec is created on the first sample (create_codec_locked).
 +	if(decoder->window)
 +		ANativeWindow_release(decoder->window);
 +	decoder->window = ANativeWindow_fromSurface(env, surface);
++	// GPSx: create the codec now, with the requested format, so the network thread never waits for
++	// codec creation when the first (largest) frames arrive; video_sample() rebuilds it only if the
++	// stream turns out to use the other codec. Creating it on the first sample raised start-up
++	// frame loss on PS4 cloud (19, 34, then 49 lost frames).
++	if(!create_codec_locked(decoder))
++		decoder->codec_failed = true;
  
  beach:
  	chiaki_mutex_unlock(&decoder->codec_mutex);
-@@ -151,9 +252,32 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -151,9 +274,51 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  
  	if(!decoder->codec)
  	{
@@ -693,11 +715,30 @@ index a256204..61c64ff 100644
 +			goto beach;
 +		}
  	}
++	if(decoder->detected_codec < 0)
++	{
++		int sniffed = sniff_codec(buf, buf_size);
++		if(sniffed >= 0)
++		{
++			decoder->detected_codec = sniffed;
++			if((sniffed == 1) != chiaki_codec_is_h265(decoder->target_codec))
++			{
++				CHIAKI_LOGW(decoder->log, "Stream codec differs from the request; rebuilding the decoder for %s", sniffed == 1 ? "H.265" : "H.264");
++				decoder->target_codec = sniffed == 1 ? CHIAKI_CODEC_H265 : CHIAKI_CODEC_H264;
++				if(!recreate_codec_locked(decoder))
++				{
++					decoder->codec_failed = true;
++					decoder->samples_without_codec++;
++					goto beach;
++				}
++			}
++		}
++	}
 +	decoder->samples_queued++;
  
  	while(buf_size > 0)
  	{
-@@ -180,6 +304,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -180,6 +345,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  			codec_sample_size = codec_buf_size;
  		}
  		memcpy(codec_buf, buf, codec_sample_size);
@@ -705,7 +746,7 @@ index a256204..61c64ff 100644
  		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
  		if(status != AMEDIA_OK)
  		{
-@@ -204,7 +329,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+@@ -204,7 +370,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
  		ssize_t status = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);
  		if(status >= 0)
  		{
@@ -772,6 +813,31 @@ index f2ea0e5..d7b875f 100644
  void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder, JNIEnv *env, jobject surface);
  bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
  
+diff --git a/lib/include/chiaki/streamconnection.h b/lib/include/chiaki/streamconnection.h
+index 534afeb..b4f460d 100644
+--- a/lib/include/chiaki/streamconnection.h
++++ b/lib/include/chiaki/streamconnection.h
+@@ -108,6 +108,8 @@ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_toggle_mute_direct_message(
+ CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_stop(ChiakiStreamConnection *stream_connection);
+ 
+ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end);
++/** GPSx: asks the server for a new IDR frame (TakionMessage IDRREQUEST, no payload). */
++CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamConnection *stream_connection);
+ 
+ /**
+  * Thread-safe read of the currently-decoded video resolution (the negotiated/adaptive
+diff --git a/lib/include/chiaki/videoreceiver.h b/lib/include/chiaki/videoreceiver.h
+index 7d0a538..5aa5276 100644
+--- a/lib/include/chiaki/videoreceiver.h
++++ b/lib/include/chiaki/videoreceiver.h
+@@ -34,6 +34,7 @@ typedef struct chiaki_video_receiver_t
+ 	uint64_t cumulative_frames_lost; // running total for the stats overlay (never reset mid-session)
+ 	int32_t reference_frames[16];
+ 	ChiakiBitstream bitstream;
++	uint64_t last_idr_request_ms; // GPSx: rate limit for stream_connection_send_idr_request()
+ } ChiakiVideoReceiver;
+ 
+ CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receiver, struct chiaki_session_t *session, ChiakiPacketStats *packet_stats);
 diff --git a/lib/src/ctrl.c b/lib/src/ctrl.c
 index 9e3625b..6b6d94d 100644
 --- a/lib/src/ctrl.c
@@ -805,3 +871,85 @@ index 9e3625b..6b6d94d 100644
  		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
  
  	// if we already got more data than the header, put the rest in the buffer.
+diff --git a/lib/src/streamconnection.c b/lib/src/streamconnection.c
+index 9dbef76..9093f5f 100644
+--- a/lib/src/streamconnection.c
++++ b/lib/src/streamconnection.c
+@@ -1428,6 +1428,26 @@ static ChiakiErrorCode stream_connection_send_heartbeat(ChiakiStreamConnection *
+ 	return chiaki_takion_send_message_data(&stream_connection->takion, 1, 1, buf, stream.bytes_written, NULL);
+ }
+ 
++// GPSx: IDRREQUEST exists in the Takion message types but no known client sends it. PS4 cloud
++// servers (protocol 9) were seen not to answer corrupt-frame reports with a new IDR, leaving the
++// picture frozen after an early loss, so the video receiver sends this on cloud sessions only.
++CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamConnection *stream_connection)
++{
++	tkproto_TakionMessage msg = { 0 };
++	msg.type = tkproto_TakionMessage_PayloadType_IDRREQUEST;
++
++	uint8_t buf[0x10];
++	pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
++	if(!pb_encode(&stream, tkproto_TakionMessage_fields, &msg))
++	{
++		CHIAKI_LOGE(stream_connection->log, "StreamConnection IDR request protobuf encoding failed");
++		return CHIAKI_ERR_UNKNOWN;
++	}
++
++	CHIAKI_LOGW(stream_connection->log, "StreamConnection requesting IDR");
++	return chiaki_takion_send_message_data(&stream_connection->takion, 1, 2, buf, stream.bytes_written, NULL);
++}
++
+ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end)
+ {
+ 	tkproto_TakionMessage msg = { 0 };
+diff --git a/lib/src/videoreceiver.c b/lib/src/videoreceiver.c
+index a1c68db..8891f0e 100644
+--- a/lib/src/videoreceiver.c
++++ b/lib/src/videoreceiver.c
+@@ -5,6 +5,22 @@
+ 
+ #include <string.h>
+ 
++#include <chiaki/time.h>
++
++#define IDR_REQUEST_INTERVAL_MS 1000
++
++/** GPSx: on cloud sessions, ask for a new IDR at most once per IDR_REQUEST_INTERVAL_MS. */
++static void request_idr_if_cloud(ChiakiVideoReceiver *video_receiver)
++{
++	if(!chiaki_service_type_is_cloud(video_receiver->session->service_type))
++		return;
++	uint64_t now = chiaki_time_now_monotonic_ms();
++	if(video_receiver->last_idr_request_ms != 0 && now - video_receiver->last_idr_request_ms < IDR_REQUEST_INTERVAL_MS)
++		return;
++	video_receiver->last_idr_request_ms = now;
++	stream_connection_send_idr_request(&video_receiver->session->stream_connection);
++}
++
+ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *video_receiver);
+ 
+ static void add_ref_frame(ChiakiVideoReceiver *video_receiver, int32_t frame)
+@@ -44,6 +60,7 @@ CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receive
+ 	video_receiver->frame_index_cur = -1;
+ 	video_receiver->frame_index_prev = -1;
+ 	video_receiver->frame_index_prev_complete = 0;
++	video_receiver->last_idr_request_ms = 0;
+ 
+ 	chiaki_frame_processor_init(&video_receiver->frame_processor, video_receiver->log);
+ 	video_receiver->packet_stats = packet_stats;
+@@ -172,6 +189,7 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
+ 		video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
+ 		video_receiver->frame_index_prev = video_receiver->frame_index_cur;
+ 		CHIAKI_LOGW(video_receiver->log, "FEC failed for frame %d, requesting resend", (int)video_receiver->frame_index_cur);
++		request_idr_if_cloud(video_receiver);
+ 		return CHIAKI_ERR_SUCCESS;
+ 	}
+ 
+@@ -209,6 +227,7 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
+ 				{
+ 					video_receiver->frames_lost++;
+ 					CHIAKI_LOGW(video_receiver->log, "Missing reference frame %d for decoding frame %d", (int)ref_frame_index, (int)video_receiver->frame_index_cur);
++					request_idr_if_cloud(video_receiver);
+ 					video_receiver->frame_index_prev = video_receiver->frame_index_cur;
+ 					video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
+ 					return CHIAKI_ERR_SUCCESS;

@@ -14,7 +14,8 @@ video decoder counters (samples before the decoder exists, queued, rendered) and
 fix for `set_surface(NULL)` returning with the codec mutex still locked (and
 re-locking it in `kill_decoder`); the codec is created on the first sample with the
 codec read from the stream; stale decoded frames are skipped; optional low-latency
-decoder hints.
+decoder hints; on cloud sessions an IDR request (Takion IDRREQUEST) is sent at
+most once per second when a frame misses its reference or FEC fails.
 
 Rebuild the stripped `RelWithDebInfo` libraries for all ABIs with
 `tools/powershell/build-pylux-native.ps1`. See `docs/PROVENANCE.md` and
