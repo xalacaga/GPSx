@@ -20,6 +20,12 @@ data class CloudGame(
 ) {
     /** Only streamable routes can be provisioned; purchaseable rows need a store action first. */
     val playable: Boolean get() = category != CloudCategory.PURCHASEABLE && streamIdentifier.isNotEmpty()
+
+    /**
+     * Pylux's owned fast path: only owned PS Now rows carry a pre-resolved streaming entitlement.
+     * Sending it for other rows (owned PS5 games streamed through pscloud) makes allocation fail.
+     */
+    val usesOwnedFastPath: Boolean get() = isOwned && streamServiceType == "psnow" && entitlementId.isNotEmpty()
 }
 
 data class CloudCatalog(
@@ -98,3 +104,14 @@ private fun JSONObject.toCloudGame(): CloudGame? {
 
 private fun JSONObject.boundedString(name: String): String =
     optString(name, "").takeIf { it.length <= MAX_FIELD_LENGTH }.orEmpty()
+
+/** French explanation for the native provisioning error sentinels; other messages pass through, bounded. */
+fun provisioningFailureLabel(message: String): String =
+    when {
+        "AUTHORIZATION_FAILED" in message -> "session PlayStation expirée, reconnectez votre compte."
+        "PS_PLUS_SUBSCRIPTION_REQUIRED" in message -> "abonnement PlayStation Plus Premium requis pour le jeu en cloud."
+        message.startsWith("GAME_NOT_FREE") -> "ce jeu n’est plus inclus dans PlayStation Plus (catalogue à actualiser)."
+        message.startsWith("ACCOUNT_PRIVACY_SETTINGS") -> "paramètres de confidentialité du compte PlayStation à mettre à jour."
+        "PING_TIMEOUT" in message -> "latence vers les serveurs Sony trop élevée (moins de 80 ms requis)."
+        else -> message.take(200)
+    }

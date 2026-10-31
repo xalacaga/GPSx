@@ -54,6 +54,14 @@ class StreamTestReportTest {
     }
 
     @Test
+    fun `report keeps the last and every distinct audio route`() {
+        val routed = samples(10).mapIndexed { i, s -> s.copy(audioRoute = if (i < 5) "HDMI" else "Bluetooth") }
+        val audio = buildStreamTestReport(context, "a", "b", "fin", routed).getJSONObject("summary").getJSONObject("audio")
+        assertEquals("Bluetooth", audio.getString("route"))
+        assertEquals(listOf("HDMI", "Bluetooth"), (0 until audio.getJSONArray("routes").length()).map(audio.getJSONArray("routes")::getString))
+    }
+
+    @Test
     fun `report carries no network identity or secret fields`() {
         val text = buildStreamTestReport(context, "a", "b", "fin", samples(10)).toString()
         listOf("ssid", "bssid", "host", "ip", "registKey", "npsso", "token", "mac").forEach { field ->

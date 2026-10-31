@@ -9,7 +9,9 @@ l'exception OpenSSL (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
 protobuf pour hôte Windows, tests de nullité avant `display_sink.cantdisplay_cb`,
 aucune journalisation de session DEBUG par paquet, des indications basse latence
 du décodeur avec nouvel essai simple, et une sortie audio Oboe partagée qui se
-rouvre après un changement de sortie et signale son état.
+rouvre après un changement de sortie (et à la demande de GPSx quand une sortie
+Bluetooth apparaît), peut cibler un appareil de sortie donné, et signale son état
+et son appareil.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

@@ -3,6 +3,9 @@
 package com.gpsx.tv.remoteplay
 
 import android.content.Context
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
@@ -29,6 +32,7 @@ import com.metallic.chiaki.lib.StreamMetrics
 import com.metallic.chiaki.lib.Target
 import com.metallic.chiaki.lib.discoveryWakeup
 import com.metallic.chiaki.lib.setAudioCompatibilityMode
+import com.metallic.chiaki.lib.setPreferredAudioDevice
 import java.net.InetSocketAddress
 import java.net.Socket
 import com.gpsx.tv.diagnostics.StreamTestRecorder
@@ -93,6 +97,19 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
             settings?.edit()?.putBoolean("audio_compatibility", value)?.apply()
         }
 
+    private val audioManager = applicationContext?.getSystemService(AudioManager::class.java)
+
+    /**
+     * HYPOTHESIS: on some TVs a running stream neither follows nor is disconnected by a newly
+     * connected Bluetooth output, so GPSx reroutes AAudio itself and reopens the stream.
+     * Android also calls onAudioDevicesAdded once at registration; no session exists then.
+     */
+    private val audioRouteCallback =
+        object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) = onAudioRouteChanged(addedDevices)
+            override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) = onAudioRouteChanged(removedDevices)
+        }
+
     /** Per-session test reports, uploaded on request from the Diagnostics screen. */
     val testRecorder: StreamTestRecorder? = applicationContext?.let(::StreamTestRecorder)
     private val sampler = Executors.newSingleThreadScheduledExecutor { runnable ->
@@ -123,6 +140,10 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
     }
 
     init {
+        audioManager?.let { manager ->
+            runCatching { setPreferredAudioDevice(preferredAudioOutput(manager)) }
+            manager.registerAudioDeviceCallback(audioRouteCallback, main)
+        }
         consoleStore?.load()?.let { restored ->
             registeredConsole = restored
             snapshot =
@@ -380,6 +401,7 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
+        audioManager?.unregisterAudioDeviceCallback(audioRouteCallback)
         worker.execute {
             registration?.stop()
             registration?.close()
@@ -428,6 +450,23 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         }
     }
 
+    private fun onAudioRouteChanged(devices: Array<AudioDeviceInfo>) {
+        if (closed.get() || devices.none { it.isSink }) return
+        val manager = audioManager ?: return
+        runCatching { setPreferredAudioDevice(preferredAudioOutput(manager)) }
+        worker.execute {
+            // Under the lock: stopSession() detaches the session under the same lock before freeing it.
+            synchronized(lock) { session?.let { runCatching(it::restartAudio) } }
+        }
+    }
+
+    /** Label of the output the native stream reports, for the overlay and test reports. */
+    fun audioRouteLabel(deviceId: Int): String {
+        if (deviceId <= 0) return "système"
+        val device = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.firstOrNull { it.id == deviceId }
+        return device?.let { audioOutputTypeLabel(it.type) } ?: "appareil $deviceId"
+    }
+
     private fun stopSession() {
         val owned = synchronized(lock) {
             val current = session
@@ -448,7 +487,13 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         recorder.begin(if (connectInfo.serviceType != null) "cloud" else "console", connectInfo.videoProfile, autoHevc)
         synchronized(lock) {
             sampling?.cancel(false)
-            sampling = sampler.scheduleWithFixedDelay({ metrics()?.let(recorder::sample) }, 1, 1, TimeUnit.SECONDS)
+            sampling =
+                sampler.scheduleWithFixedDelay(
+                    { metrics()?.let { recorder.sample(it, audioRouteLabel(it.audioDeviceId)) } },
+                    1,
+                    1,
+                    TimeUnit.SECONDS,
+                )
         }
     }
 
@@ -527,3 +572,31 @@ internal fun videoProfileFor(quality: StreamQuality, hevc: Boolean): ConnectVide
         StreamQuality.FULL_HD_1080 -> ConnectVideoProfile(1920, 1080, 60, 15_000, Codec.H264)
     }
 
+/** Personal outputs (headphones, Bluetooth speakers) that should take over from the TV's own output. */
+private val PERSONAL_AUDIO_OUTPUTS =
+    listOf(
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        AudioDeviceInfo.TYPE_BLE_HEADSET,
+        AudioDeviceInfo.TYPE_BLE_SPEAKER,
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_USB_HEADSET,
+    )
+
+/** Output device ID AAudio should target: a connected personal output first, otherwise 0 (system routing). */
+internal fun preferredAudioOutput(manager: AudioManager): Int {
+    val outputs = manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+    return PERSONAL_AUDIO_OUTPUTS.firstNotNullOfOrNull { type -> outputs.firstOrNull { it.type == type } }?.id ?: 0
+}
+
+internal fun audioOutputTypeLabel(type: Int): String =
+    when (type) {
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER -> "Bluetooth"
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "Bluetooth (appel)"
+        AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HDMI_ARC, AudioDeviceInfo.TYPE_HDMI_EARC -> "HDMI"
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "haut-parleur"
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET -> "casque filaire"
+        AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_DEVICE -> "USB"
+        AudioDeviceInfo.TYPE_LINE_DIGITAL, AudioDeviceInfo.TYPE_LINE_ANALOG -> "sortie ligne"
+        else -> "type $type"
+    }

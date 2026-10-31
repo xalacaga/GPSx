@@ -45,6 +45,26 @@ class CloudCatalogTest {
     }
 
     @Test
+    fun `owned fast path is limited to owned ps now rows with an entitlement`() {
+        val games = parseCloudCatalog(payload)!!.games
+        // Owned PS5 game streamed through pscloud: Pylux never sends its entitlement.
+        assertFalse(games.first { it.productId == "EP0001" }.usesOwnedFastPath)
+        assertFalse(games.first { it.productId == "EP0002" }.usesOwnedFastPath)
+        val ownedPsNow = games.first { it.productId == "EP0002" }.copy(isOwned = true, entitlementId = "EP0002-ENT")
+        assertTrue(ownedPsNow.usesOwnedFastPath)
+        assertFalse(ownedPsNow.copy(entitlementId = "").usesOwnedFastPath)
+    }
+
+    @Test
+    fun `provisioning sentinels become readable french reasons`() {
+        assertTrue(provisioningFailureLabel("PS_PLUS_SUBSCRIPTION_REQUIRED").contains("Premium"))
+        assertTrue(provisioningFailureLabel("ERR PING_TIMEOUT best=120").contains("80 ms"))
+        assertTrue(provisioningFailureLabel("GAME_NOT_FREE:9.99").contains("PlayStation Plus"))
+        assertEquals("Allocation failed", provisioningFailureLabel("Allocation failed"))
+        assertEquals(200, provisioningFailureLabel("x".repeat(500)).length)
+    }
+
+    @Test
     fun `rejects invalid json and oversized payloads`() {
         assertNull(parseCloudCatalog("not json"))
         assertNull(parseCloudCatalog(" ".repeat(MAX_CATALOG_BYTES + 1)))

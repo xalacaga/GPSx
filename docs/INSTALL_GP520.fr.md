@@ -27,7 +27,12 @@ première fois, Android peut demander d'autoriser GPSx comme source d'installati
 - Pas de son (par exemple avec une barre de son Bluetooth) : GPSx passe
   automatiquement d'AAudio à OpenSL ES si la sortie reste muette ; Paramètres →
   **Sortie audio → Compatibilité** force OpenSL ES dès le départ. L'affichage du
-  stream indique l'API audio utilisée.
+  stream indique l'API audio utilisée et la sortie qu'elle signale (Bluetooth,
+  HDMI, ou « système » quand OpenSL ES ne la précise pas).
+- Casque ou enceinte Bluetooth : à chaque connexion ou déconnexion, GPSx le cible
+  et rouvre le flux audio en une seconde environ, en réessayant d'abord AAudio. Si
+  l'affichage indique toujours HDMI, lancez la session une fois l'appareil
+  Bluetooth connecté et envoyez un rapport de test.
 
 - Mode d'image **Jeu** et **Game Boost** activés.
 - Wi-Fi 5 GHz ou 6 GHz, PS5 en Ethernet sur la box si possible, projecteur en

@@ -57,7 +57,7 @@ internal fun compactReport(report: JSONObject, maxSamples: Int): String {
         "mbps ${stat("bitrateMbps")}",
         "rtt ${stat("rttMs")}",
         "loss ${stat("packetLoss")}",
-        "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))}",
+        "lost ${num(summary.opt("framesLost"))} audio ${num(audio.opt("api"))} state ${num(audio.opt("finalState"))} callbacks ${num(audio.opt("callbacks"))} under ${num(audio.opt("underflows"))} over ${num(audio.opt("overflows"))} reopen ${num(audio.opt("reopens"))} route ${num(audio.opt("route"))}",
         "samples t fps mbps rtt loss lost audio",
     )
     val samples = report.getJSONArray("samples")

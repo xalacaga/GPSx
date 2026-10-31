@@ -20,6 +20,8 @@ data class StreamSample(
     val audioOverflows: Long = 0,
     val audioReopens: Long = 0,
     val audioCallbacks: Long = 0,
+    /** Output the stream reported ("Bluetooth", "HDMI", "système" when the API does not say). */
+    val audioRoute: String = "",
 )
 
 /** Non-secret context captured with a test. Never holds addresses, names, keys or tokens. */
@@ -135,6 +137,8 @@ fun buildStreamTestReport(
                         .put("overflows", samples.lastOrNull()?.audioOverflows ?: 0L)
                         .put("reopens", samples.lastOrNull()?.audioReopens ?: 0L)
                         .put("callbacks", samples.lastOrNull()?.audioCallbacks ?: 0L)
+                        .put("route", samples.lastOrNull()?.audioRoute ?: "")
+                        .put("routes", JSONArray(samples.map { it.audioRoute }.filter(String::isNotEmpty).distinct()))
                         .put("api", when (samples.lastOrNull()?.audioState) { 1 -> "AAudio"; 3 -> "OpenSLES"; 2 -> "failed"; else -> "none" }),
                 ),
         )

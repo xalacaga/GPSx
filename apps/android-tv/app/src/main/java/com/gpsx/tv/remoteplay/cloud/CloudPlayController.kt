@@ -147,8 +147,8 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                             storeCountry = region.country,
                             storeLang = region.language,
                             gameLanguage = region.language,
-                            ownedEntitlementId = if (game.isOwned) game.entitlementId else "",
-                            ownedPlatform = if (game.isOwned) game.platform else "",
+                            ownedEntitlementId = if (game.usesOwnedFastPath) game.entitlementId else "",
+                            ownedPlatform = if (game.usesOwnedFastPath) game.platform else "",
                             priorDatacentersJson = regionPreferences.getString(datacenterKey(game), "").orEmpty(),
                             catalogIsForeign = region.catalogIsForeign,
                             resolution = current.resolution.lines,
@@ -165,10 +165,16 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                 }.getOrNull()
             if (result == null || result.err != 0 || result.serverIp.isEmpty()) {
                 val reason =
-                    result?.errorMessage?.takeIf(String::isNotBlank)?.take(200)
+                    result?.errorMessage?.takeIf(String::isNotBlank)?.let(::provisioningFailureLabel)
                         ?: result?.let { ErrorCode(it.err).toString() }
                         ?: "le moteur natif a échoué"
                 update { copy(provisioning = false, detail = "Échec de la réservation : $reason") }
+                return@execute
+            }
+            // The native flow checks cancellation only between steps, so the final allocation can
+            // still succeed after Cancel; never start a stream the user abandoned.
+            if (cancelProvisioning.get() || closed.get()) {
+                update { copy(provisioning = false, detail = "Réservation annulée.") }
                 return@execute
             }
             if (result.datacenterPings.isNotEmpty()) {

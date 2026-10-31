@@ -665,7 +665,7 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
             current.rttMs,
             current.packetLoss * 100,
             current.framesLost,
-            audioLabel(current),
+            audioLabel(current, engine.audioRouteLabel(current.audioDeviceId)),
         ),
         color = SoftWhite,
         fontSize = 11.sp,
@@ -675,7 +675,7 @@ private fun StreamMetricsOverlay(engine: RemotePlayEngine, modifier: Modifier) {
     )
 }
 
-private fun audioLabel(metrics: StreamMetrics): String {
+private fun audioLabel(metrics: StreamMetrics, route: String): String {
     val api = when (metrics.audioState) {
         1 -> "AAudio"
         3 -> "OpenSL ES"
@@ -684,7 +684,7 @@ private fun audioLabel(metrics: StreamMetrics): String {
     }
     val playing = if (metrics.audioCallbacks > 0) "OK" else "muet"
     val reopened = if (metrics.audioReopens > 0) ", ${metrics.audioReopens} reprise(s)" else ""
-    return "$playing ($api$reopened)"
+    return "$playing ($api → $route$reopened)"
 }
 
 /**

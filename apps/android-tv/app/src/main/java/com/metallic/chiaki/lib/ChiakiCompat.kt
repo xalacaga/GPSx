@@ -75,6 +75,8 @@ data class StreamMetrics(
     val audioReopens: Long = 0,
     /** Audio callbacks so far; stays at 0 when the output never pulls audio. */
     val audioCallbacks: Long = 0,
+    /** Android output device ID the audio stream reports (0 unknown or system default). */
+    val audioDeviceId: Int = 0,
 )
 
 class ErrorCode(val value: Int) {
@@ -161,12 +163,15 @@ class Session(connectInfo: ConnectInfo) : AutoCloseable {
     fun setControllerState(state: ControllerState) = ChiakiNative.sessionSetControllerState(nativePtr, state)
     fun setLoginPin(pin: String) = ChiakiNative.sessionSetLoginPin(nativePtr, pin)
 
+    /** Reopens the audio stream on the current output route (after a Bluetooth device connects or leaves). */
+    fun restartAudio() = ChiakiNative.sessionRestartAudio(nativePtr)
+
     fun metrics(): StreamMetrics? {
         val values = ChiakiNative.sessionGetMetrics(nativePtr)?.takeIf { it.size >= 7 } ?: return null
         fun at(index: Int): Double = values.getOrElse(index) { 0.0 }
         return StreamMetrics(
             values[0], values[1], values[2].toLong(), values[3], values[4], values[5].toInt(), values[6].toInt(),
-            at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(), at(11).toLong(),
+            at(7).toInt(), at(8).toLong(), at(9).toLong(), at(10).toLong(), at(11).toLong(), at(12).toInt(),
         )
     }
 
@@ -323,6 +328,9 @@ fun discoveryWakeup(host: String, userCredential: Long, ps5: Boolean): ErrorCode
 /** Audio API for sessions created afterwards: false = automatic (AAudio, then OpenSL ES), true = OpenSL ES only. */
 fun setAudioCompatibilityMode(enabled: Boolean) = ChiakiNative.audioSetApiPreference(if (enabled) 1 else 0)
 
+/** Android output device ID for AAudio streams opened afterwards; 0 leaves routing to the system. */
+fun setPreferredAudioDevice(deviceId: Int) = ChiakiNative.audioSetPreferredDevice(deviceId)
+
 /** Installs the CA bundle used by the native HTTPS client. Call once before cloud requests. */
 fun initNativeSsl(cacheDir: String) = ChiakiNative.initNativeSsl(cacheDir)
 
@@ -383,6 +391,8 @@ private class ChiakiNative {
         @JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
         @JvmStatic external fun sessionGetMetrics(ptr: Long): DoubleArray?
         @JvmStatic external fun audioSetApiPreference(preference: Int)
+        @JvmStatic external fun audioSetPreferredDevice(deviceId: Int)
+        @JvmStatic external fun sessionRestartAudio(ptr: Long)
         @JvmStatic external fun registStart(result: CreateResult, info: RegistInfo, log: ChiakiLog, regist: Regist)
         @JvmStatic external fun registStop(ptr: Long)
         @JvmStatic external fun registFree(ptr: Long)

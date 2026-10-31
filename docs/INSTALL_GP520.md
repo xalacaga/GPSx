@@ -27,7 +27,12 @@ Android may ask to allow GPSx as an install source.
 - No sound (for example with a Bluetooth soundbar): GPSx falls back from AAudio to
   OpenSL ES automatically when the output stays silent; Settings → **Sortie audio
   → Compatibilité** forces OpenSL ES from the start. The stream overlay shows the
-  audio API in use.
+  audio API in use and the output it reports (Bluetooth, HDMI, or "système" when
+  OpenSL ES does not say).
+- Bluetooth headphones or speaker: when one connects or disconnects, GPSx targets
+  it and reopens the audio stream within about a second, retrying AAudio first.
+  If the overlay still says HDMI, start the session after the Bluetooth device is
+  connected and send a test report.
 
 - Picture mode **Game** and **Game Boost** on.
 - 5 GHz or 6 GHz Wi-Fi, PS5 wired to the router if possible, projector in sight

@@ -39,3 +39,31 @@ do not match physical buttons (HYPOTHESIS until observed; see
 the Remote Play button set has no Mic bit. Windows columns are a superset and
 are never evidence for GP520 columns.
 
+## Raw HID profile (no Sony kernel driver)
+
+GPSx applies this profile to a Sony pad (vendor `054c`) whose key layout reports
+both `BUTTON_C` and `BUTTON_Z`. Sony kernel drivers never emit those two buttons,
+and the AOSP DualSense fallback layout maps them to face buttons, so their
+presence identifies HID buttons read through `Generic.kl` (INFERENCE, pending GP520
+scan-code evidence). Buttons are then mapped from the **scan code**, not the
+Android keycode:
+
+| Scan code | `Generic.kl` label | PS5 control |
+|---|---|---|
+| `0x130` | `BUTTON_A` | Square |
+| `0x131` | `BUTTON_B` | Cross |
+| `0x132` | `BUTTON_C` | Circle |
+| `0x133` | `BUTTON_X` | Triangle |
+| `0x134` | `BUTTON_Y` | L1 |
+| `0x135` | `BUTTON_Z` | R1 |
+| `0x136`, `0x137` | `BUTTON_L1`, `BUTTON_R1` | L2/R2 digital, ignored (the axes win) |
+| `0x138` | `BUTTON_L2` | Create |
+| `0x139` | `BUTTON_R2` | Options |
+| `0x13a`, `0x13b` | `BUTTON_SELECT`, `BUTTON_START` | L3, R3 |
+| `0x13c` | `BUTTON_MODE` | PS |
+| `0x13d` | `BUTTON_THUMBL` | Touchpad click |
+
+Axes: `X`/`Y` left stick, `Z`/`RZ` right stick, `RX`/`RY` L2/R2 pressure. Android
+centres `RX`/`RY` on -1..1, so GPSx rescales them from their reported motion range
+(rest = 0). The D-pad comes from `HAT_X`/`HAT_Y`. Pads with a Sony driver or a
+vendor layout keep the keycode mapping.
