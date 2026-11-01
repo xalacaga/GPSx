@@ -44,6 +44,17 @@ data class CloudSnapshot(
 
 internal const val DEFAULT_BITRATE_KBPS = 20_000
 
+/** Bandwidth announced for PS4 cloud streams decoded in software. */
+internal const val PS4_SOFTWARE_BITRATE_KBPS = 8_000
+
+/**
+ * Bandwidth GPSx announces to the cloud service, which picks the stream's bitrate and size from it.
+ * PS4 cloud decoded in software announces less. FACT (GP520 live log, 0.2.13): software decoding at
+ * the default 20 Mb/s saturated the CPU, with FEC failures every ~1.5 s and visible lag.
+ */
+internal fun streamBitrateKbps(serviceType: String, requestedKbps: Int, softwarePs4Decoder: Boolean): Int =
+    if (serviceType == "psnow" && softwarePs4Decoder) minOf(requestedKbps, PS4_SOFTWARE_BITRATE_KBPS) else requestedKbps
+
 /**
  * PlayStation Plus cloud gaming: PSN sign-in state, unified catalog and server
  * provisioning through the pinned Pylux engine. The NPSSO token stays in
@@ -134,6 +145,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
             }
             ensureSsl()
             val current = snapshot()
+            val bitrateKbps = streamBitrateKbps(game.streamServiceType, current.bitrateKbps, engine.softwareDecoderForPs4Cloud)
             val region =
                 storeRegionFor(
                     regionPreferences.getString(KEY_LOCALE, null) ?: defaultLocale(),
@@ -157,7 +169,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                             priorDatacentersJson = regionPreferences.getString(datacenterKey(game), "").orEmpty(),
                             catalogIsForeign = region.catalogIsForeign,
                             resolution = current.resolution.lines,
-                            bitrateKbps = current.bitrateKbps,
+                            bitrateKbps = bitrateKbps,
                         ),
                         object : CloudProvisionCallbacks {
                             override fun onProgress(stage: String) {
@@ -214,7 +226,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                             current.resolution.width,
                             current.resolution.lines,
                             60,
-                            current.bitrateKbps,
+                            bitrateKbps,
                             if (game.streamServiceType == "pscloud") Codec.H265 else Codec.H264,
                         ),
                     serviceType = game.streamServiceType,

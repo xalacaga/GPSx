@@ -21,7 +21,9 @@ envoyée au plus une fois par seconde quand une image perd sa référence ou que
 FEC échoue ; les échantillons sont copiés dans une file qu'un fil séparé donne au codec, en
 attendant jusqu'à 5 s un tampon d'entrée au lieu de les jeter, si bien qu'un décodeur
 bloqué ne bloque jamais la réception réseau ; les flux PS4 cloud peuvent utiliser le
-décodeur H.264 logiciel d'Android (réglé depuis Kotlin).
+décodeur H.264 logiciel d'Android (réglé depuis Kotlin) ; pour le décodeur matériel, le SPS H.264
+est réécrit pour annoncer au plus 4 images de référence (le PS4 cloud en annonce 9, plus
+de tampons que le décodeur de la GP520 n'en accorde) ; le fil de réception Takion tourne en nice -10 sous Android.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

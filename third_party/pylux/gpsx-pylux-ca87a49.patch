@@ -12,6 +12,19 @@ index b31dcd9..ec2f75c 100755
  find_package(PythonInterp 3 REQUIRED) # Make sure nanopb doesn't find Python 2.7 because Python 2 should just die.
  
  if(CHIAKI_USE_SYSTEM_NANOPB)
+diff --git a/android/app/CMakeLists.txt b/android/app/CMakeLists.txt
+index 52e65dc..3faaa9c 100644
+--- a/android/app/CMakeLists.txt
++++ b/android/app/CMakeLists.txt
+@@ -30,6 +30,8 @@ add_library(chiaki-jni SHARED
+         src/main/cpp/log.c
+         src/main/cpp/video-decoder.h
+         src/main/cpp/video-decoder.c
++        src/main/cpp/h264-sps-fix.h
++        src/main/cpp/h264-sps-fix.c
+         src/main/cpp/audio-decoder.h
+         src/main/cpp/audio-decoder.c
+         src/main/cpp/opus-decoder.h
 diff --git a/android/app/src/main/cpp/audio-output.cpp b/android/app/src/main/cpp/audio-output.cpp
 index 53157f1..199222a 100644
 --- a/android/app/src/main/cpp/audio-output.cpp
@@ -436,11 +449,376 @@ index 039a4d9..82e956f 100644
  	return arr;
  }
  
+diff --git a/android/app/src/main/cpp/h264-sps-fix.c b/android/app/src/main/cpp/h264-sps-fix.c
+new file mode 100644
+index 0000000..8f872bc
+--- /dev/null
++++ b/android/app/src/main/cpp/h264-sps-fix.c
+@@ -0,0 +1,326 @@
++// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
++
++// GPSx: H.264 SPS rewrite for hardware decoders with few output buffers, in the spirit of
++// Moonlight's SPS fix-ups: caps num_ref_frames and max_dec_frame_buffering.
++
++#include "h264-sps-fix.h"
++
++#include <stdlib.h>
++#include <string.h>
++
++typedef struct
++{
++	const uint8_t *data;
++	size_t size_bits;
++	size_t pos;
++	bool error;
++} BitReader;
++
++typedef struct
++{
++	uint8_t *data;
++	size_t capacity;
++	size_t pos;
++	bool error;
++} BitWriter;
++
++static uint32_t br_u(BitReader *r, int n)
++{
++	uint32_t v = 0;
++	for(int i = 0; i < n; i++)
++	{
++		if(r->pos >= r->size_bits)
++		{
++			r->error = true;
++			return 0;
++		}
++		v = (v << 1) | ((r->data[r->pos >> 3] >> (7 - (r->pos & 7))) & 1);
++		r->pos++;
++	}
++	return v;
++}
++
++static uint32_t br_ue(BitReader *r)
++{
++	int zeros = 0;
++	while(!r->error && br_u(r, 1) == 0)
++	{
++		if(++zeros > 31)
++		{
++			r->error = true;
++			return 0;
++		}
++	}
++	return zeros ? ((1u << zeros) - 1 + br_u(r, zeros)) : 0;
++}
++
++static void bw_u(BitWriter *w, int n, uint32_t v)
++{
++	for(int i = n - 1; i >= 0; i--)
++	{
++		if((w->pos >> 3) >= w->capacity)
++		{
++			w->error = true;
++			return;
++		}
++		uint8_t *byte = &w->data[w->pos >> 3];
++		if((w->pos & 7) == 0)
++			*byte = 0;
++		*byte |= ((v >> i) & 1) << (7 - (w->pos & 7));
++		w->pos++;
++	}
++}
++
++static void bw_ue(BitWriter *w, uint32_t v)
++{
++	uint32_t x = v + 1;
++	int bits = 0;
++	for(uint32_t t = x; t; t >>= 1)
++		bits++;
++	bw_u(w, bits - 1, 0);
++	bw_u(w, bits, x);
++}
++
++/** Copies n plain bits, or one Exp-Golomb value, from the reader to the writer. */
++static uint32_t copy_u(BitReader *r, BitWriter *w, int n)
++{
++	uint32_t v = br_u(r, n);
++	bw_u(w, n, v);
++	return v;
++}
++
++static uint32_t copy_ue(BitReader *r, BitWriter *w)
++{
++	uint32_t v = br_ue(r);
++	bw_ue(w, v);
++	return v;
++}
++
++static int32_t copy_se(BitReader *r, BitWriter *w)
++{
++	uint32_t v = copy_ue(r, w);
++	return (v & 1) ? (int32_t)((v + 1) / 2) : -(int32_t)(v / 2);
++}
++
++/** Removes emulation-prevention bytes; returns the RBSP size. */
++static size_t unescape(const uint8_t *in, size_t size, uint8_t *out)
++{
++	size_t o = 0;
++	for(size_t i = 0; i < size; i++)
++	{
++		if(i + 2 < size && in[i] == 0 && in[i + 1] == 0 && in[i + 2] == 3)
++		{
++			out[o++] = 0;
++			out[o++] = 0;
++			i += 2;
++			continue;
++		}
++		out[o++] = in[i];
++	}
++	return o;
++}
++
++/** Adds emulation-prevention bytes; out must hold size * 3 / 2 + 1 bytes. */
++static size_t escape(const uint8_t *in, size_t size, uint8_t *out)
++{
++	size_t o = 0;
++	int zeros = 0;
++	for(size_t i = 0; i < size; i++)
++	{
++		if(zeros >= 2 && in[i] <= 3)
++		{
++			out[o++] = 3;
++			zeros = 0;
++		}
++		out[o++] = in[i];
++		zeros = in[i] == 0 ? zeros + 1 : 0;
++	}
++	return o;
++}
++
++/**
++ * Rewrites one SPS NAL payload (NAL header byte first, escaped). Returns the new escaped payload
++ * in *out (malloc'd) and its size, or 0 when the SPS is left alone: unsupported syntax (high
++ * profiles with scaling lists, HRD parameters), an existing bitstream restriction, or a parse error.
++ */
++static size_t rewrite_sps(const uint8_t *nal, size_t nal_size, uint32_t max_refs, uint8_t **out)
++{
++	uint8_t *rbsp = malloc(nal_size);
++	uint8_t *written = malloc(nal_size + 32);
++	if(!rbsp || !written)
++		goto fail;
++	size_t rbsp_size = unescape(nal, nal_size, rbsp);
++	BitReader r = { rbsp, rbsp_size * 8, 0, false };
++	BitWriter w = { written, nal_size + 32, 0, false };
++
++	copy_u(&r, &w, 8); // NAL header
++	uint32_t profile = copy_u(&r, &w, 8);
++	copy_u(&r, &w, 8); // constraint flags
++	copy_u(&r, &w, 8); // level_idc
++	copy_ue(&r, &w); // seq_parameter_set_id
++	if(profile == 100 || profile == 110 || profile == 122 || profile == 244 || profile == 44 || profile == 83
++		|| profile == 86 || profile == 118 || profile == 128 || profile == 138 || profile == 139 || profile == 134)
++	{
++		uint32_t chroma = copy_ue(&r, &w);
++		if(chroma == 3)
++			copy_u(&r, &w, 1);
++		copy_ue(&r, &w);
++		copy_ue(&r, &w);
++		copy_u(&r, &w, 1);
++		if(copy_u(&r, &w, 1)) // seq_scaling_matrix_present_flag
++			goto fail;
++	}
++	copy_ue(&r, &w); // log2_max_frame_num_minus4
++	uint32_t poc_type = copy_ue(&r, &w);
++	if(poc_type == 0)
++		copy_ue(&r, &w);
++	else if(poc_type == 1)
++	{
++		copy_u(&r, &w, 1);
++		copy_se(&r, &w);
++		copy_se(&r, &w);
++		uint32_t cycle = copy_ue(&r, &w);
++		if(cycle > 255)
++			goto fail;
++		for(uint32_t i = 0; i < cycle; i++)
++			copy_se(&r, &w);
++	}
++	uint32_t num_ref_frames = br_ue(&r);
++	if(num_ref_frames <= max_refs)
++		goto fail; // already within the limit: nothing to change
++	num_ref_frames = max_refs;
++	bw_ue(&w, num_ref_frames);
++	copy_u(&r, &w, 1); // gaps_in_frame_num_value_allowed_flag
++	copy_ue(&r, &w);
++	copy_ue(&r, &w);
++	if(!copy_u(&r, &w, 1)) // frame_mbs_only_flag
++		copy_u(&r, &w, 1);
++	copy_u(&r, &w, 1); // direct_8x8_inference_flag
++	if(copy_u(&r, &w, 1)) // frame_cropping_flag
++	{
++		copy_ue(&r, &w);
++		copy_ue(&r, &w);
++		copy_ue(&r, &w);
++		copy_ue(&r, &w);
++	}
++	uint32_t vui = br_u(&r, 1);
++	bw_u(&w, 1, 1);
++	if(vui)
++	{
++		if(copy_u(&r, &w, 1)) // aspect_ratio_info_present_flag
++		{
++			if(copy_u(&r, &w, 8) == 255)
++				copy_u(&r, &w, 32);
++		}
++		if(copy_u(&r, &w, 1)) // overscan_info_present_flag
++			copy_u(&r, &w, 1);
++		if(copy_u(&r, &w, 1)) // video_signal_type_present_flag
++		{
++			copy_u(&r, &w, 4);
++			if(copy_u(&r, &w, 1))
++				copy_u(&r, &w, 24);
++		}
++		if(copy_u(&r, &w, 1)) // chroma_loc_info_present_flag
++		{
++			copy_ue(&r, &w);
++			copy_ue(&r, &w);
++		}
++		if(copy_u(&r, &w, 1)) // timing_info_present_flag
++		{
++			copy_u(&r, &w, 32);
++			copy_u(&r, &w, 32);
++			copy_u(&r, &w, 1);
++		}
++		if(copy_u(&r, &w, 1) || copy_u(&r, &w, 1)) // nal / vcl HRD parameters
++			goto fail;
++		copy_u(&r, &w, 1); // pic_struct_present_flag
++		if(copy_u(&r, &w, 1)) // bitstream_restriction_flag: keep it, capping max_dec_frame_buffering
++		{
++			copy_u(&r, &w, 1); // motion_vectors_over_pic_boundaries_flag
++			copy_ue(&r, &w);   // max_bytes_per_pic_denom
++			copy_ue(&r, &w);   // max_bits_per_mb_denom
++			copy_ue(&r, &w);   // log2_max_mv_length_horizontal
++			copy_ue(&r, &w);   // log2_max_mv_length_vertical
++			uint32_t reorder = br_ue(&r);
++			bw_ue(&w, reorder < num_ref_frames ? reorder : num_ref_frames);
++			uint32_t buffering = br_ue(&r);
++			bw_ue(&w, buffering < num_ref_frames ? buffering : num_ref_frames);
++			goto trailing;
++		}
++	}
++	else
++	{
++		for(int i = 0; i < 8; i++) // aspect, overscan, signal, chroma loc, timing, NAL HRD, VCL HRD, pic_struct: all off
++			bw_u(&w, 1, 0);
++	}
++	if(r.error)
++		goto fail;
++	// bitstream_restriction: no reordering, buffering limited to the capped reference count.
++	bw_u(&w, 1, 1);
++	bw_u(&w, 1, 1);  // motion_vectors_over_pic_boundaries_flag
++	bw_ue(&w, 2);    // max_bytes_per_pic_denom
++	bw_ue(&w, 1);    // max_bits_per_mb_denom
++	bw_ue(&w, 16);   // log2_max_mv_length_horizontal
++	bw_ue(&w, 16);   // log2_max_mv_length_vertical
++	bw_ue(&w, 0);    // max_num_reorder_frames
++	bw_ue(&w, num_ref_frames); // max_dec_frame_buffering
++trailing:
++	if(r.error)
++		goto fail;
++	bw_u(&w, 1, 1);  // rbsp_stop_one_bit
++	while(w.pos & 7)
++		bw_u(&w, 1, 0);
++	if(w.error)
++		goto fail;
++
++	size_t plain = w.pos >> 3;
++	*out = malloc(plain * 3 / 2 + 1);
++	if(!*out)
++		goto fail;
++	size_t escaped = escape(written, plain, *out);
++	free(rbsp);
++	free(written);
++	return escaped;
++
++fail:
++	free(rbsp);
++	free(written);
++	return 0;
++}
++
++static size_t next_start_code(const uint8_t *buf, size_t size, size_t from)
++{
++	for(size_t i = from; i + 2 < size; i++)
++		if(buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1)
++			return (i > 0 && buf[i - 1] == 0) ? i - 1 : i;
++	return size;
++}
++
++bool gpsx_h264_fix_sps(const uint8_t *buf, size_t size, uint32_t max_refs, uint8_t **out, size_t *out_size)
++{
++	size_t scan = size < 512 ? size : 512;
++	for(size_t i = 0; i + 3 < scan; i++)
++	{
++		if(buf[i] != 0 || buf[i + 1] != 0 || buf[i + 2] != 1 || (buf[i + 3] & 0x1f) != 7)
++			continue;
++		size_t nal = i + 3;
++		size_t end = next_start_code(buf, size, nal);
++		uint8_t *sps = NULL;
++		size_t sps_size = rewrite_sps(buf + nal, end - nal, max_refs, &sps);
++		if(!sps_size)
++			return false;
++		*out_size = nal + sps_size + (size - end);
++		*out = malloc(*out_size);
++		if(!*out)
++		{
++			free(sps);
++			return false;
++		}
++		memcpy(*out, buf, nal);
++		memcpy(*out + nal, sps, sps_size);
++		memcpy(*out + nal + sps_size, buf + end, size - end);
++		free(sps);
++		return true;
++	}
++	return false;
++}
+diff --git a/android/app/src/main/cpp/h264-sps-fix.h b/android/app/src/main/cpp/h264-sps-fix.h
+new file mode 100644
+index 0000000..f0a7b63
+--- /dev/null
++++ b/android/app/src/main/cpp/h264-sps-fix.h
+@@ -0,0 +1,19 @@
++// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
++
++#ifndef GPSX_H264_SPS_FIX_H
++#define GPSX_H264_SPS_FIX_H
++
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++
++/**
++ * GPSx: finds the first H.264 SPS in the first 512 bytes of an Annex B sample and, when it uses
++ * more than max_refs reference frames, rewrites it with num_ref_frames capped to max_refs and the
++ * VUI bitstream restriction's max_dec_frame_buffering (and max_num_reorder_frames) capped likewise,
++ * adding the restriction when absent. Returns true with a new malloc'd sample in *out; false
++ * leaves the sample unchanged (no SPS, nothing to cap or unsupported syntax).
++ */
++bool gpsx_h264_fix_sps(const uint8_t *buf, size_t size, uint32_t max_refs, uint8_t **out, size_t *out_size);
++
++#endif
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..4a29b11 100644
+index a256204..f868d13 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
-@@ -8,11 +8,63 @@
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+ 
+ #include "video-decoder.h"
++#include "h264-sps-fix.h"
+ 
+ #include <jni.h>
+ 
+@@ -8,11 +9,65 @@
  #include <media/NdkMediaFormat.h>
  #include <android/native_window_jni.h>
  
@@ -454,6 +832,8 @@ index a256204..4a29b11 100644
 +// queue's byte limit (about 10 s of 720p cloud video).
 +#define FEED_INPUT_WAIT_MS 5000
 +#define SAMPLE_QUEUE_MAX_BYTES (24 * 1024 * 1024)
++// GPSx: reference frames announced to a hardware H.264 decoder (see enqueue_sample).
++#define H264_HARDWARE_MAX_REFS 4
 +
 +// GPSx: 1 = try the low-latency decoder hints first (default), 0 = plain configure. Set from Kotlin.
 +static volatile int g_low_latency_hints = 1;
@@ -504,7 +884,7 @@ index a256204..4a29b11 100644
  
  ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec)
  {
-@@ -23,7 +75,42 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
+@@ -23,7 +78,43 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
  	decoder->target_height = target_height;
  	decoder->target_codec = codec;
  	decoder->shutdown_output = false;
@@ -517,6 +897,7 @@ index a256204..4a29b11 100644
 +	decoder->queue_bytes = 0;
 +	decoder->samples_overflowed = 0;
 +	decoder->samples_not_fed = 0;
++	decoder->level_raised_logged = false;
 +	decoder->frames_rendered = 0;
 +	memset(decoder->queued_at_us, 0, sizeof(decoder->queued_at_us));
 +	decoder->decode_latency_us = 0;
@@ -548,7 +929,7 @@ index a256204..4a29b11 100644
  }
  
  static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
-@@ -52,49 +139,44 @@ static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
+@@ -52,49 +143,44 @@ static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
  
  void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder)
  {
@@ -623,7 +1004,7 @@ index a256204..4a29b11 100644
  	}
  
  	AMediaFormat *format = AMediaFormat_new();
-@@ -102,11 +184,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -102,11 +188,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
  
@@ -669,7 +1050,7 @@ index a256204..4a29b11 100644
  		goto error_codec;
  	}
  
-@@ -125,15 +240,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -125,15 +244,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  		goto error_codec;
  	}
  
@@ -681,10 +1062,7 @@ index a256204..4a29b11 100644
  	decoder->codec = NULL;
 +	return false;
 +}
- 
--error_surface:
--	ANativeWindow_release(decoder->window);
--	decoder->window = NULL;
++
 +/**
 + * GPSx: codec family of an Annex B sample from its first NAL unit: 1 = H.265 (VPS/SPS/PPS),
 + * 0 = H.264 (SPS/PPS/IDR), -1 = unknown. The stream header that opens every stream starts
@@ -707,7 +1085,10 @@ index a256204..4a29b11 100644
 +	decoder->shutdown_output = false;
 +	return create_codec_locked(decoder);
 +}
-+
+ 
+-error_surface:
+-	ANativeWindow_release(decoder->window);
+-	decoder->window = NULL;
 +static int sniff_codec(const uint8_t *buf, size_t size)
 +{
 +	for(size_t i = 0; i + 3 < size && i < 64; i++)
@@ -778,7 +1159,7 @@ index a256204..4a29b11 100644
  
  beach:
  	chiaki_mutex_unlock(&decoder->codec_mutex);
-@@ -151,24 +355,114 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -151,24 +359,136 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  
  	if(!decoder->codec)
  	{
@@ -846,6 +1227,28 @@ index a256204..4a29b11 100644
 +	if(!copy)
 +		return false;
 +	memcpy(copy, buf, buf_size);
++	// GPSx: H.264 SPS rewrite for the hardware decoder. FACT (GP520 live logs): with a clean PS4 cloud
++	// stream OMX.MS.AVC.Decoder froze on the first picture and refused the output buffers ACodec asked
++	// for ("setting nBufferCountActual to 11 failed"); the SPS declares 9 reference frames and
++	// max_dec_frame_buffering 9 (no reordering). Android's software decoder showed the game. Capping
++	// the announced references to 4 keeps the buffer need within what the chip grants; P-frames
++	// normally reference the previous frame. HYPOTHESIS until a GP520 run shows the picture.
++	if(!chiaki_codec_is_h265(decoder->target_codec) && !g_software_h264)
++	{
++		uint8_t *fixed = NULL;
++		size_t fixed_size = 0;
++		if(gpsx_h264_fix_sps(copy, buf_size, H264_HARDWARE_MAX_REFS, &fixed, &fixed_size))
++		{
++			if(!decoder->level_raised_logged)
++			{
++				CHIAKI_LOGI(decoder->log, "Capped H.264 SPS reference frames to %d for the hardware decoder", H264_HARDWARE_MAX_REFS);
++				decoder->level_raised_logged = true;
++			}
++			free(copy);
++			copy = fixed;
++			buf_size = fixed_size;
++		}
++	}
 +	chiaki_mutex_lock(&decoder->queue_mutex);
 +	if(decoder->queue_count == GPSX_SAMPLE_QUEUE_CAP || decoder->queue_bytes + buf_size > SAMPLE_QUEUE_MAX_BYTES)
 +	{
@@ -900,7 +1303,7 @@ index a256204..4a29b11 100644
  		}
  
  		size_t codec_buf_size;
-@@ -180,6 +474,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -180,6 +500,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  			codec_sample_size = codec_buf_size;
  		}
  		memcpy(codec_buf, buf, codec_sample_size);
@@ -908,7 +1311,7 @@ index a256204..4a29b11 100644
  		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
  		if(status != AMEDIA_OK)
  		{
-@@ -188,10 +483,35 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -188,10 +509,35 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  		buf += codec_sample_size;
  		buf_size -= codec_sample_size;
  	}
@@ -947,7 +1350,7 @@ index a256204..4a29b11 100644
  }
  
  static void *android_chiaki_video_decoder_output_thread_func(void *user)
-@@ -204,7 +524,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+@@ -204,7 +550,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
  		ssize_t status = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);
  		if(status >= 0)
  		{
@@ -988,7 +1391,7 @@ index a256204..4a29b11 100644
  			{
  				CHIAKI_LOGI(decoder->log, "AMediaCodec reported EOS");
 diff --git a/android/app/src/main/cpp/video-decoder.h b/android/app/src/main/cpp/video-decoder.h
-index f2ea0e5..66829de 100644
+index f2ea0e5..61ad5a0 100644
 --- a/android/app/src/main/cpp/video-decoder.h
 +++ b/android/app/src/main/cpp/video-decoder.h
 @@ -11,6 +11,15 @@
@@ -1007,7 +1410,7 @@ index f2ea0e5..66829de 100644
  typedef struct android_chiaki_video_decoder_t
  {
  	ChiakiLog *log;
-@@ -23,10 +32,36 @@ typedef struct android_chiaki_video_decoder_t
+@@ -23,10 +32,37 @@ typedef struct android_chiaki_video_decoder_t
  	int32_t target_width;
  	int32_t target_height;
  	ChiakiCodec target_codec;
@@ -1031,6 +1434,7 @@ index f2ea0e5..66829de 100644
 +	size_t queue_bytes;
 +	volatile uint32_t samples_overflowed;
 +	volatile uint32_t samples_not_fed;
++	bool level_raised_logged; // GPSx: the SPS level rewrite has been logged once
 +	bool codec_failed; // GPSx: codec creation failed once; do not retry on every sample
 +	volatile int detected_codec; // GPSx: -1 unknown, 0 H.264, 1 H.265 (from the first sample)
  } AndroidChiakiVideoDecoder;
@@ -1133,6 +1537,36 @@ index 9dbef76..9093f5f 100644
  CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end)
  {
  	tkproto_TakionMessage msg = { 0 };
+diff --git a/lib/src/takion.c b/lib/src/takion.c
+index 2ef782c..8ece59f 100644
+--- a/lib/src/takion.c
++++ b/lib/src/takion.c
+@@ -6,6 +6,9 @@
+ #include <chiaki/time.h>
+ 
+ #include <fcntl.h>
++#ifdef __ANDROID__
++#include <sys/resource.h>
++#endif
+ #include <stdbool.h>
+ #include <stdio.h>
+ #include <errno.h>
+@@ -1040,6 +1043,15 @@ static void *takion_thread_func(void *user)
+ {
+ 	ChiakiTakion *takion = user;
+ 
++#ifdef __ANDROID__
++	// GPSx: raise the receive thread above normal app work (nice -10, between Android's display and
++	// audio priorities). FACT (GP520 live log, 0.2.13): with PS4 cloud decoded in software the CPU
++	// was saturated and FEC failed in bursts every ~1.5 s, a sign the socket was not drained in time.
++	// On Linux PRIO_PROCESS with who 0 applies to the calling thread only.
++	if(setpriority(PRIO_PROCESS, 0, -10) != 0)
++		CHIAKI_LOGW(takion->log, "Takion could not raise its thread priority (errno %d)", errno);
++#endif
++
+ 	uint32_t seq_num_remote_initial;
+ 	if(takion_handshake(takion, &seq_num_remote_initial) != CHIAKI_ERR_SUCCESS)
+ 		goto beach;
 diff --git a/lib/src/videoreceiver.c b/lib/src/videoreceiver.c
 index a1c68db..8891f0e 100644
 --- a/lib/src/videoreceiver.c
