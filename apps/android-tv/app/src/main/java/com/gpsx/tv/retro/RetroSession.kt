@@ -24,6 +24,8 @@ data class RetroSessionSnapshot(
     /** Display aspect ratio of the running game. */
     val aspect: Float = 4f / 3f,
     val players: Int = 0,
+    /** System of the game being prepared or played, for the controls diagram. */
+    val system: RetroSystem? = null,
 )
 
 /** The core refused the game: recorded as incompatible, unlike a network or download failure. */
@@ -38,9 +40,9 @@ private class GameRefused(message: String) : IOException(message)
 class RetroSession(context: Context) : AutoCloseable {
     private val appContext = context.applicationContext
     private val installer = CoreInstaller(appContext)
-    private val gamesDir = File(appContext.cacheDir, "retro/games")
+    private val storage = RetroStorage(appContext)
     private val systemDir = File(appContext.filesDir, "retro/system")
-    private val savesDir = File(appContext.filesDir, "retro/saves")
+    private val savesDir = storage.savesDir
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gpsx-retro-session").apply { isDaemon = true } }
     private val lock = Any()
@@ -50,6 +52,10 @@ class RetroSession(context: Context) : AutoCloseable {
     private var snapshot = RetroSessionSnapshot()
 
     val padMapper = RetroPadMapper(sink = ::submit, onQuitChord = ::stop)
+
+    init {
+        worker.execute(storage::removeLegacyCopies)
+    }
 
     val isPlaying: Boolean get() = snapshot().phase == RetroPhase.PLAYING
 
@@ -74,11 +80,10 @@ class RetroSession(context: Context) : AutoCloseable {
             return
         }
         padMapper.reset()
-        update { RetroSessionSnapshot(RetroPhase.PREPARING, game.title, "Préparation…") }
+        update { RetroSessionSnapshot(RetroPhase.PREPARING, game.title, "Préparation…", system = game.system) }
         worker.execute {
             try {
                 val coreFile = installer.ensure(core) { detail -> update { copy(detail = detail) } }
-                update { copy(detail = "Copie du jeu depuis le NAS…") }
                 val gameFile = prepareGame(game, library)
                 update { copy(detail = "Démarrage de l’émulateur…") }
                 val opened = open(coreFile, gameFile, game, library)
@@ -172,13 +177,27 @@ class RetroSession(context: Context) : AutoCloseable {
     }
 
     /**
-     * Copies the game into the cache. Console games are unzipped (the core gets the ROM itself);
+     * The game file on the TV: the kept copy when a complete one exists, else a fresh copy from the
+     * share. A copy is complete once its marker names the game file, so an interrupted copy is redone.
+     */
+    private fun prepareGame(game: RetroGame, library: RetroLibrary): File {
+        val dir = storage.gameDir(game)
+        val ready = File(dir, RetroStorage.READY_MARKER)
+        if (ready.isFile) File(dir, ready.readText()).takeIf(File::isFile)?.let { return it }
+        update { copy(detail = "Copie du jeu depuis le NAS…") }
+        dir.deleteRecursively()
+        dir.mkdirs()
+        val file = copyGame(game, library, dir)
+        ready.writeText(file.name)
+        return file
+    }
+
+    /**
+     * Copies the game into [gamesDir]. Console games are unzipped (the core gets the ROM itself);
      * arcade sets stay zipped, with the system's BIOS sets copied next to them when the share has
      * them in the game's folder or the system folder.
      */
-    private fun prepareGame(game: RetroGame, library: RetroLibrary): File {
-        gamesDir.deleteRecursively()
-        gamesDir.mkdirs()
+    private fun copyGame(game: RetroGame, library: RetroLibrary, gamesDir: File): File {
         val name = game.path.last()
         val copied = File(gamesDir, name)
         library.openGame(game.path).use { input -> copied.outputStream().use { input.copyTo(it) } }

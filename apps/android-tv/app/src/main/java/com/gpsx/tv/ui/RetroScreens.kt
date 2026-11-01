@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -48,11 +52,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
 import com.gpsx.tv.retro.COMPAT_OK
+import com.gpsx.tv.retro.RetroControls
 import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
 import com.gpsx.tv.retro.RetroPhase
 import com.gpsx.tv.retro.RetroSession
 import com.gpsx.tv.retro.RetroSessionSnapshot
+import com.gpsx.tv.retro.RetroStorage
+import com.gpsx.tv.retro.RetroStorageUse
+import com.gpsx.tv.retro.RetroSystem
 import com.gpsx.tv.retro.RetroShelf
 import com.gpsx.tv.retro.RetroSnapshot
 import com.gpsx.tv.retro.ShareAddress
@@ -60,6 +68,9 @@ import com.gpsx.tv.retro.compatible
 import com.gpsx.tv.retro.incompatible
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Retro consoles found on the owner's NAS, listed in the Consoles menu under the PS5. */
 @Composable
@@ -305,6 +316,7 @@ private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, onPlay: () ->
                 FocusButton("▶ Jouer", primary = true, modifier = Modifier.focusRequester(playFocus).testTag("retro-play"), onClick = onPlay)
             }
             if (!game.system.playable) Text("Pas encore d’émulateur pour la ${game.system.label}.", color = Amber, fontSize = 12.sp)
+            RetroControlsPanel(game.system, Modifier.fillMaxWidth())
             Text(game.path.joinToString(" / "), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -379,6 +391,7 @@ internal fun RetroPlayScreen(game: RetroSessionSnapshot, session: RetroSession) 
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(game.title, fontSize = 40.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = SoftWhite)
                     Text(game.detail, color = if (game.phase == RetroPhase.FAILED) Amber else Chalk, fontSize = 15.sp)
+                    if (game.phase == RetroPhase.PREPARING) game.system?.let { RetroControlsPanel(it, Modifier.width(620.dp)) }
                     FocusButton(
                         if (game.phase == RetroPhase.FAILED) "Fermer" else "Annuler",
                         modifier = Modifier.focusRequester(closeFocus).testTag("retro-close"),
@@ -390,5 +403,79 @@ internal fun RetroPlayScreen(game: RetroSessionSnapshot, session: RetroSession) 
         if (game.phase == RetroPhase.PLAYING && game.detail.isNotEmpty()) {
             Text(game.detail, color = Amber, fontSize = 12.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
         }
+    }
+}
+
+/** Settings rows for the space the Retro section uses on the TV; each erase asks for a second press. */
+@Composable
+internal fun RetroStorageRows() {
+    val context = LocalContext.current
+    val storage = remember(context) { RetroStorage(context) }
+    val scope = rememberCoroutineScope()
+    var use by remember { mutableStateOf<RetroStorageUse?>(null) }
+    var confirming by remember { mutableStateOf("") }
+    fun refresh() = scope.launch { use = withContext(Dispatchers.IO) { storage.use() } }
+    LaunchedEffect(Unit) { refresh() }
+    fun erase(which: String, action: () -> Unit) {
+        if (confirming != which) {
+            confirming = which
+            return
+        }
+        confirming = ""
+        scope.launch {
+            withContext(Dispatchers.IO) { action() }
+            refresh()
+        }
+    }
+    val current = use
+    fun label(which: String, bytes: Long?) = if (confirming == which) "CONFIRMER" else "EFFACER" + (bytes?.let { " " + RetroStorage.format(it) }.orEmpty())
+    SettingRow(
+        "Jeux gardés sur la TV",
+        current?.let { "${it.gameCount} jeux copiés depuis le NAS · espace libre sur la TV : ${RetroStorage.format(it.free)}" } ?: "Calcul…",
+        label("games", current?.games),
+    ) { erase("games", storage::clearGames) }
+    SettingRow(
+        "Jaquettes et émulateurs",
+        current?.let { "Jaquettes ${RetroStorage.format(it.covers)} · émulateurs ${RetroStorage.format(it.cores)} · retéléchargés au besoin" } ?: "Calcul…",
+        label("caches", current?.let { it.covers + it.cores }),
+    ) { erase("caches", storage::clearCaches) }
+    SettingRow(
+        "Sauvegardes rétro",
+        "Progression enregistrée des jeux · effacée seulement à la demande",
+        label("saves", current?.saves),
+    ) { erase("saves", storage::clearSaves) }
+}
+
+/** Controls diagram: each PlayStation button, drawn as a key cap, next to what it does on [system]. */
+@Composable
+internal fun RetroControlsPanel(system: RetroSystem, modifier: Modifier = Modifier) {
+    val controls = RetroControls.forSystem(system)
+    Column(
+        modifier.clip(PanelShape).background(Panel).border(1.dp, Line).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("COMMANDES · ${system.label.uppercase()}", color = Signal, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        controls.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                pair.forEach { (input, action) ->
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(30.dp).clip(if (input.symbol.length == 1) CircleShape else RoundedCornerShape(6.dp))
+                                .background(PanelRaised).border(1.dp, Chalk.copy(alpha = .4f), if (input.symbol.length == 1) CircleShape else RoundedCornerShape(6.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(input.symbol, color = SoftWhite, fontSize = if (input.symbol.length == 1) 15.sp else 11.sp, fontWeight = FontWeight.Black)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(action, color = SoftWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(input.label, color = Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        Text(RetroControls.QUIT_HINT, color = Muted, fontSize = 10.sp)
     }
 }

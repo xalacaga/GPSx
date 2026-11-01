@@ -128,6 +128,18 @@ Onglet Rétro (Compose)
   fois le jeu essayé. Les jeux ne sont jamais testés en masse (décision du
   propriétaire, 01/11/2026).
 
+### Stockage sur la TV et commandes
+
+- Chaque jeu est copié une fois depuis le partage dans le stockage de l'appli et
+  gardé : il redémarre sans repasser par le NAS ; une copie est complète quand un
+  marqueur nomme son fichier de jeu. Paramètres affiche la place occupée (jeux
+  gardés, jaquettes, émulateurs, sauvegardes) et l'espace libre, avec un bouton
+  d'effacement pour chacun (décision du propriétaire, 01/11/2026).
+- La fiche du jeu et l'écran de chargement affichent un schéma des commandes du
+  système : chaque bouton PlayStation, dessiné comme une touche, avec son action
+  (SNES B/A/Y/X, Neo Geo A–D, boutons arcade 1–6, crédit et départ) et la façon de
+  quitter le jeu.
+
 ### Hôte natif (R2)
 
 - Un seul core à la fois, possédé par un thread natif dédié (les cores libretro

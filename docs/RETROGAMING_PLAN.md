@@ -118,6 +118,16 @@ Retro tab (Compose)
   cards show "Compatible" or "Incompatible" once a game has been tried. Games are
   never tested in bulk (owner decision, 2026-11-01).
 
+### Storage on the TV and controls
+
+- Each game is copied once from the share into app storage and kept, so it starts
+  again without the NAS copy; a copy is complete once a marker names its game file.
+  Settings shows the space used (games kept, covers, emulator cores, saves) and the
+  free space, with a separate erase for each (owner decision, 2026-11-01).
+- The game sheet and the loading screen show a controls diagram for the system:
+  each PlayStation button, drawn as a key cap, with its action (SNES B/A/Y/X,
+  Neo Geo A–D, arcade buttons 1–6, coin and start) and how to leave the game.
+
 ### Native host (R2)
 
 - One core at a time, one dedicated native thread that owns it (libretro cores

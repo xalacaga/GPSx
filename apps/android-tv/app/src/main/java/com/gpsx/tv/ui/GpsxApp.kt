@@ -1414,6 +1414,7 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
                 audioCompatibility = !audioCompatibility
                 engine.audioCompatibility = audioCompatibility
             }
+            RetroStorageRows()
             UpdatePanel()
         }
     }
@@ -1536,7 +1537,7 @@ private fun LegalPanel(title: String, subtitle: String, badge: String, modifier:
 
 
 @Composable
-private fun SettingRow(title: String, detail: String, value: String, onClick: () -> Unit) {
+internal fun SettingRow(title: String, detail: String, value: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth()
