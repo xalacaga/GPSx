@@ -30,8 +30,8 @@ internal object RetroNative {
     /** [base width, base height, aspect × 1000, fps × 1000]. */
     external fun nativeGeometry(handle: Long): IntArray
 
-    /** Starts the core thread; false when it runs without sound. */
-    external fun nativeStart(handle: Long): Boolean
+    /** Starts the core thread with OpenSL ES ([openSlEs]) or AAudio output; false when it runs without sound. */
+    external fun nativeStart(handle: Long, openSlEs: Boolean): Boolean
 
     external fun nativeSetSurface(handle: Long, surface: Surface?)
 

@@ -3,10 +3,12 @@
 package com.gpsx.tv.retro
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Surface
+import com.gpsx.tv.remoteplay.bluetoothOutputActive
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -85,7 +87,7 @@ class RetroSession(context: Context) : AutoCloseable {
                     handle = opened
                     surface?.let { RetroNative.nativeSetSurface(opened, it) }
                 }
-                val sound = RetroNative.nativeStart(opened)
+                val sound = RetroNative.nativeStart(opened, useOpenSlEs())
                 update {
                     copy(
                         phase = RetroPhase.PLAYING,
@@ -151,6 +153,17 @@ class RetroSession(context: Context) : AutoCloseable {
         }
         val players = padMapper.playerCount
         if (players != snapshot().players) update { copy(players = players) }
+    }
+
+    /**
+     * Same rule as Remote Play: OpenSL ES when the compatibility setting is on or a Bluetooth output
+     * is active. FACT (GP520, 0.2.4): AAudio routed to a Bluetooth soundbar runs without being heard.
+     */
+    private fun useOpenSlEs(): Boolean {
+        val forced = appContext.getSharedPreferences("gpsx_engine_settings", Context.MODE_PRIVATE).getBoolean("audio_compatibility", false)
+        val bluetooth = appContext.getSystemService(AudioManager::class.java)?.let(::bluetoothOutputActive) ?: false
+        Log.i(TAG, "retro audio: compatibility setting $forced, Bluetooth output $bluetooth")
+        return forced || bluetooth
     }
 
     private fun closeHandle() {

@@ -7,6 +7,8 @@
 #include <android/log.h>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
 #include <dlfcn.h>
 #include <jni.h>
 
@@ -145,6 +147,7 @@ private:
 };
 
 constexpr unsigned kPorts = 4;
+constexpr size_t kSlFrames = 480;  // 10 ms per OpenSL ES buffer at 48 kHz, two buffers queued
 constexpr size_t kTargetFill = 2048;  // ~43 ms of buffered audio before the core runs again
 
 // ---- The one running core ----
@@ -173,6 +176,16 @@ struct Host {
 
     AAudioApi aaudio;
     AAudioStream* stream = nullptr;
+    // OpenSL ES output, used instead of AAudio when Kotlin asks for it (Bluetooth output active or
+    // the compatibility setting): FACT (GP520, 0.2.4) AAudio to a Bluetooth soundbar is not heard.
+    SLObjectItf sl_engine = nullptr;
+    SLObjectItf sl_mix = nullptr;
+    SLObjectItf sl_player = nullptr;
+    SLPlayItf sl_play = nullptr;
+    SLAndroidSimpleBufferQueueItf sl_queue = nullptr;
+    int16_t sl_buffers[2][kSlFrames * 2] = {};
+    int sl_next = 0;
+    bool audio_open = false;
     StereoRing ring;
     double resample_step = 1.0;  // core frames per output frame
     double resample_pos = 0.0;
@@ -340,7 +353,7 @@ void video_refresh(const void* data, unsigned width, unsigned height, size_t pit
 // Linear resampling from the core's rate to the device rate, on the core thread.
 size_t audio_batch(const int16_t* data, size_t frames) {
     Host* host = g_host;
-    if (host == nullptr || host->stream == nullptr) return frames;
+    if (host == nullptr || !host->audio_open) return frames;
     std::vector<int16_t>& out = host->resampled;
     out.clear();
     double position = host->resample_pos;
@@ -398,6 +411,58 @@ int32_t audio_callback(AAudioStream*, void* user, void* audio, int32_t frames) {
     return kAAudioContinue;
 }
 
+// OpenSL ES buffer-queue callback: refills the buffer just played from the ring (silence on underrun).
+void sl_callback(SLAndroidSimpleBufferQueueItf queue, void* user) {
+    auto* host = static_cast<Host*>(user);
+    int16_t* buffer = host->sl_buffers[host->sl_next];
+    host->sl_next ^= 1;
+    host->ring.pop(buffer, kSlFrames);
+    (*queue)->Enqueue(queue, buffer, kSlFrames * 2 * sizeof(int16_t));
+}
+
+void close_sles(Host& host) {
+    if (host.sl_play != nullptr) (*host.sl_play)->SetPlayState(host.sl_play, SL_PLAYSTATE_STOPPED);
+    if (host.sl_player != nullptr) (*host.sl_player)->Destroy(host.sl_player);
+    if (host.sl_mix != nullptr) (*host.sl_mix)->Destroy(host.sl_mix);
+    if (host.sl_engine != nullptr) (*host.sl_engine)->Destroy(host.sl_engine);
+    host.sl_player = host.sl_mix = host.sl_engine = nullptr;
+    host.sl_play = nullptr;
+    host.sl_queue = nullptr;
+}
+
+bool open_sles(Host& host) {
+    SLEngineItf engine = nullptr;
+    if (slCreateEngine(&host.sl_engine, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS ||
+        (*host.sl_engine)->Realize(host.sl_engine, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS ||
+        (*host.sl_engine)->GetInterface(host.sl_engine, SL_IID_ENGINE, &engine) != SL_RESULT_SUCCESS ||
+        (*engine)->CreateOutputMix(engine, &host.sl_mix, 0, nullptr, nullptr) != SL_RESULT_SUCCESS ||
+        (*host.sl_mix)->Realize(host.sl_mix, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) {
+        close_sles(host);
+        return false;
+    }
+    SLDataLocator_AndroidSimpleBufferQueue queue_locator = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    SLDataFormat_PCM format = {SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_48, SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+                               SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT, SL_BYTEORDER_LITTLEENDIAN};
+    SLDataSource source = {&queue_locator, &format};
+    SLDataLocator_OutputMix mix_locator = {SL_DATALOCATOR_OUTPUTMIX, host.sl_mix};
+    SLDataSink sink = {&mix_locator, nullptr};
+    const SLInterfaceID ids[1] = {SL_IID_ANDROIDSIMPLEBUFFERQUEUE};
+    const SLboolean required[1] = {SL_BOOLEAN_TRUE};
+    if ((*engine)->CreateAudioPlayer(engine, &host.sl_player, &source, &sink, 1, ids, required) != SL_RESULT_SUCCESS ||
+        (*host.sl_player)->Realize(host.sl_player, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS ||
+        (*host.sl_player)->GetInterface(host.sl_player, SL_IID_PLAY, &host.sl_play) != SL_RESULT_SUCCESS ||
+        (*host.sl_player)->GetInterface(host.sl_player, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &host.sl_queue) != SL_RESULT_SUCCESS ||
+        (*host.sl_queue)->RegisterCallback(host.sl_queue, sl_callback, &host) != SL_RESULT_SUCCESS) {
+        close_sles(host);
+        return false;
+    }
+    host.resample_step = host.av.timing.sample_rate / static_cast<double>(kOutputRate);
+    host.resampled.reserve(8192);
+    sl_callback(host.sl_queue, &host);  // two silent buffers start the queue
+    sl_callback(host.sl_queue, &host);
+    return true;
+}
+
 bool open_audio(Host& host) {
     if (!host.aaudio.load()) return false;
     AAudioStreamBuilder* builder = nullptr;
@@ -421,6 +486,8 @@ bool open_audio(Host& host) {
 }
 
 void close_audio(Host& host) {
+    host.audio_open = false;
+    close_sles(host);
     if (host.stream == nullptr) return;
     host.aaudio.stop(host.stream);
     host.aaudio.close(host.stream);
@@ -477,7 +544,7 @@ void run_loop(Host* host) {
     const auto frame_time = std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(1.0 / fps));
     auto next = clock::now();
     while (host->running.load() && !host->shutdown_requested.load()) {
-        if (host->stream != nullptr) {
+        if (host->audio_open) {
             if (host->ring.fill() >= kTargetFill) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
@@ -628,14 +695,21 @@ JNIEXPORT jintArray JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeGeometry(JN
     return result;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeStart(JNIEnv*, jobject, jlong handle) {
+JNIEXPORT jboolean JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeStart(JNIEnv*, jobject, jlong handle, jboolean open_sl_es) {
     auto* host = reinterpret_cast<Host*>(handle);
     if (host->running.exchange(true)) return JNI_TRUE;
-    const bool audio = open_audio(*host);
-    if (!audio) __android_log_print(ANDROID_LOG_WARN, kTag, "no AAudio stream: running without sound");
+    // OpenSL ES when asked, AAudio otherwise; each falls back to the other.
+    const bool sles_first = open_sl_es == JNI_TRUE;
+    bool sles = sles_first && open_sles(*host);
+    const bool aaudio = !sles && open_audio(*host);
+    if (!sles && !aaudio && !sles_first) sles = open_sles(*host);
+    host->audio_open = sles || aaudio;
+    __android_log_print(host->audio_open ? ANDROID_LOG_INFO : ANDROID_LOG_WARN, kTag, "audio output: %s",
+                        sles ? "OpenSL ES 48 kHz" : aaudio ? "AAudio" : "none, running without sound");
     host->thread = std::thread(run_loop, host);
-    if (host->stream != nullptr) host->aaudio.start(host->stream);
-    return audio ? JNI_TRUE : JNI_FALSE;
+    if (sles) (*host->sl_play)->SetPlayState(host->sl_play, SL_PLAYSTATE_PLAYING);
+    if (aaudio) host->aaudio.start(host->stream);
+    return host->audio_open ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeSetSurface(JNIEnv* env, jobject, jlong handle, jobject surface) {

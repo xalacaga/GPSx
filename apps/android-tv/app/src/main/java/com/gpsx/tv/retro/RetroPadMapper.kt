@@ -4,6 +4,7 @@ package com.gpsx.tv.retro
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -11,6 +12,7 @@ import com.gpsx.tv.remoteplay.Ps5ButtonMask
 import com.gpsx.tv.remoteplay.QUIT_CHORD
 import com.gpsx.tv.remoteplay.QUIT_CHORD_HOLD_MILLIS
 import com.gpsx.tv.remoteplay.androidKeyToPs5Button
+import com.gpsx.tv.remoteplay.buttonNames
 import com.gpsx.tv.remoteplay.sonyHidScanCodeToPs5Button
 import kotlin.math.roundToInt
 
@@ -111,12 +113,26 @@ class RetroPadMapper(
             else -> {
                 val mask =
                     if (sonyRaw) sonyHidScanCodeToPs5Button(event.scanCode) else androidKeyToPs5Button(event.device?.vendorId ?: 0, event.keyCode)
-                if (mask == null || mask == 0) return isGamepad(event)
+                if (mask == null || mask == 0) {
+                    if (pressed && event.repeatCount == 0) logPad("retro P${pad.port + 1} unmapped code ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
+                    return isGamepad(event)
+                }
                 pad.buttons = if (pressed) pad.buttons or mask else pad.buttons and mask.inv()
             }
         }
+        if (event.repeatCount == 0) {
+            // Worded without "key": the live log drops lines containing it (secret filter).
+            logPad(
+                "retro P${pad.port + 1} code ${event.keyCode} scan 0x${event.scanCode.toString(16)} ${if (pressed) "down" else "up"} " +
+                    "(${if (sonyRaw) "raw HID" else "Android layout"}) -> ${buttonNames(pad.buttons)} l2=${pad.l2} r2=${pad.r2}",
+            )
+        }
         emit(pad)
         return true
+    }
+
+    private fun logPad(message: String) {
+        runCatching { Log.i("GPSxPad", message) }
     }
 
     fun motion(event: MotionEvent): Boolean {
