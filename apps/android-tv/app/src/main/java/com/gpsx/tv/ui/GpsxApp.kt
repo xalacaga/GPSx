@@ -1327,6 +1327,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
     var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
+    var softwarePs4Decoder by remember { mutableStateOf(engine.softwareDecoderForPs4Cloud) }
     ScreenFrame("", stringResource(R.string.settings_title), "Appliqués à la session suivante.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
@@ -1337,6 +1338,14 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
             ) {
                 decoderLowLatency = !decoderLowLatency
                 engine.decoderLowLatency = decoderLowLatency
+            }
+            SettingRow(
+                "Décodeur logiciel PS4 cloud",
+                "Jeux PS4 en cloud décodés par le processeur au lieu de la puce vidéo · si l’image reste figée ou noire",
+                yesNo(softwarePs4Decoder),
+            ) {
+                softwarePs4Decoder = !softwarePs4Decoder
+                engine.softwareDecoderForPs4Cloud = softwarePs4Decoder
             }
             SettingRow(
                 "Sortie audio",

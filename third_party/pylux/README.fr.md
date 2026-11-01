@@ -18,8 +18,10 @@ rendait la main sans libérer le verrou du codec (et le reprenait dans
 flux ; les images décodées en retard sont sautées ; options faible latence du
 décodeur désactivables ; en cloud, une demande d'IDR (Takion IDRREQUEST) est
 envoyée au plus une fois par seconde quand une image perd sa référence ou que le
-FEC échoue ; le décodeur attend un tampon d'entrée (jusqu'à 5 s avant la première
-image, 100 ms ensuite) au lieu de jeter l'échantillon.
+FEC échoue ; les échantillons sont copiés dans une file qu'un fil séparé donne au codec, en
+attendant jusqu'à 5 s un tampon d'entrée au lieu de les jeter, si bien qu'un décodeur
+bloqué ne bloque jamais la réception réseau ; les flux PS4 cloud peuvent utiliser le
+décodeur H.264 logiciel d'Android (réglé depuis Kotlin).
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

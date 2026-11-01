@@ -342,6 +342,8 @@ fun setAudioCompatibilityMode(enabled: Boolean) = ChiakiNative.audioSetApiPrefer
 
 /** Whether decoders created afterwards try the low-latency MediaCodec hints first. */
 fun setDecoderLowLatencyHints(enabled: Boolean) = ChiakiNative.videoSetLowLatencyHints(enabled)
+/** GPSx: Android's software H.264 decoder for decoders created afterwards (PS4 cloud streams). */
+fun setSoftwareH264Decoder(enabled: Boolean) = ChiakiNative.videoSetSoftwareH264(enabled)
 
 /** Android output device ID for AAudio streams opened afterwards; 0 leaves routing to the system. */
 fun setPreferredAudioDevice(deviceId: Int) = ChiakiNative.audioSetPreferredDevice(deviceId)
@@ -408,6 +410,7 @@ private class ChiakiNative {
         @JvmStatic external fun audioSetApiPreference(preference: Int)
         @JvmStatic external fun audioSetPreferredDevice(deviceId: Int)
         @JvmStatic external fun videoSetLowLatencyHints(enabled: Boolean)
+        @JvmStatic external fun videoSetSoftwareH264(enabled: Boolean)
         @JvmStatic external fun sessionRestartAudio(ptr: Long)
         @JvmStatic external fun registStart(result: CreateResult, info: RegistInfo, log: ChiakiLog, regist: Regist)
         @JvmStatic external fun registStop(ptr: Long)
