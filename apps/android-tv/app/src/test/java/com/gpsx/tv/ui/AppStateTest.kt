@@ -17,6 +17,26 @@ class AppStateTest {
     }
 
     @Test
+    fun `top bar holds general items, environments hold console tabs`() {
+        assertEquals(
+            listOf(Destination.HOME, Destination.CONTROLLERS, Destination.DIAGNOSTICS, Destination.SETTINGS, Destination.ABOUT),
+            Destination.topLevel,
+        )
+        assertEquals(listOf(Destination.SESSION, Destination.CLOUD, Destination.PS5_SETTINGS), Destination.tabsOf(Environment.PS5))
+        assertEquals(listOf(Destination.RETRO_GAMES, Destination.RETRO_CONTROLS), Destination.tabsOf(Environment.RETRO))
+    }
+
+    @Test
+    fun `opening a retro console keeps its folder across its tabs`() {
+        val opened = reduce(AppUiState(), UiAction.OpenRetro("neogeo"))
+        val controls = reduce(opened, UiAction.Navigate(Destination.RETRO_CONTROLS))
+
+        assertEquals(Destination.RETRO_GAMES, opened.destination)
+        assertEquals("neogeo", controls.retroFolder)
+        assertEquals(Destination.RETRO_CONTROLS, controls.destination)
+    }
+
+    @Test
     fun `demo follows explicit lifecycle`() {
         val connecting = reduce(AppUiState(), UiAction.StartDemo)
         val streaming = reduce(connecting, UiAction.ConfirmDemoStarted)

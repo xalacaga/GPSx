@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -72,14 +73,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Retro consoles found on the owner's NAS, listed in the Consoles menu under the PS5. */
+/** NAS access for the retro consoles, in the general settings: share address, account, rescan. */
 @Composable
-internal fun RetroConsolesPanel(
-    retro: RetroSnapshot,
-    library: RetroLibrary,
-    focusFolder: String?,
-    onOpen: (RetroShelf) -> Unit,
-) {
+internal fun RetroNasPanel(retro: RetroSnapshot, library: RetroLibrary) {
     var editing by remember { mutableStateOf(false) }
     var address by remember(retro.shareUrl) { mutableStateOf(ShareAddress.display(retro.shareUrl)) }
     var user by remember(retro.user) { mutableStateOf(retro.user) }
@@ -93,7 +89,7 @@ internal fun RetroConsolesPanel(
     BackHandler(enabled = editing) { editing = false }
     LaunchedEffect(retro.signInRequired) { if (retro.signInRequired) editing = true }
 
-    SectionTitle("Rétro", retro.detail.ifEmpty { ShareAddress.display(retro.shareUrl) })
+    SectionTitle("Consoles rétro", retro.detail.ifEmpty { ShareAddress.display(retro.shareUrl) })
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         FocusButton(if (retro.scanning) "Lecture du NAS…" else "Actualiser", modifier = Modifier.testTag("retro-refresh")) { library.refresh() }
         FocusButton("Accès au NAS", modifier = Modifier.focusRequester(editFocus).testTag("retro-share-edit")) {
@@ -152,46 +148,6 @@ internal fun RetroConsolesPanel(
             Text("Mot de passe chiffré sur la TV, jamais journalisé.", color = Muted, fontSize = 11.sp)
         }
     }
-    val requesters = remember(retro.shelves) { retro.shelves.associate { it.folder to FocusRequester() } }
-    LaunchedEffect(focusFolder, requesters) {
-        focusFolder?.let { folder -> requesters[folder]?.let { runCatching { it.requestFocus() } } }
-    }
-    retro.shelves.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            row.forEach { shelf ->
-                RetroConsoleCard(
-                    shelf,
-                    Modifier.weight(1f).focusRequester(requesters.getValue(shelf.folder)).testTag("retro-console-${shelf.system.name}"),
-                ) { onOpen(shelf) }
-            }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun RetroConsoleCard(shelf: RetroShelf, modifier: Modifier, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val accent = if (shelf.system.playable) Signal else Chalk
-    Row(
-        modifier.height(150.dp).clip(PanelShape).background(if (focused) PanelRaised else Panel)
-            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
-            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.width(150.dp).height(118.dp).background(Brush.radialGradient(listOf(PanelRaised, Ink))).border(1.dp, Line),
-            contentAlignment = Alignment.Center,
-        ) {
-            RetroConsoleArt(shelf.system, Modifier.width(132.dp).height(104.dp), glow = if (focused) Signal else accent)
-        }
-        Spacer(Modifier.width(20.dp))
-        Column(Modifier.weight(1f)) {
-            Text(shelf.system.label, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.6).sp, maxLines = 1)
-            Text("${shelf.games.size} jeux · ${shelf.folder}", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        StatusPill(if (shelf.system.playable) "PRÊT" else "BIENTÔT", accent)
-    }
 }
 
 /** The games of one retro console; Back closes the game sheet first, then the list. */
@@ -221,18 +177,15 @@ internal fun RetroGamesScreen(
             val working = shelf.games.count { retro.compatible(it) }
             if (working > 0 || incompatible > 0) append(" · $working compatibles, $incompatible incompatibles")
         }
-    ScreenFrame("", shelf.system.label, summary) {
+    ScreenFrame("", "Jeux", summary) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
                 RetroGameSheet(game, library) { onPlay(game) }
                 return@Column
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FocusButton("← Consoles", modifier = Modifier.testTag("retro-back")) { onBack() }
-                if (incompatible > 0) {
-                    FocusButton(if (hideIncompatible) "Afficher les $incompatible incompatibles" else "Masquer les incompatibles") {
-                        hideIncompatible = !hideIncompatible
-                    }
+            if (incompatible > 0) {
+                FocusButton(if (hideIncompatible) "Afficher les $incompatible incompatibles" else "Masquer les incompatibles") {
+                    hideIncompatible = !hideIncompatible
                 }
             }
             val requesters = remember(shelf) { mutableMapOf<RetroGame, FocusRequester>() }
@@ -477,5 +430,13 @@ internal fun RetroControlsPanel(system: RetroSystem, modifier: Modifier = Modifi
             }
         }
         Text(RetroControls.QUIT_HINT, color = Muted, fontSize = 10.sp)
+    }
+}
+
+/** Controls tab of a retro console's environment. */
+@Composable
+internal fun RetroControlsScreen(system: RetroSystem) {
+    ScreenFrame("", "Commandes", "Manette PlayStation → ${system.label}") {
+        RetroControlsPanel(system, Modifier.widthIn(max = 900.dp))
     }
 }

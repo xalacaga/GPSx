@@ -122,6 +122,7 @@ import com.gpsx.tv.retro.RetroLibrary
 import com.gpsx.tv.retro.RetroPhase
 import com.gpsx.tv.retro.RetroSession
 import com.gpsx.tv.retro.RetroSnapshot
+import com.gpsx.tv.retro.RetroSystem
 import com.gpsx.tv.update.AppUpdater
 import com.gpsx.tv.update.ReleaseManifest
 import com.gpsx.tv.update.UpdateCheck
@@ -222,6 +223,10 @@ fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
 
     val fullscreenStream =
         state.destination == Destination.SESSION && remote.phase == RemotePlayPhase.STREAMING
+    val environment = state.destination.environment
+    val retroShelf = retroState.shelves.firstOrNull { it.folder == state.retroFolder }
+    // Console tile to focus when coming back home: "ps5" or the retro console's share folder.
+    var lastConsole by remember { mutableStateOf<String?>(null) }
 
     StreamDisplayMode(active = fullscreenStream || retroGame.phase == RetroPhase.PLAYING)
 
@@ -264,8 +269,9 @@ fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
     // MainActivity hands them to the game before they reach the UI.
     var tabFocusRequest by remember { mutableStateOf(0) }
     fun switchTab(step: Int): Boolean {
-        if (fullscreenStream || cloudLaunchVisible) return false
-        val tabs = Destination.entries
+        if (fullscreenStream || cloudLaunchVisible || retroScreenVisible) return false
+        // Inside a console's environment L1/R1 move between its tabs, elsewhere between top-bar items.
+        val tabs = environment?.let(Destination::tabsOf) ?: Destination.topLevel
         val next = tabs.getOrNull(tabs.indexOf(state.destination) + step) ?: return true
         dispatch(UiAction.Navigate(next))
         tabFocusRequest++
@@ -290,26 +296,65 @@ fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
         ) {
             Column(Modifier.fillMaxSize()) {
                 TopBar(
-                    state.destination,
+                    if (environment == null) state.destination else Destination.HOME,
                     firstLegalFocusRequester,
                     controllerCount = controllers.size,
                     visible = !fullscreenStream && !retroScreenVisible,
-                    tabFocusRequest = tabFocusRequest,
+                    tabFocusRequest = if (environment == null) tabFocusRequest else 0,
                     onNavigate = { dispatch(UiAction.Navigate(it)) },
                 )
+                if (environment != null && !fullscreenStream && !retroScreenVisible) {
+                    EnvironmentBar(
+                        title =
+                            when (environment) {
+                                Environment.PS5 -> remote.consoleName ?: "PS5"
+                                Environment.RETRO -> retroShelf?.system?.label ?: "Rétro"
+                            },
+                        environment = environment,
+                        selected = state.destination,
+                        tabFocusRequest = tabFocusRequest,
+                        onBack = { dispatch(UiAction.Navigate(Destination.HOME)) },
+                        onNavigate = { dispatch(UiAction.Navigate(it)) },
+                    )
+                }
                 Box(Modifier.fillMaxSize()) {
                     key(state.destination) {
                         when (state.destination) {
-                            Destination.HOME -> HomeScreen(remote, controllers, cloudState, retroState, ::dispatch)
-                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, retroSession, ::dispatch)
+                            Destination.HOME ->
+                                HomeScreen(
+                                    remote,
+                                    cloudState,
+                                    retroState,
+                                    focusKey = lastConsole,
+                                    onOpenPs5 = {
+                                        lastConsole = PS5_TILE
+                                        dispatch(UiAction.Navigate(Destination.SESSION))
+                                    },
+                                    onOpenRetro = { folder ->
+                                        lastConsole = folder
+                                        dispatch(UiAction.OpenRetro(folder))
+                                    },
+                                    onRetroSetup = { dispatch(UiAction.Navigate(Destination.SETTINGS)) },
+                                )
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
+                            Destination.PS5_SETTINGS -> Ps5SettingsScreen(state, engine, ::dispatch)
+                            Destination.RETRO_GAMES ->
+                                if (retroShelf != null) {
+                                    RetroGamesScreen(retroShelf, retro, retroState, onPlay = { retroSession.play(it, retro) }) {
+                                        dispatch(UiAction.Navigate(Destination.HOME))
+                                    }
+                                } else {
+                                    ScreenFrame("", "Jeux", retroState.detail.ifEmpty { "Lecture du NAS…" }) {}
+                                }
+                            Destination.RETRO_CONTROLS ->
+                                if (retroShelf != null) RetroControlsScreen(retroShelf.system) else ScreenFrame("", "Commandes", "") {}
                             Destination.CONTROLLERS ->
                                 ControllersScreen(controllers) {
                                     context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                                 }
                             Destination.DIAGNOSTICS -> DiagnosticsScreen(engine)
-                            Destination.SETTINGS -> SettingsScreen(state, engine, ::dispatch)
+                            Destination.SETTINGS -> SettingsScreen(engine, retroState, retro)
                             Destination.ABOUT -> AboutScreen(firstLegalFocusRequester)
                         }
                     }
@@ -494,7 +539,7 @@ private fun TopBar(
                 Modifier.weight(1f).focusProperties { enter = { tabRequesters.getValue(selected) } }.focusGroup(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Destination.entries.forEach { destination ->
+                Destination.topLevel.forEach { destination ->
                     NavItem(
                         destination = destination,
                         selected = destination == selected,
@@ -591,118 +636,174 @@ internal fun ScreenFrame(
     }
 }
 
+/**
+ * Home: one tile per console, the PS5 first, then the retro systems found on the NAS. A tile opens
+ * that console's environment; general items stay in the top bar. [focusKey] ("ps5" or a share
+ * folder) puts focus back on the console just left.
+ */
 @Composable
 private fun HomeScreen(
     remote: RemotePlaySnapshot,
-    controllers: List<ConnectedGameController>,
     cloudState: CloudSnapshot,
     retroState: RetroSnapshot,
-    dispatch: (UiAction) -> Unit,
+    focusKey: String?,
+    onOpenPs5: () -> Unit,
+    onOpenRetro: (String) -> Unit,
+    onRetroSetup: () -> Unit,
 ) {
     val responsive = LocalResponsiveLayout.current
-    ScreenFrame(
-        eyebrow = "",
-        title = greetingFor(remember { java.time.LocalTime.now().hour }),
-        subtitle = "PS5 en Remote Play, jeux cloud PlayStation Plus et consoles rétro de votre NAS.",
-    ) {
-        val tileHeight = if (responsive.short) 92.dp else 118.dp
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PlayTile(
-                console = remote.consoleName ?: "PS5",
-                status = remote.phase.homeLabel(),
+    val columns = if (responsive.compact) 2 else 3
+    val requesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun requester(key: String) = requesters.getOrPut(key) { FocusRequester() }
+    LaunchedEffect(focusKey, retroState.shelves.size) {
+        focusKey?.let { key -> requesters[key]?.let { runCatching { it.requestFocus() } } }
+    }
+    ScreenFrame("", greetingFor(remember { java.time.LocalTime.now().hour }), "Choisissez une console.") {
+        val tiles = mutableListOf<@Composable (Modifier) -> Unit>()
+        tiles += { modifier ->
+            ConsoleTile(
+                title = remote.consoleName ?: "PS5",
+                detail =
+                    "Remote Play · Cloud PS Plus" +
+                        if (cloudState.signedIn && cloudState.games.isNotEmpty()) " (${cloudState.games.count(CloudGame::playable)} jeux)" else "",
+                status = remote.phase.homeLabel().uppercase(),
                 statusColor = remote.phase.homeColor(),
-                modifier = Modifier.weight(1.6f).height(tileHeight * 3 + 24.dp),
-            ) { dispatch(UiAction.StartDemo) }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ArcadeTile(
-                    title = "Cloud",
-                    detail =
-                        when {
-                            !cloudState.signedIn -> "Connecter le compte PSN"
-                            cloudState.games.isEmpty() -> "Catalogue PlayStation Plus"
-                            else -> "${cloudState.games.count(CloudGame::playable)} jeux jouables"
-                        },
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                ) { dispatch(UiAction.Navigate(Destination.CLOUD)) }
-                ArcadeTile(
-                    title = "Rétro",
-                    detail =
-                        when {
-                            retroState.signInRequired -> "Connecter le NAS"
-                            retroState.shelves.isEmpty() && retroState.scanning -> "Lecture du NAS…"
-                            retroState.shelves.isEmpty() -> "Consoles rétro du NAS"
-                            else -> "${retroState.shelves.size} consoles · ${retroState.shelves.sumOf { it.games.size }} jeux"
-                        },
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                ) { dispatch(UiAction.Navigate(Destination.CONSOLES)) }
+                modifier = modifier.focusRequester(requester(PS5_TILE)).testTag("console-ps5"),
+                art = { artModifier, glow -> StandingConsoleArt(artModifier.width(70.dp).height(120.dp), glow = glow) },
+                onClick = onOpenPs5,
+            )
+        }
+        retroState.shelves.forEach { shelf ->
+            tiles += { modifier ->
+                ConsoleTile(
+                    title = shelf.system.label,
+                    detail = "${shelf.games.size} jeux · ${shelf.folder}",
+                    status = if (shelf.system.playable) "PRÊT" else "BIENTÔT",
+                    statusColor = if (shelf.system.playable) Go else Muted,
+                    modifier = modifier.focusRequester(requester(shelf.folder)).testTag("console-${shelf.system.name}"),
+                    art = { artModifier, glow -> RetroConsoleArt(shelf.system, artModifier.width(150.dp).height(118.dp), glow = glow) },
+                    onClick = { onOpenRetro(shelf.folder) },
+                )
+            }
+        }
+        if (retroState.shelves.isEmpty()) {
+            tiles += { modifier ->
+                ConsoleTile(
+                    title = "Consoles rétro",
+                    detail = retroState.detail.ifEmpty { "Jeux du NAS" },
+                    status = if (retroState.scanning) "LECTURE…" else "RÉGLER LE NAS",
+                    statusColor = Amber,
+                    modifier = modifier.testTag("console-retro-setup"),
+                    art = { artModifier, glow -> RetroConsoleArt(RetroSystem.ARCADE, artModifier.width(150.dp).height(118.dp), glow = glow) },
+                    onClick = onRetroSetup,
+                )
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            tiles.chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ArcadeTile(
-                        title = "Manettes",
-                        detail =
-                            when (controllers.size) {
-                                0 -> "Aucune connectée"
-                                1 -> controllers.first().name
-                                else -> "${controllers.size} connectées"
-                            },
-                        modifier = Modifier.weight(1f).height(tileHeight),
-                        small = true,
-                    ) { dispatch(UiAction.Navigate(Destination.CONTROLLERS)) }
-                    ArcadeTile(
-                        title = "Réglages",
-                        detail = "Image, son, mises à jour",
-                        modifier = Modifier.weight(1f).height(tileHeight),
-                        small = true,
-                    ) { dispatch(UiAction.Navigate(Destination.SETTINGS)) }
+                    row.forEach { tile -> tile(Modifier.weight(1f)) }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
     }
 }
 
-/** The one big call to action: fills with the signal colour when focused. */
-@Composable
-private fun PlayTile(console: String, status: String, statusColor: Color, modifier: Modifier, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val ink = if (focused) Ink else SoftWhite
-    Column(
-        modifier
-            .background(if (focused) Signal else Panel)
-            .then(if (focused) Modifier else Modifier.border(1.dp, Line))
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(28.dp),
-    ) {
-        Text("▶", color = if (focused) Ink else Signal, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.weight(1f))
-        Text("Jouer", color = ink, fontSize = 64.sp, lineHeight = 64.sp, fontWeight = FontWeight.Black, letterSpacing = (-2.5).sp)
-        Spacer(Modifier.height(6.dp))
-        Text(console, color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(9.dp).background(if (focused) Ink else statusColor))
-            Spacer(Modifier.width(8.dp))
-            Text(status, color = if (focused) Ink else Chalk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
+private const val PS5_TILE = "ps5"
 
+/** A console on the home screen: its drawing, name, contents and status; the frame lights when focused. */
 @Composable
-private fun ArcadeTile(title: String, detail: String, modifier: Modifier, small: Boolean = false, onClick: () -> Unit) {
+private fun ConsoleTile(
+    title: String,
+    detail: String,
+    status: String,
+    statusColor: Color,
+    modifier: Modifier,
+    art: @Composable (Modifier, Color) -> Unit,
+    onClick: () -> Unit,
+) {
     var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier
+    Column(
+        modifier.height(if (LocalResponsiveLayout.current.short) 240.dp else 290.dp).clip(PanelShape)
             .background(if (focused) PanelRaised else Panel)
             .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
             .onFocusChanged { focused = it.isFocused }
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 22.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(18.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = if (small) 20.sp else 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, maxLines = 1)
-            Text(detail, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(
+            Modifier.fillMaxWidth().weight(1f).background(Brush.radialGradient(listOf(PanelRaised, Ink))).border(1.dp, Line),
+            contentAlignment = Alignment.Center,
+        ) {
+            art(Modifier, if (focused) Signal else statusColor)
         }
-        if (!small) Text("→", color = if (focused) Signal else Line, fontSize = 26.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(14.dp))
+        Text(title, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.6).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(detail, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(8.dp))
+        StatusPill(status, statusColor)
+    }
+}
+
+/**
+ * Bar of a console's environment, under the top bar: back to the consoles, the console's name and
+ * its own tabs. [tabFocusRequest] puts focus on the selected tab after an L1/R1 switch.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun EnvironmentBar(
+    title: String,
+    environment: Environment,
+    selected: Destination,
+    tabFocusRequest: Int,
+    onBack: () -> Unit,
+    onNavigate: (Destination) -> Unit,
+) {
+    val responsive = LocalResponsiveLayout.current
+    val tabs = Destination.tabsOf(environment)
+    val requesters = remember(environment) { tabs.associateWith { FocusRequester() } }
+    LaunchedEffect(tabFocusRequest) {
+        if (tabFocusRequest > 0) requesters[selected]?.let { runCatching { it.requestFocus() } }
+    }
+    Column(Modifier.fillMaxWidth().background(Panel)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = if (responsive.compact) 24.dp else 44.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FocusButton("← Consoles", modifier = Modifier.testTag("environment-back"), onClick = onBack)
+            Spacer(Modifier.width(22.dp))
+            Text(title, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.6).sp, maxLines = 1)
+            Spacer(Modifier.width(26.dp))
+            Row(
+                Modifier.focusProperties { enter = { requesters[selected] ?: FocusRequester.Default } }.focusGroup(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                tabs.forEach { tab ->
+                    NavItem(tab, selected = tab == selected, onClick = { onNavigate(tab) }, modifier = Modifier.focusRequester(requesters.getValue(tab)))
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+    }
+}
+
+/** PS5 environment settings: picture and decoder options for Remote Play and cloud sessions. */
+@Composable
+private fun Ps5SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
+    var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
+    ScreenFrame("", "Réglages PS5", "Remote Play et Cloud PS Plus · appliqués à la session suivante.") {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
+            SettingRow(
+                "Mode faible latence",
+                "Options faible latence du décodeur vidéo · à couper si l’image se fige (session suivante)",
+                yesNo(decoderLowLatency),
+            ) {
+                decoderLowLatency = !decoderLowLatency
+                engine.decoderLowLatency = decoderLowLatency
+            }
+        }
     }
 }
 
@@ -727,47 +828,6 @@ private fun RemotePlayPhase.homeColor(): Color =
         RemotePlayPhase.NEEDS_REGISTRATION -> Muted
         else -> Amber
     }
-
-@Composable
-private fun ConsolesScreen(
-    remote: RemotePlaySnapshot,
-    retroState: RetroSnapshot,
-    retro: RetroLibrary,
-    retroSession: RetroSession,
-    dispatch: (UiAction) -> Unit,
-) {
-    // A retro console opens its game list in place; Back returns to the consoles with focus on it.
-    var openFolder by remember { mutableStateOf<String?>(null) }
-    var lastFolder by remember { mutableStateOf<String?>(null) }
-    val shelf = retroState.shelves.firstOrNull { it.folder == openFolder }
-    if (shelf != null) {
-        RetroGamesScreen(
-            shelf,
-            retro,
-            retroState,
-            onPlay = { retroSession.play(it, retro) },
-        ) { openFolder = null }
-        return
-    }
-    ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx et les consoles rétro de votre NAS.") {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val name = remote.consoleName
-            ConsoleCard(
-                name ?: "Aucune PS5 associée",
-                remote.discoveredHost?.let { "Réseau local · $it" } ?: "Associer depuis Session",
-                remote.phase.homeLabel().uppercase(),
-                remote.phase.homeColor(),
-                Modifier.fillMaxWidth(),
-            ) {
-                dispatch(if (name == null) UiAction.Navigate(Destination.SESSION) else UiAction.StartDemo)
-            }
-            RetroConsolesPanel(retroState, retro, focusFolder = lastFolder) {
-                lastFolder = it.folder
-                openFolder = it.folder
-            }
-        }
-    }
-}
 
 @Composable
 private fun SessionScreen(
@@ -1392,20 +1452,10 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 }
 
 @Composable
-private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
+private fun SettingsScreen(engine: RemotePlayEngine, retroState: RetroSnapshot, retro: RetroLibrary) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
-    var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
-    ScreenFrame("", stringResource(R.string.settings_title), "Appliqués à la session suivante.") {
+    ScreenFrame("", stringResource(R.string.settings_title), "Communs à toutes les consoles · réglages PS5 dans l’environnement PS5.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
-            SettingRow(
-                "Mode faible latence",
-                "Options faible latence du décodeur vidéo · à couper si l’image se fige (session suivante)",
-                yesNo(decoderLowLatency),
-            ) {
-                decoderLowLatency = !decoderLowLatency
-                engine.decoderLowLatency = decoderLowLatency
-            }
             SettingRow(
                 "Sortie audio",
                 "Auto : AAudio, OpenSL ES dès qu’une sortie Bluetooth est active · Compatibilité : OpenSL ES toujours",
@@ -1414,6 +1464,7 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
                 audioCompatibility = !audioCompatibility
                 engine.audioCompatibility = audioCompatibility
             }
+            RetroNasPanel(retroState, retro)
             RetroStorageRows()
             UpdatePanel()
         }
@@ -1483,30 +1534,6 @@ internal fun FocusButton(
 
 
 
-
-@Composable
-private fun ConsoleCard(title: String, subtitle: String, status: String, accent: Color, modifier: Modifier, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier.clip(PanelShape).background(if (focused) PanelRaised else Panel)
-            .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
-            .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.width(112.dp).height(132.dp).background(Brush.radialGradient(listOf(PanelRaised, Ink))).border(1.dp, Line),
-            contentAlignment = Alignment.Center,
-        ) {
-            StandingConsoleArt(Modifier.width(64.dp).height(108.dp), glow = if (focused) Signal else accent)
-        }
-        Spacer(Modifier.width(22.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
-            Text(subtitle, color = Muted, fontSize = 12.sp)
-        }
-        StatusPill(status, accent)
-    }
-}
 
 @Composable
 private fun MiniPanel(title: String, subtitle: String, badge: String, modifier: Modifier) {

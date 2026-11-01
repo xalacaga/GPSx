@@ -2,9 +2,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fr">
     <string name="app_name">GPSx</string>
     <string name="nav_home">Accueil</string>
-    <string name="nav_consoles">Consoles</string>
-    <string name="nav_session">Session</string>
-    <string name="nav_cloud">Cloud</string>
+    <string name="nav_session">Jouer</string>
+    <string name="nav_cloud">Cloud PS Plus</string>
+    <string name="nav_ps5_settings">Réglages</string>
+    <string name="nav_retro_games">Jeux</string>
+    <string name="nav_retro_controls">Commandes</string>
     <string name="nav_controllers">Manettes</string>
     <string name="nav_diagnostics">Diagnostics</string>
     <string name="nav_settings">Paramètres</string>

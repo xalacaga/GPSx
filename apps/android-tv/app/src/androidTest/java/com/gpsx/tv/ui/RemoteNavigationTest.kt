@@ -39,13 +39,10 @@ class RemoteNavigationTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val destinations =
             listOf(
-                Triple(1, "Consoles", "Vos consoles"),
-                Triple(2, "Session", "Session PS5"),
-                Triple(3, "Cloud", "PlayStation Plus"),
-                Triple(4, "Manettes", "Manettes Bluetooth"),
-                Triple(5, "Diagnostics", "Santé de la session"),
-                Triple(6, "Paramètres", "Préférences de lecture"),
-                Triple(7, "À propos", "À propos de GPSx"),
+                Triple(1, "Manettes", "Manettes Bluetooth"),
+                Triple(2, "Diagnostics", "Santé de la session"),
+                Triple(3, "Paramètres", "Préférences de lecture"),
+                Triple(4, "À propos", "À propos de GPSx"),
             )
 
         destinations.forEach { (downPresses, navigationLabel, title) ->
