@@ -2,6 +2,8 @@
 
 package com.gpsx.tv.remoteplay
 
+import android.os.Handler
+import android.os.Looper
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -88,6 +90,30 @@ private fun InputDevice.usesSonyRawHidLayout(): Boolean =
     vendorId == SONY_VENDOR_ID &&
         hasKeys(KeyEvent.KEYCODE_BUTTON_C, KeyEvent.KEYCODE_BUTTON_Z).all { it }
 
+/** L1 + R1 + Options held together (owner's choice of three buttons), reserved to leave the stream. */
+internal const val QUIT_CHORD = Ps5ButtonMask.L1 or Ps5ButtonMask.R1 or Ps5ButtonMask.OPTIONS
+internal const val QUIT_CHORD_HOLD_MILLIS = 1_000L
+
+/**
+ * Tracks the quit chord across pads. [update] returns true when the chord has just been completed
+ * on some pad (the caller starts the hold timer) and false otherwise; [held] tells whether the chord
+ * is still complete when the timer fires.
+ */
+internal class QuitChord {
+    private val complete = mutableSetOf<Int>()
+
+    fun update(deviceId: Int, buttons: Int): Boolean {
+        val isComplete = buttons and QUIT_CHORD == QUIT_CHORD
+        return if (isComplete) complete.add(deviceId) else { complete.remove(deviceId); false }
+    }
+
+    fun held(): Boolean = complete.isNotEmpty()
+
+    fun isHeld(deviceId: Int): Boolean = deviceId in complete
+
+    fun reset() = complete.clear()
+}
+
 private data class PlatformControllerState(
     var buttons: Int = 0,
     var l2: Int = 0,
@@ -98,11 +124,26 @@ private data class PlatformControllerState(
     var rightY: Int = 0,
 )
 
-/** Android capture feeding the portable Rust `gpsx-input` merge/edge state machine. */
-class ControllerMapper(private val sink: (ControllerState) -> Unit) {
+/**
+ * Android capture feeding the portable Rust `gpsx-input` merge/edge state machine. Holding
+ * [QUIT_CHORD] for [QUIT_CHORD_HOLD_MILLIS] calls [onQuitChord] on the main thread, so a stream can
+ * be left with the pad alone; while the chord is complete its buttons are released towards the game.
+ */
+class ControllerMapper(
+    private val sink: (ControllerState) -> Unit,
+    private val onQuitChord: () -> Unit = {},
+) {
     private val controllers = mutableMapOf<Int, PlatformControllerState>()
     private val rawHidLayout = mutableMapOf<Int, Boolean>()
     private val bridge = GpsxInputBridge()
+    private val quitChord = QuitChord()
+    private val main = Handler(Looper.getMainLooper())
+    private val quitIfStillHeld = Runnable {
+        if (quitChord.held()) {
+            quitChord.reset()
+            onQuitChord()
+        }
+    }
 
     fun key(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
@@ -148,9 +189,14 @@ class ControllerMapper(private val sink: (ControllerState) -> Unit) {
     }
 
     private fun emit(deviceId: Int, eventTimeNs: Long, state: PlatformControllerState) {
+        if (quitChord.update(deviceId, state.buttons)) {
+            main.removeCallbacks(quitIfStillHeld)
+            main.postDelayed(quitIfStillHeld, QUIT_CHORD_HOLD_MILLIS)
+        }
+        val buttons = if (quitChord.isHeld(deviceId)) state.buttons and QUIT_CHORD.inv() else state.buttons
         bridge.normalize(
             deviceId,
-            state.buttons,
+            buttons,
             state.l2,
             state.r2,
             state.leftX,

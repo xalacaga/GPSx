@@ -65,6 +65,17 @@ class CloudCatalogTest {
     }
 
     @Test
+    fun `art prefers landscape https images and ignores other schemes`() {
+        fun art(fields: String) =
+            parseCloudCatalog(
+                """{"games":[{"productId":"P","name":"N","category":"streamable","streamServiceType":"psnow","streamIdentifier":"S"$fields}]}""",
+            )!!.games.single().artUrl
+        assertEquals("https://img/land.jpg", art(""","landscapeImageUrl":"https://img/land.jpg","imageUrl":"https://img/box.jpg""""))
+        assertEquals("https://img/box.jpg", art(""","landscapeImageUrl":"http://img/land.jpg","imageUrl":"https://img/box.jpg""""))
+        assertEquals("", art(""))
+    }
+
+    @Test
     fun `rejects invalid json and oversized payloads`() {
         assertNull(parseCloudCatalog("not json"))
         assertNull(parseCloudCatalog(" ".repeat(MAX_CATALOG_BYTES + 1)))

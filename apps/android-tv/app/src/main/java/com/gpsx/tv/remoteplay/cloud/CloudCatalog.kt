@@ -17,6 +17,8 @@ data class CloudGame(
     val entitlementId: String,
     val isOwned: Boolean,
     val plusCatalog: Boolean,
+    /** Landscape art (or box art) from the catalog, https only; empty when none. */
+    val artUrl: String = "",
 ) {
     /** Only streamable routes can be provisioned; purchaseable rows need a store action first. */
     val playable: Boolean get() = category != CloudCategory.PURCHASEABLE && streamIdentifier.isNotEmpty()
@@ -99,6 +101,7 @@ private fun JSONObject.toCloudGame(): CloudGame? {
         entitlementId = boundedString("entitlementId"),
         isOwned = optBoolean("isOwned", false),
         plusCatalog = optBoolean("plusCatalog", false),
+        artUrl = listOf(boundedString("landscapeImageUrl"), boundedString("imageUrl")).firstOrNull { it.startsWith("https://") }.orEmpty(),
     )
 }
 

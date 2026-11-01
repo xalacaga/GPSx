@@ -32,6 +32,8 @@ data class CloudSnapshot(
     val provisioning: Boolean = false,
     /** Game being provisioned, shown by the launch screen; empty when no launch is in progress. */
     val launchingTitle: String = "",
+    /** Art of the last launched game, kept for the whole launch screen (also after provisioning). */
+    val launchArtUrl: String = "",
     val detail: String = "Connectez votre compte PlayStation pour voir le catalogue cloud.",
     val warning: String = "",
     val games: List<CloudGame> = emptyList(),
@@ -122,7 +124,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
     fun play(game: CloudGame) {
         if (!game.playable || snapshot().provisioning) return
         cancelProvisioning.set(false)
-        update { copy(provisioning = true, launchingTitle = game.name, detail = "Réservation d’un serveur pour ${game.name}…") }
+        update { copy(provisioning = true, launchingTitle = game.name, launchArtUrl = game.artUrl, detail = "Réservation d’un serveur pour ${game.name}…") }
         worker.execute {
             val npsso = tokenStore.load()
             if (npsso == null) {

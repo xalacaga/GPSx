@@ -6,13 +6,16 @@ import android.os.Build
 import android.provider.Settings
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -56,7 +60,13 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -94,6 +104,9 @@ import com.gpsx.tv.remoteplay.cloud.CloudGame
 import com.gpsx.tv.remoteplay.cloud.CloudPlayController
 import com.gpsx.tv.remoteplay.cloud.CloudSnapshot
 import com.gpsx.tv.remoteplay.cloud.LocalTokenServer
+import com.gpsx.tv.remoteplay.cloud.BLURRED_ART_WIDTH
+import com.gpsx.tv.remoteplay.cloud.CloudArtCache
+import com.gpsx.tv.remoteplay.cloud.THUMBNAIL_ART_WIDTH
 import com.gpsx.tv.remoteplay.cloud.startLocalSignIn
 import com.gpsx.tv.remoteplay.cloud.PsnRelayLogin
 import com.metallic.chiaki.lib.StreamMetrics
@@ -159,6 +172,11 @@ fun GpsxApp(engine: RemotePlayEngine) {
     LaunchedEffect(remote.phase, remote.cloudTitle) {
         if (remote.cloudTitle != null && remote.phase == RemotePlayPhase.CONNECTING && state.destination == Destination.CLOUD) {
             state = state.copy(destination = Destination.SESSION)
+        }
+        // Leaving a cloud game (Back, the L1+R1+Options chord or the server ending it) returns to the
+        // catalog; a failure stays on the session screen so its reason can be read.
+        if (remote.cloudTitle != null && remote.phase == RemotePlayPhase.STOPPED && state.destination == Destination.SESSION) {
+            state = state.copy(destination = Destination.CLOUD)
         }
     }
 
@@ -287,8 +305,39 @@ fun GpsxApp(engine: RemotePlayEngine) {
                         },
                     step = step,
                     onCancel = ::cancelCloudLaunch,
+                    artUrl = cloudState.launchArtUrl,
                 )
             }
+        }
+    }
+}
+
+/** Catalog art for [url] at [width] pixels, from the shared cache; null while loading or on failure. */
+@Composable
+private fun rememberCloudArt(url: String, width: Int): ImageBitmap? {
+    val art by produceState(CloudArtCache.cached(url, width)?.asImageBitmap(), url, width) {
+        if (value == null && url.isNotEmpty()) value = CloudArtCache.load(url, width)?.asImageBitmap()
+    }
+    return art
+}
+
+/**
+ * Catalog art shrunk to a few dozen pixels and stretched back (a blur on every API level: Compose's
+ * blur modifier needs API 31, the GP520 runs API 30); fades in and crossfades when [url] changes.
+ */
+@Composable
+private fun BlurredArtBackground(url: String, strength: Float, modifier: Modifier = Modifier) {
+    Crossfade(targetState = url, animationSpec = tween(600), label = "art-background", modifier = modifier) { current ->
+        val art = rememberCloudArt(current, BLURRED_ART_WIDTH)
+        val alpha by animateFloatAsState(if (art != null) strength else 0f, tween(600), label = "art-background-alpha")
+        if (art != null) {
+            Image(
+                art,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
+                contentScale = ContentScale.Crop,
+                filterQuality = FilterQuality.High,
+            )
         }
     }
 }
@@ -302,7 +351,7 @@ private val CLOUD_LAUNCH_STEPS = listOf("Réservation du serveur", "Connexion au
  * stays alive underneath so the decoder exists before the first frame arrives.
  */
 @Composable
-internal fun CloudLaunchScreen(title: String, detail: String, step: Int, onCancel: () -> Unit) {
+internal fun CloudLaunchScreen(title: String, detail: String, step: Int, onCancel: () -> Unit, artUrl: String = "") {
     val cancelFocus = remember { FocusRequester() }
     val startedAt = remember { System.nanoTime() }
     var elapsedSeconds by remember { mutableStateOf(0L) }
@@ -322,6 +371,11 @@ internal fun CloudLaunchScreen(title: String, detail: String, step: Int, onCance
             .testTag("cloud-launch"),
         contentAlignment = Alignment.Center,
     ) {
+        // The game's catalog art, blurred under a dark veil.
+        if (artUrl.isNotEmpty()) {
+            BlurredArtBackground(artUrl, strength = 0.7f, modifier = Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Ink.copy(alpha = 0.55f)))
+        }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Canvas(Modifier.size(72.dp)) {
                 drawCircle(Line, style = Stroke(6.dp.toPx()))
@@ -701,7 +755,7 @@ private fun SessionScreen(
                 }
                 if (fullscreen && showFullscreenHint) {
                     Text(
-                        "Retour : déconnecter",
+                        "Quitter : Retour, ou L1 + R1 + Options maintenus 1 s",
                         color = SoftWhite,
                         fontSize = 11.sp,
                         modifier =
@@ -1331,10 +1385,13 @@ private fun ConsoleCard(title: String, subtitle: String, status: String, accent:
             .onFocusChanged { focused = it.isFocused }.clickable(role = Role.Button, onClick = onClick).padding(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(78.dp).background(Ink).border(1.dp, Line), contentAlignment = Alignment.Center) {
-            Text("PS5", color = SoftWhite, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+        Box(
+            Modifier.width(112.dp).height(132.dp).background(Brush.radialGradient(listOf(PanelRaised, Ink))).border(1.dp, Line),
+            contentAlignment = Alignment.Center,
+        ) {
+            StandingConsoleArt(Modifier.width(64.dp).height(108.dp), glow = if (focused) Signal else accent)
         }
-        Spacer(Modifier.width(18.dp))
+        Spacer(Modifier.width(22.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
             Text(subtitle, color = Muted, fontSize = 12.sp)
@@ -1414,12 +1471,25 @@ private fun SectionTitle(title: String, subtitle: String) {
 @Composable
 private fun CloudScreen(cloudState: CloudSnapshot, cloud: CloudPlayController) {
     val responsive = LocalResponsiveLayout.current
-    ScreenFrame("Jeu cloud", "PlayStation Plus", cloudState.detail) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            if (cloudState.signedIn) {
-                CloudCatalogPanel(cloudState, cloud, columns = if (responsive.compact) 2 else 3)
-            } else {
-                PsnSignInPanel(cloud)
+    var focusedGame by remember { mutableStateOf<CloudGame?>(null) }
+    var backgroundArt by remember { mutableStateOf("") }
+    // Settle before changing the background, so sweeping across cards does not fetch every image.
+    LaunchedEffect(focusedGame) {
+        delay(350)
+        focusedGame?.artUrl?.takeIf(String::isNotEmpty)?.let { backgroundArt = it }
+    }
+    Box(Modifier.fillMaxSize()) {
+        if (cloudState.signedIn && backgroundArt.isNotEmpty()) {
+            BlurredArtBackground(backgroundArt, strength = 0.5f, modifier = Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Ink.copy(alpha = 0.6f), Ink.copy(alpha = 0.9f)))))
+        }
+        ScreenFrame("Jeu cloud", "PlayStation Plus", cloudState.detail) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (cloudState.signedIn) {
+                    CloudCatalogPanel(cloudState, cloud, columns = if (responsive.compact) 2 else 3) { focusedGame = it }
+                } else {
+                    PsnSignInPanel(cloud)
+                }
             }
         }
     }
@@ -1596,7 +1666,7 @@ private fun PsnSignInPanel(cloud: CloudPlayController) {
 }
 
 @Composable
-private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayController, columns: Int) {
+private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayController, columns: Int, onFocusGame: (CloudGame) -> Unit) {
     var query by remember { mutableStateOf("") }
     var visibleCount by remember { mutableStateOf(CLOUD_PAGE_SIZE) }
     val matches =
@@ -1659,7 +1729,7 @@ private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayControl
         matches.take(visibleCount).chunked(columns).forEach { rowGames ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowGames.forEach { game ->
-                    CloudGameCard(game, enabled = !cloudState.provisioning, modifier = Modifier.weight(1f)) { cloud.play(game) }
+                    CloudGameCard(game, enabled = !cloudState.provisioning, modifier = Modifier.weight(1f), onFocus = { onFocusGame(game) }) { cloud.play(game) }
                 }
                 repeat(columns - rowGames.size) { Spacer(Modifier.weight(1f)) }
             }
@@ -1673,22 +1743,38 @@ private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayControl
 }
 
 @Composable
-private fun CloudGameCard(game: CloudGame, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun CloudGameCard(game: CloudGame, enabled: Boolean, modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val accent = if (game.category == CloudCategory.OWNED) Signal else Chalk
     Row(
-        modifier.height(86.dp).clip(RoundedCornerShape(3.dp))
-            .background(if (focused) PanelRaised else Panel)
+        modifier.height(104.dp).clip(RoundedCornerShape(3.dp))
+            .background(if (focused) PanelRaised else Panel.copy(alpha = 0.92f))
             .border(if (focused) 3.dp else 1.dp, if (focused) Signal else Line)
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                focused = it.isFocused
+                if (it.isFocused) onFocus()
+            }
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(15.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(3.dp)).background(accent.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
-            Text(game.platform.uppercase().ifEmpty { "PS" }, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        // 16:9 catalog art with the platform badge; the badge alone stands in while it loads or when none exists.
+        Box(Modifier.width(142.dp).height(80.dp).clip(RoundedCornerShape(3.dp)).background(accent.copy(alpha = .13f))) {
+            val thumbnail = rememberCloudArt(game.artUrl, THUMBNAIL_ART_WIDTH)
+            if (thumbnail != null) {
+                Image(thumbnail, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Text(
+                game.platform.uppercase().ifEmpty { "PS" },
+                color = if (thumbnail != null) Ink else accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                modifier =
+                    Modifier.align(if (thumbnail != null) Alignment.BottomStart else Alignment.Center)
+                        .then(if (thumbnail != null) Modifier.padding(5.dp).background(accent).padding(horizontal = 5.dp, vertical = 1.dp) else Modifier),
+            )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(14.dp))
         Column {
             Text(game.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(if (game.category == CloudCategory.OWNED) "Possédé" else "Catalogue Plus", color = Muted, fontSize = 10.sp)
