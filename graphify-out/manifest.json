@@ -343,9 +343,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/build.gradle.kts": {
-    "mtime": 1793557615.9348514,
-    "seen": 1793557622.1197097,
-    "ast_hash": "600a76942043234408864474b13d763b",
+    "mtime": 1793558271.1474202,
+    "seen": 1793558277.438348,
+    "ast_hash": "6ada75ab31c4f37b5276bc0fb36d7519",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
@@ -355,15 +355,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
-    "mtime": 1793557054.4021883,
-    "seen": 1793557324.4503188,
-    "ast_hash": "7b2b6f1f506f17082fdb27bc6e57e389",
+    "mtime": 1793557895.0350964,
+    "seen": 1793558277.4384415,
+    "ast_hash": "956dd1be0f3f2a0c7f982a957c523e3f",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1793557169.0474823,
-    "seen": 1793557324.4503248,
-    "ast_hash": "1966d4252abdc431450012a1401c926f",
+    "mtime": 1793558219.0332372,
+    "seen": 1793558277.4384449,
+    "ast_hash": "a48458095055a1bbac28ea7bb59b9707",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -373,9 +373,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/ui/AppStateTest.kt": {
-    "mtime": 1793557054.4031909,
-    "seen": 1793557324.45039,
-    "ast_hash": "6ac8e41bed32bb8d695c55c5fea30acf",
+    "mtime": 1793557895.036601,
+    "seen": 1793558277.4384809,
+    "ast_hash": "99aaf25fab60598e19bab9d83856d9c7",
     "semantic_hash": ""
   },
   "apps/android-tv/build.gradle.kts": {
@@ -1021,9 +1021,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/RemotePlayEngine.kt": {
-    "mtime": 1793539350.8119597,
-    "seen": 1793551270.2655878,
-    "ast_hash": "15839bc69b185b29d9587a146c02a122",
+    "mtime": 1793557895.0350964,
+    "seen": 1793558277.4384,
+    "ast_hash": "cf32cb2349ed3319cc9a17873758629e",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/remoteplay/RemotePlaySurfaceController.kt": {
