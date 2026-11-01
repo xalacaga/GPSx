@@ -792,6 +792,7 @@ private fun EnvironmentBar(
 @Composable
 private fun Ps5SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch: (UiAction) -> Unit) {
     var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
+    var streamStats by remember { mutableStateOf(engine.showStreamStats) }
     ScreenFrame("", "Réglages PS5", "Remote Play et Cloud PS Plus · appliqués à la session suivante.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
@@ -802,6 +803,14 @@ private fun Ps5SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispa
             ) {
                 decoderLowLatency = !decoderLowLatency
                 engine.decoderLowLatency = decoderLowLatency
+            }
+            SettingRow(
+                "Statistiques du stream",
+                "Images, débit, latence et sortie audio affichés sur l’image pendant le stream",
+                yesNo(streamStats),
+            ) {
+                streamStats = !streamStats
+                engine.showStreamStats = streamStats
             }
         }
     }
@@ -1450,7 +1459,6 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 @Composable
 private fun SettingsScreen(engine: RemotePlayEngine, retroState: RetroSnapshot, retro: RetroLibrary) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
-    var streamStats by remember { mutableStateOf(engine.showStreamStats) }
     ScreenFrame("", stringResource(R.string.settings_title), "Communs à toutes les consoles · réglages PS5 dans l’environnement PS5.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow(
@@ -1460,14 +1468,6 @@ private fun SettingsScreen(engine: RemotePlayEngine, retroState: RetroSnapshot, 
             ) {
                 audioCompatibility = !audioCompatibility
                 engine.audioCompatibility = audioCompatibility
-            }
-            SettingRow(
-                "Statistiques du stream",
-                "Images, débit, latence et sortie audio affichés sur l’image pendant un stream PS5",
-                yesNo(streamStats),
-            ) {
-                streamStats = !streamStats
-                engine.showStreamStats = streamStats
             }
             RetroNasPanel(retroState, retro)
             RetroStorageRows()
