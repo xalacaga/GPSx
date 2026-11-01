@@ -173,6 +173,9 @@ class RetroLibrary(
             key to if (text == COMPAT_PENDING) "ko:l’émulateur s’est arrêté pendant le chargement" else text
         }.toMap()
 
+    /** Lists a folder of the share; blocking, call it off the main thread. */
+    fun listShare(path: List<String>): List<RomFile> = source.list(path)
+
     /** Opens a file of the share; blocking, call it off the main thread. */
     fun openGame(path: List<String>): java.io.InputStream = source.open(path)
 

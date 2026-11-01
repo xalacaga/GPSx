@@ -85,6 +85,7 @@ class RetroSession(context: Context) : AutoCloseable {
             try {
                 val coreFile = installer.ensure(core) { detail -> update { copy(detail = detail) } }
                 val gameFile = prepareGame(game, library)
+                copyBios(game, library)
                 update { copy(detail = "Démarrage de l’émulateur…") }
                 val opened = open(coreFile, gameFile, game, library)
                 val geometry = RetroNative.nativeGeometry(opened)
@@ -120,7 +121,7 @@ class RetroSession(context: Context) : AutoCloseable {
         library.markPending(game)
         val opened =
             RetroNative.nativeOpen(
-                coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, "", game.system.keepsZip,
+                coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, game.system.coreOptions, game.system.keepsZip,
             )
         if (opened == 0L) {
             val reason = RetroNative.nativeLastError().ifEmpty { "chargement impossible" }
@@ -187,9 +188,40 @@ class RetroSession(context: Context) : AutoCloseable {
         update { copy(detail = "Copie du jeu depuis le NAS…") }
         dir.deleteRecursively()
         dir.mkdirs()
-        val file = copyGame(game, library, dir)
+        val file = if (game.disks.isEmpty()) copyGame(game, library, dir) else copyDisks(game, library, dir)
         ready.writeText(file.name)
         return file
+    }
+
+    /**
+     * Copies every disk of a multi-disk game and writes the M3U playlist the core loads, listing the
+     * disks in order (with the multi-drive option they go in DF0–DF3).
+     */
+    private fun copyDisks(game: RetroGame, library: RetroLibrary, dir: File): File {
+        val names = game.disks.mapIndexed { index, disk ->
+            update { copy(detail = "Copie de la disquette ${index + 1} / ${game.disks.size} depuis le NAS…") }
+            val target = File(dir, disk.last())
+            library.openGame(disk).use { input -> target.outputStream().use { input.copyTo(it) } }
+            target.name
+        }
+        return File(dir, "game.m3u").apply { writeText(names.joinToString("\n", postfix = "\n")) }
+    }
+
+    /**
+     * Copies the system's BIOS files (Amiga Kickstart) from its share folder into the core's system
+     * folder, once; a missing folder is not an error (the core falls back to its own replacement).
+     */
+    private fun copyBios(game: RetroGame, library: RetroLibrary) {
+        val folder = game.system.biosFolder ?: return
+        val source = game.path.take(1) + folder
+        val files = runCatching { library.listShare(source) }.getOrDefault(emptyList()).filter { !it.directory }
+        systemDir.mkdirs()
+        files.forEach { file ->
+            val target = File(systemDir, file.name)
+            if (target.isFile && target.length() == file.size) return@forEach
+            runCatching { library.openGame(source + file.name).use { input -> target.outputStream().use { input.copyTo(it) } } }
+                .onFailure { target.delete() }
+        }
     }
 
     /**

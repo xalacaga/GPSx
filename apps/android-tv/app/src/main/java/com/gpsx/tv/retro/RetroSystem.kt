@@ -38,7 +38,20 @@ enum class RetroSystem(
         listOf("mame", "arcade", "fbneo", "fba", "finalburn"),
         keepsZip = true,
         biosSets = setOf("neogeo", "pgm", "decocass", "isgsm", "skns", "nmk004", "ym2608", "cchip", "qsound"),
-    );
+    ),
+    // PUAE reads disk images by path; its Kickstart files come from the share's amiga/bios folder.
+    AMIGA("Amiga", "puae", setOf("adf", "adz", "dms", "ipf", "lha", "hdf", "m3u", "zip"), listOf("amiga", "commodoreamiga")),
+    ;
+
+    /**
+     * Core options GPSx sets for this system, as "key=value" lines. Amiga: each disk of a game goes
+     * in its own drive (DF0–DF3), so most multi-disk games run without swapping disks.
+     */
+    val coreOptions: String
+        get() = if (this == AMIGA) "puae_floppy_multidrive=enabled\n" else ""
+
+    /** Folder of the system on the share holding its BIOS files, copied to the core's system folder. */
+    val biosFolder: String? get() = if (this == AMIGA) "bios" else null
 
     val playable: Boolean get() = core != null
 

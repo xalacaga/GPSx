@@ -32,6 +32,8 @@ data class RetroGame(
     val image: List<String> = emptyList(),
     /** Box art on the libretro thumbnail server, used when [image] is empty; empty when none applies. */
     val coverUrl: String = "",
+    /** All disks of a multi-disk game, in order (the first is [path]); empty for a single file. */
+    val disks: List<List<String>> = emptyList(),
 )
 
 /** The games of one system folder on the share. */
@@ -45,7 +47,7 @@ data class RetroShelf(val system: RetroSystem, val folder: String, val games: Li
  */
 object ShareScanner {
     private val MEDIA_FOLDERS =
-        setOf("images", "videos", "downloaded_images", "downloaded_videos", "media", "bezels", "manuals", "marquees", "snap", "boxart", "wheel")
+        setOf("images", "videos", "downloaded_images", "downloaded_videos", "media", "bezels", "manuals", "marquees", "snap", "boxart", "wheel", "bios")
 
     fun scan(source: RomSource): List<RetroShelf> =
         source.list(emptyList())
@@ -72,6 +74,18 @@ object ShareScanner {
                 runCatching { source.list(root + entry.name) }.getOrDefault(emptyList())
                     .filter { !it.directory && system.accepts(it.name) }
                     .forEach { files += listOf(entry.name, it.name) to RomNames.folderGenre(entry.name) }
+            }
+        }
+        if (system == RetroSystem.AMIGA) {
+            return AmigaReleases.group(files.map { it.first }).map { release ->
+                RetroGame(
+                    system = system,
+                    path = root + release.disks.first(),
+                    title = release.title,
+                    year = release.year,
+                    genre = release.publisher,
+                    disks = if (release.disks.size > 1) release.disks.map { root + it } else emptyList(),
+                )
             }
         }
         return files

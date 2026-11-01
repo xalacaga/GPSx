@@ -52,6 +52,11 @@ object RetroControls {
                     PadInput.CROSS to "B", PadInput.CIRCLE to "A", PadInput.CREATE to "Select", PadInput.OPTIONS to "Start",
                     PadInput.DPAD to "Croix",
                 )
+            RetroSystem.AMIGA ->
+                listOf(
+                    PadInput.CROSS to "Feu", PadInput.CIRCLE to "Bouton 2", PadInput.CREATE to "Clavier virtuel",
+                    PadInput.DPAD to "Joystick",
+                )
             RetroSystem.GBA ->
                 listOf(
                     PadInput.CROSS to "B", PadInput.CIRCLE to "A", PadInput.L1 to "L", PadInput.R1 to "R",

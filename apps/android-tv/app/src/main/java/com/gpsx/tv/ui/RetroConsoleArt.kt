@@ -26,6 +26,7 @@ fun RetroConsoleArt(system: RetroSystem, modifier: Modifier = Modifier, glow: Co
         when (system) {
             RetroSystem.NEOGEO -> drawBlackCartridgeConsole(glow)
             RetroSystem.ARCADE -> drawArcadeCabinet(glow)
+            RetroSystem.AMIGA -> drawKeyboardComputer(glow)
             else -> drawGreyCartridgeConsole(glow)
         }
     }
@@ -132,6 +133,43 @@ private fun DrawScope.drawArcadeCabinet(glow: Color) {
     drawRect(Color(0xFF3A3A40), topLeft = Offset(w * 0.43f, h * 0.74f), size = Size(w * 0.14f, h * 0.10f))
     drawRect(glow, topLeft = Offset(w * 0.47f, h * 0.77f), size = Size(w * 0.012f, h * 0.035f))
     drawRect(glow, topLeft = Offset(w * 0.52f, h * 0.77f), size = Size(w * 0.012f, h * 0.035f))
+}
+
+/** A home computer built into its keyboard, seen from the front: key rows and a floppy drive on the side. */
+private fun DrawScope.drawKeyboardComputer(glow: Color) {
+    val w = size.width
+    val h = size.height
+    floorShadow(w * 0.04f, h * 0.84f, w * 0.92f)
+    // Wedge-shaped case: deeper at the back, sloping towards the front edge.
+    val case =
+        Path().apply {
+            moveTo(w * 0.06f, h * 0.84f)
+            lineTo(w * 0.94f, h * 0.84f)
+            lineTo(w * 0.94f, h * 0.70f)
+            lineTo(w * 0.90f, h * 0.36f)
+            lineTo(w * 0.10f, h * 0.36f)
+            lineTo(w * 0.06f, h * 0.70f)
+            close()
+        }
+    drawPath(case, Brush.verticalGradient(listOf(Color(0xFFF1EDE4), Color(0xFFCFCABF)), startY = h * 0.36f, endY = h * 0.84f))
+    drawPath(case, Color.Black.copy(alpha = 0.18f), style = Stroke(w * 0.006f))
+    // Key rows.
+    for (row in 0 until 4) {
+        val top = h * (0.41f + row * 0.065f)
+        val inset = w * (0.13f + row * 0.008f)
+        var x = inset
+        while (x < w * 0.74f) {
+            drawRoundRect(Color(0xFF9D9991), topLeft = Offset(x, top), size = Size(w * 0.038f, h * 0.048f), cornerRadius = CornerRadius(w * 0.006f))
+            x += w * 0.046f
+        }
+    }
+    drawRoundRect(Color(0xFF9D9991), topLeft = Offset(w * 0.30f, h * 0.67f), size = Size(w * 0.30f, h * 0.045f), cornerRadius = CornerRadius(w * 0.006f))
+    // Numeric pad and the floppy slot on the right side.
+    drawRoundRect(Color(0xFFB5B0A6), topLeft = Offset(w * 0.77f, h * 0.41f), size = Size(w * 0.11f, h * 0.30f), cornerRadius = CornerRadius(w * 0.01f))
+    drawRect(Color(0xFF3A3A40), topLeft = Offset(w * 0.79f, h * 0.76f), size = Size(w * 0.13f, h * 0.022f))
+    // Power and drive lights.
+    drawCircle(glow, radius = w * 0.012f, center = Offset(w * 0.12f, h * 0.775f))
+    drawCircle(glow.copy(alpha = 0.6f), radius = w * 0.012f, center = Offset(w * 0.16f, h * 0.775f))
 }
 
 private fun DrawScope.floorShadow(left: Float, top: Float, width: Float) {
