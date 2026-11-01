@@ -53,7 +53,10 @@ class AmigaReleasesTest {
     @Test
     fun `amiga folders and options are recognised`() {
         assertEquals(RetroSystem.AMIGA, RetroSystem.fromFolder("amiga"))
-        assertEquals("puae_floppy_multidrive=enabled\n", RetroSystem.AMIGA.coreOptions)
+        val amiga = RetroSystem.AMIGA.coreOptions.lines()
+        assertEquals(true, "puae_floppy_multidrive=enabled" in amiga)
+        assertEquals(true, "puae_analogmouse=right" in amiga)
+        assertEquals(true, "puae_mapper_y=RETROK_RETURN" in amiga)
         assertEquals("bios", RetroSystem.AMIGA.biosFolder)
         assertEquals("snes9x_2010_aspect=4:3\n", RetroSystem.SNES.coreOptions)
         assertEquals("", RetroSystem.NEOGEO.coreOptions)

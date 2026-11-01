@@ -46,13 +46,24 @@ enum class RetroSystem(
     /**
      * Core options GPSx sets for this system, as "key=value" lines; other options take the core's
      * declared defaults. SNES: a 4:3 picture (the core's "auto" widens PAL games). Amiga: each disk
-     * of a game goes in its own drive (DF0–DF3), so most multi-disk games run without swapping disks.
+     * of a game goes in its own drive (DF0–DF3), so most multi-disk games run without swapping disks,
+     * and the pad covers the keys and mouse most games need (owner request: play with the pad as
+     * much as possible): Square Return, Triangle Space, L1/R1 F1/F2, L2/R2 mouse buttons (core
+     * default), right stick mouse (the left one stays the joystick), Create virtual keyboard.
      */
     val coreOptions: String
         get() =
             when (this) {
                 SNES -> "snes9x_2010_aspect=4:3\n"
-                AMIGA -> "puae_floppy_multidrive=enabled\n"
+                AMIGA ->
+                    listOf(
+                        "puae_floppy_multidrive=enabled",
+                        "puae_analogmouse=right",
+                        "puae_mapper_y=RETROK_RETURN",
+                        "puae_mapper_x=RETROK_SPACE",
+                        "puae_mapper_l=RETROK_F1",
+                        "puae_mapper_r=RETROK_F2",
+                    ).joinToString("\n", postfix = "\n")
                 else -> ""
             }
 

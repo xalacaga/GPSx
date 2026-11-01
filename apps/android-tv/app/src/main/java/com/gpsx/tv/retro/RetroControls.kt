@@ -15,6 +15,7 @@ enum class PadInput(val symbol: String, val label: String) {
     CREATE("≡", "Create"),
     OPTIONS("☰", "Options"),
     DPAD("✚", "Croix directionnelle / stick gauche"),
+    RIGHT_STICK("◎", "Stick droit"),
 }
 
 /**
@@ -54,8 +55,9 @@ object RetroControls {
                 )
             RetroSystem.AMIGA ->
                 listOf(
-                    PadInput.CROSS to "Feu", PadInput.CIRCLE to "Bouton 2", PadInput.CREATE to "Clavier virtuel",
-                    PadInput.DPAD to "Joystick",
+                    PadInput.CROSS to "Feu", PadInput.CIRCLE to "Bouton 2", PadInput.SQUARE to "Entrée", PadInput.TRIANGLE to "Espace",
+                    PadInput.L1 to "F1", PadInput.R1 to "F2", PadInput.L2 to "Clic gauche", PadInput.R2 to "Clic droit",
+                    PadInput.RIGHT_STICK to "Souris", PadInput.CREATE to "Clavier virtuel", PadInput.DPAD to "Joystick",
                 )
             RetroSystem.GBA ->
                 listOf(
