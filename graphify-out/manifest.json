@@ -157,9 +157,9 @@
     "semantic_hash": ""
   },
   "docs/CONCURRENCY.md": {
-    "mtime": 1793222884.6361918,
-    "seen": 1793223200.0895748,
-    "ast_hash": "096c53fcf0fa7f088ab336c83468a7fb",
+    "mtime": 1793552367.699615,
+    "seen": 1793552499.0599763,
+    "ast_hash": "e8735697f0865c75e40043210fad1185",
     "semantic_hash": ""
   },
   "docs/DUALSENSE_ANALYSIS.md": {
@@ -265,9 +265,9 @@
     "semantic_hash": ""
   },
   "docs/CONCURRENCY.fr.md": {
-    "mtime": 1793222884.637193,
-    "seen": 1793223200.0895734,
-    "ast_hash": "e8bda82a44c43ce1bd0f440e100a5a27",
+    "mtime": 1793552380.7916715,
+    "seen": 1793552499.0599751,
+    "ast_hash": "5f8d7a1ed0bd2614038382ddbee1acb1",
     "semantic_hash": ""
   },
   "docs/CROSS_REVIEW.fr.md": {
@@ -349,9 +349,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/MainActivity.kt": {
-    "mtime": 1793533963.220329,
-    "seen": 1793551270.265562,
-    "ast_hash": "c9f2ef36390718b1ac7f92d7c5259451",
+    "mtime": 1793551631.7838643,
+    "seen": 1793552499.0597243,
+    "ast_hash": "9dea9d466caefbbecd9bfd9f29113367",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
@@ -361,9 +361,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1793551085.0798721,
-    "seen": 1793551270.2656188,
-    "ast_hash": "67111fecdbe86c2e9ef26ce49425e554",
+    "mtime": 1793551631.784866,
+    "seen": 1793552499.0597923,
+    "ast_hash": "01b0713d4320026d65c0babd39ff0688",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -1321,9 +1321,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/RetroLibrary.kt": {
-    "mtime": 1793551145.5394013,
-    "seen": 1793551270.265606,
-    "ast_hash": "11ebe107e7dc95f8b7439a07ad124e16",
+    "mtime": 1793551602.7276616,
+    "seen": 1793552499.059773,
+    "ast_hash": "30f286000a88fc69924a46e3a93317fe",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/RetroShelf.kt": {
@@ -1375,9 +1375,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/RetroScreens.kt": {
-    "mtime": 1793551156.4190793,
-    "seen": 1793551270.2656233,
-    "ast_hash": "8affb3b248167fa445207d700ccfb0fd",
+    "mtime": 1793551945.3058438,
+    "seen": 1793552499.0597973,
+    "ast_hash": "862cce40b977478bfce3f90a289fabf7",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/diagnostics/LiveLogServerTest.kt": {
@@ -1423,15 +1423,57 @@
     "semantic_hash": ""
   },
   "docs/RETROGAMING_PLAN.fr.md": {
-    "mtime": 1793551222.7280912,
-    "seen": 1793551270.2658653,
-    "ast_hash": "e7f34ed2d56af6ef3656b6c200330817",
+    "mtime": 1793552345.1536436,
+    "seen": 1793552499.0600462,
+    "ast_hash": "989f44797c3040b625cbe4d4a1930445",
     "semantic_hash": ""
   },
   "docs/RETROGAMING_PLAN.md": {
-    "mtime": 1793551222.7280912,
-    "seen": 1793551270.2658665,
-    "ast_hash": "288515ade1c264421d748e6851221186",
+    "mtime": 1793552345.1536436,
+    "seen": 1793552499.0600476,
+    "ast_hash": "bfad6ba874d26352acf685e28c2fbdab",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/cpp/retro_api.h": {
+    "mtime": 1793551388.698084,
+    "seen": 1793552499.0597193,
+    "ast_hash": "7bcc0d0fc88fdb06a6bd5d77b7d3c6c5",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/cpp/retro_host.cpp": {
+    "mtime": 1793551971.6404815,
+    "seen": 1793552499.0597217,
+    "ast_hash": "e02162026093fdf6a62152899b6a25d9",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/CoreInstaller.kt": {
+    "mtime": 1793551547.7080517,
+    "seen": 1793552499.0597687,
+    "ast_hash": "d69b314172275522de4f44ee50f310eb",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/RetroNative.kt": {
+    "mtime": 1793551546.898929,
+    "seen": 1793552499.0597742,
+    "ast_hash": "2231e421087fe8a781fdf4b01eafb0db",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/RetroPadMapper.kt": {
+    "mtime": 1793551563.579926,
+    "seen": 1793552499.0597758,
+    "ast_hash": "7329644616500ac8e9089de521e48405",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/main/java/com/gpsx/tv/retro/RetroSession.kt": {
+    "mtime": 1793551601.915698,
+    "seen": 1793552499.059777,
+    "ast_hash": "6e6d7468d9fe1db41925d5492f6c5446",
+    "semantic_hash": ""
+  },
+  "apps/android-tv/app/src/test/java/com/gpsx/tv/retro/RetroPlayTest.kt": {
+    "mtime": 1793552070.4859915,
+    "seen": 1793552499.0598276,
+    "ast_hash": "8d8f09f2769fa470a847db3d5c84d046",
     "semantic_hash": ""
   }
 }
