@@ -21,6 +21,7 @@ Status: proposed 2026-10-25 after independent review; human approval required be
 | Video output | Android adapter | dequeue output → release-to-render, timing metrics | codec output |
 | Audio callback | AAudio/Oboe | pop PCM ring, drift control | none |
 | Telemetry writer | core | drain per-thread rings → JSONL | low priority |
+| Retro core (one game) | retro host (native) | sample pads, `retro_run`, blit to `ANativeWindow`, resample audio into the retro PCM ring | sleeps 1 ms while the retro PCM ring holds ≥ 2048 frames |
 
 Windows uses the same core threads. Its adapter supplies its own decoder and audio threads; Windows thread behavior is not evidence for Android.
 
@@ -45,6 +46,8 @@ Thread priorities: AAudio sets the callback priority. Raising the net receive an
 | Compressed video AUs | net receive → video feeder | 2 AUs (HYPOTHESIS) | On overflow drop queued non-IDR units, set `need_idr`, request IDR, discard until the next IDR. Never block net receive. |
 | Video buffer pool | feeder returns buffers to assembler | fixed N buffers sized for the max AU | Pool empty → same as video overflow |
 | PCM ring | net receive (Opus) → audio callback | target T, max 2T; T initial 40 ms (HYPOTHESIS), excluding device/BT latency | Overflow: drop oldest. Underrun: emit silence, count it. |
+| Retro PCM ring | retro core thread → AAudio callback | 4096 stereo frames at 48 kHz (~85 ms); the core runs only below 2048 frames | Overflow: drop the incoming frames, count them. Underrun: emit silence, count it. Both are logged when the game closes. |
+| Retro pad state | Main (JNI, on change) → retro core thread | one held mask + one latched mask per port (4 ports), sticks latest-wins | A press is OR-ed into the latched mask and cleared when the core thread samples it before the next frame, so presses shorter than a frame are never dropped. |
 | Telemetry | each hot thread → writer | fixed per-thread ring | Drop the newest record, count drops; never block. |
 | Events to Kotlin | core → main | small fixed batch | Lifecycle/error events are never dropped (bounded and small). Metric snapshots are coalesced (latest wins). |
 

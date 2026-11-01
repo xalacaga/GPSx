@@ -12,3 +12,13 @@ ifeq ($(GPSX_ASAN),1)
 LOCAL_SANITIZE := address
 endif
 include $(BUILD_SHARED_LIBRARY)
+
+# Retro host: runs one libretro core downloaded on the owner's request (docs/RETROGAMING_PLAN.md).
+include $(CLEAR_VARS)
+LOCAL_MODULE := gpsx_retro
+LOCAL_SRC_FILES := retro_host.cpp
+LOCAL_LDLIBS := -landroid -llog -ldl
+ifeq ($(GPSX_ASAN),1)
+LOCAL_SANITIZE := address
+endif
+include $(BUILD_SHARED_LIBRARY)

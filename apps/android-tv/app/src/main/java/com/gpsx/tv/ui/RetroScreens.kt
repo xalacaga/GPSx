@@ -2,6 +2,8 @@
 
 package com.gpsx.tv.ui
 
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +35,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -41,9 +45,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
 import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
+import com.gpsx.tv.retro.RetroPhase
+import com.gpsx.tv.retro.RetroSession
+import com.gpsx.tv.retro.RetroSessionSnapshot
 import com.gpsx.tv.retro.RetroShelf
 import com.gpsx.tv.retro.RetroSnapshot
 import com.gpsx.tv.retro.ShareAddress
@@ -174,13 +182,12 @@ private fun RetroConsoleCard(shelf: RetroShelf, modifier: Modifier, onClick: () 
 
 /** The games of one retro console; Back closes the game sheet first, then the list. */
 @Composable
-internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onBack: () -> Unit) {
+internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onPlay: (RetroGame) -> Unit, onBack: () -> Unit) {
     val responsive = LocalResponsiveLayout.current
     val columns = if (responsive.compact) 2 else 3
     var selected by remember(shelf) { mutableStateOf<RetroGame?>(null) }
     var lastSelected by remember(shelf) { mutableStateOf<RetroGame?>(null) }
     var visibleCount by remember(shelf) { mutableStateOf(RETRO_PAGE_SIZE) }
-    var notice by remember { mutableStateOf("") }
     BackHandler(enabled = selected == null, onBack = onBack)
     BackHandler(enabled = selected != null) { selected = null }
 
@@ -188,25 +195,20 @@ internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onBack: 
     ScreenFrame("", shelf.system.label, "${shelf.games.size} jeux · ${shelf.folder}") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
-                RetroGameSheet(game, library, notice) {
-                    notice =
-                        if (game.system.playable) {
-                            "Le lecteur de jeux arrive à l’étape suivante (R2)."
-                        } else {
-                            "Pas encore d’émulateur pour la ${game.system.label}."
-                        }
-                }
+                RetroGameSheet(game, library) { onPlay(game) }
                 return@Column
             }
             FocusButton("← Consoles", modifier = Modifier.testTag("retro-back")) { onBack() }
             val requesters = remember(shelf) { mutableMapOf<RetroGame, FocusRequester>() }
-            LaunchedEffect(lastSelected) { lastSelected?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } } }
+            // Focus lands on the game just closed, or on the first game when the list opens.
+            LaunchedEffect(lastSelected) {
+                (lastSelected ?: shelf.games.firstOrNull())?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } }
+            }
             shelf.games.take(visibleCount).chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { item ->
                         val requester = requesters.getOrPut(item) { FocusRequester() }
                         RetroGameCard(item, library, Modifier.weight(1f).focusRequester(requester)) {
-                            notice = ""
                             lastSelected = item
                             selected = item
                         }
@@ -252,7 +254,7 @@ private fun RetroGameCard(game: RetroGame, library: RetroLibrary, modifier: Modi
 }
 
 @Composable
-private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, notice: String, onPlay: () -> Unit) {
+private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, onPlay: () -> Unit) {
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(game) { runCatching { playFocus.requestFocus() } }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -273,7 +275,7 @@ private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, notice: Strin
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FocusButton("▶ Jouer", primary = true, modifier = Modifier.focusRequester(playFocus).testTag("retro-play"), onClick = onPlay)
             }
-            if (notice.isNotEmpty()) Text(notice, color = Amber, fontSize = 12.sp)
+            if (!game.system.playable) Text("Pas encore d’émulateur pour la ${game.system.label}.", color = Amber, fontSize = 12.sp)
             Text(game.path.joinToString(" / "), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -316,3 +318,48 @@ internal fun String.sentenceCase(): String {
 private const val RETRO_PAGE_SIZE = 30
 private const val THUMBNAIL_WIDTH = 200
 private const val COVER_WIDTH = 640
+
+/**
+ * Full-screen retro game: preparation progress, then the game's Surface at its own aspect ratio on
+ * black. Back (remote) or the L1+R1+Options chord leaves; a failure stays readable until closed.
+ */
+@Composable
+internal fun RetroPlayScreen(game: RetroSessionSnapshot, session: RetroSession) {
+    BackHandler { session.stop() }
+    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+        when (game.phase) {
+            RetroPhase.PLAYING ->
+                AndroidView(
+                    factory = { context ->
+                        SurfaceView(context).apply {
+                            holder.addCallback(
+                                object : SurfaceHolder.Callback {
+                                    override fun surfaceCreated(holder: SurfaceHolder) = session.setSurface(holder.surface)
+
+                                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+
+                                    override fun surfaceDestroyed(holder: SurfaceHolder) = session.setSurface(null)
+                                },
+                            )
+                        }
+                    },
+                    modifier = Modifier.aspectRatio(game.aspect, matchHeightConstraintsFirst = true).testTag("retro-surface"),
+                )
+            RetroPhase.PREPARING, RetroPhase.FAILED, RetroPhase.IDLE -> {
+                val closeFocus = remember { FocusRequester() }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(game.title, fontSize = 40.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = SoftWhite)
+                    Text(game.detail, color = if (game.phase == RetroPhase.FAILED) Amber else Chalk, fontSize = 15.sp)
+                    FocusButton(
+                        if (game.phase == RetroPhase.FAILED) "Fermer" else "Annuler",
+                        modifier = Modifier.focusRequester(closeFocus).testTag("retro-close"),
+                    ) { session.stop() }
+                }
+                LaunchedEffect(game.phase) { runCatching { closeFocus.requestFocus() } }
+            }
+        }
+        if (game.phase == RetroPhase.PLAYING && game.detail.isNotEmpty()) {
+            Text(game.detail, color = Amber, fontSize = 12.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+        }
+    }
+}

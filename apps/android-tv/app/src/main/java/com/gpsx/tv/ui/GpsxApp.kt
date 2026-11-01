@@ -117,7 +117,10 @@ import com.metallic.chiaki.lib.StreamMetrics
 import com.gpsx.tv.diagnostics.LiveLogServer
 import com.gpsx.tv.diagnostics.StoredReport
 import com.gpsx.tv.diagnostics.reportUploadUrl
+import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
+import com.gpsx.tv.retro.RetroPhase
+import com.gpsx.tv.retro.RetroSession
 import com.gpsx.tv.retro.RetroSnapshot
 import com.gpsx.tv.update.AppUpdater
 import com.gpsx.tv.update.ReleaseManifest
@@ -140,14 +143,18 @@ internal val LocalResponsiveLayout = staticCompositionLocalOf { ResponsiveLayout
 fun GpsxApp() {
     val context = LocalContext.current
     val engine = remember(context) { RemotePlayEngine(context.applicationContext) }
-    DisposableEffect(engine) {
-        onDispose(engine::close)
+    val retroSession = remember(context) { RetroSession(context.applicationContext) }
+    DisposableEffect(engine, retroSession) {
+        onDispose {
+            retroSession.close()
+            engine.close()
+        }
     }
-    GpsxApp(engine)
+    GpsxApp(engine, retroSession)
 }
 
 @Composable
-fun GpsxApp(engine: RemotePlayEngine) {
+fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
     val context = LocalContext.current
     var state by remember { mutableStateOf(AppUiState()) }
     var remote by remember { mutableStateOf(engine.snapshot()) }
@@ -163,6 +170,12 @@ fun GpsxApp(engine: RemotePlayEngine) {
         retro.setListener { retroState = it }
         onDispose(retro::close)
     }
+    var retroGame by remember { mutableStateOf(retroSession.snapshot()) }
+    DisposableEffect(retroSession) {
+        retroSession.setListener { retroGame = it }
+        onDispose { retroSession.setListener(null) }
+    }
+    val retroScreenVisible = retroGame.phase != RetroPhase.IDLE
 
     DisposableEffect(cloud) {
         cloud.setListener { cloudState = it }
@@ -210,7 +223,7 @@ fun GpsxApp(engine: RemotePlayEngine) {
     val fullscreenStream =
         state.destination == Destination.SESSION && remote.phase == RemotePlayPhase.STREAMING
 
-    StreamDisplayMode(active = fullscreenStream)
+    StreamDisplayMode(active = fullscreenStream || retroGame.phase == RetroPhase.PLAYING)
 
     BackHandler(enabled = fullscreenStream) {
         dispatch(UiAction.StopDemo)
@@ -280,7 +293,7 @@ fun GpsxApp(engine: RemotePlayEngine) {
                     state.destination,
                     firstLegalFocusRequester,
                     controllerCount = controllers.size,
-                    visible = !fullscreenStream,
+                    visible = !fullscreenStream && !retroScreenVisible,
                     tabFocusRequest = tabFocusRequest,
                     onNavigate = { dispatch(UiAction.Navigate(it)) },
                 )
@@ -288,7 +301,7 @@ fun GpsxApp(engine: RemotePlayEngine) {
                     key(state.destination) {
                         when (state.destination) {
                             Destination.HOME -> HomeScreen(remote, controllers, cloudState, retroState, ::dispatch)
-                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, ::dispatch)
+                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, ::dispatch) { retroSession.play(it, retro) }
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.CONTROLLERS ->
@@ -301,6 +314,9 @@ fun GpsxApp(engine: RemotePlayEngine) {
                         }
                     }
                 }
+            }
+            if (retroScreenVisible) {
+                RetroPlayScreen(retroGame, retroSession)
             }
             if (cloudLaunchVisible) {
                 val step =
@@ -713,13 +729,19 @@ private fun RemotePlayPhase.homeColor(): Color =
     }
 
 @Composable
-private fun ConsolesScreen(remote: RemotePlaySnapshot, retroState: RetroSnapshot, retro: RetroLibrary, dispatch: (UiAction) -> Unit) {
+private fun ConsolesScreen(
+    remote: RemotePlaySnapshot,
+    retroState: RetroSnapshot,
+    retro: RetroLibrary,
+    dispatch: (UiAction) -> Unit,
+    onPlayRetro: (RetroGame) -> Unit,
+) {
     // A retro console opens its game list in place; Back returns to the consoles with focus on it.
     var openFolder by remember { mutableStateOf<String?>(null) }
     var lastFolder by remember { mutableStateOf<String?>(null) }
     val shelf = retroState.shelves.firstOrNull { it.folder == openFolder }
     if (shelf != null) {
-        RetroGamesScreen(shelf, retro) { openFolder = null }
+        RetroGamesScreen(shelf, retro, onPlay = onPlayRetro) { openFolder = null }
         return
     }
     ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx et les consoles rétro de votre NAS.") {

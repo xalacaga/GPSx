@@ -9,20 +9,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.gpsx.tv.remoteplay.ControllerMapper
 import com.gpsx.tv.remoteplay.RemotePlayEngine
+import com.gpsx.tv.retro.RetroSession
 import com.gpsx.tv.ui.GpsxApp
 import com.gpsx.tv.ui.GpsxTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var remotePlayEngine: RemotePlayEngine
     private lateinit var controllerMapper: ControllerMapper
+    private lateinit var retroSession: RetroSession
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         remotePlayEngine = RemotePlayEngine(applicationContext)
         controllerMapper = ControllerMapper(remotePlayEngine::submitControllerState, onQuitChord = remotePlayEngine::stop)
+        retroSession = RetroSession(applicationContext)
         setContent {
             GpsxTheme {
-                GpsxApp(remotePlayEngine)
+                GpsxApp(remotePlayEngine, retroSession)
             }
         }
     }
@@ -31,6 +34,11 @@ class MainActivity : ComponentActivity() {
         val gameController =
             event.source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
                 event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+        // A retro game owns every pad; the remote's Back still leaves it.
+        if (retroSession.isActive && gameController) {
+            if (retroSession.isPlaying) retroSession.padMapper.key(event)
+            return true
+        }
         if (gameController && event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) {
             return if (remotePlayEngine.isStreaming()) controllerMapper.key(event) else true
         }
@@ -52,9 +60,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
-        if (remotePlayEngine.isStreaming() && controllerMapper.motion(event)) true else super.dispatchGenericMotionEvent(event)
+        when {
+            retroSession.isPlaying && retroSession.padMapper.motion(event) -> true
+            remotePlayEngine.isStreaming() && controllerMapper.motion(event) -> true
+            else -> super.dispatchGenericMotionEvent(event)
+        }
 
     override fun onDestroy() {
+        if (::retroSession.isInitialized) retroSession.close()
         if (::remotePlayEngine.isInitialized) remotePlayEngine.close()
         super.onDestroy()
     }

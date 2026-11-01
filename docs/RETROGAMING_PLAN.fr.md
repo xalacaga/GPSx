@@ -1,6 +1,22 @@
 # Plan rétro-gaming
 
-État : **R1 EN COURS** (01/11/2026). Rien n'est encore validé sur le GP520.
+État : **R1 TERMINÉ, R2 FONCTIONNE SUR L'ÉMULATEUR** (01/11/2026). Rien n'est encore validé sur le GP520.
+
+## Avancement (01/11/2026)
+
+- FACT (émulateur, x86_64) : la ludothèque liste 3 systèmes et 1207 jeux du NAS
+  du propriétaire en 1 s environ ; les jaquettes Neo Geo viennent de
+  `gamelist.xml`, les jaquettes SNES du serveur de vignettes libretro (104 sur
+  106 trouvées).
+- FACT (émulateur) : Snes9x 2010 téléchargé depuis le serveur de build, chargé
+  par `dlopen` depuis le stockage privé (`targetSdk 34`), a fait tourner ActRaiser
+  (France) à 50,0 images/s (PAL) avec le son : 3904 images calculées, 3894
+  affichées, 3 sous-alimentations audio (toutes au démarrage), 0 échantillon
+  audio jeté. Un appui sur la croix directionnelle d'une manette a déplacé le
+  curseur du menu du jeu. L'image est en 4:3 (1440×1080 sur un écran 1080p).
+- NOT_TESTED : deux manettes physiques en même temps (le code donne à chaque
+  manette son propre port joueur), le GP520, la SRAM entre deux parties, les jeux
+  Neo Geo et arcade.
 
 ## Objectif
 
@@ -99,14 +115,22 @@ Onglet Rétro (Compose)
   (`ANativeWindow_setBuffersGeometry` à la taille du core, le compositeur met à
   l'échelle de l'écran). Pas d'OpenGL en R2 ; les cores à rendu matériel (N64,
   PSP) sont hors périmètre.
-- Audio : anneau borné de 4 images du core (environ 67 ms à 60 Hz). Un
-  débordement jette les échantillons les plus anciens et est compté ; une
-  sous-alimentation joue du silence et est comptée. Le pilotage du débit par
-  l'horloge audio viendra plus tard si les mesures le demandent.
+- Audio : les échantillons du core sont rééchantillonnés linéairement à
+  48 kHz dans un anneau borné de 4096 images stéréo (environ 85 ms). Le thread du
+  core ne calcule une image que tant que l'anneau contient moins de 2048 images :
+  l'horloge audio cadence le jeu et l'anneau ne dérive pas. Un débordement jette
+  les images entrantes, une sous-alimentation joue du silence ; les deux sont
+  comptés et journalisés à la fermeture du jeu. Sans sortie audio, le core est
+  cadencé par sa propre fréquence d'images.
 - Entrées : les événements manette Android déjà capturés pour le Remote Play sont
   traduits une fois en état de manette neutre, puis en RetroPad (Croix→B,
   Rond→A, Carré→Y, Triangle→X, L1/R1/L2/R2, Select/Start, croix directionnelle,
-  sticks). JNI est appelé aux changements d'état, pas à chaque image.
+  sticks). JNI est appelé aux changements d'état, pas à chaque image. Chaque
+  manette physique reçoit le port joueur libre suivant (jusqu'à 4) au premier
+  bouton pressé : deux manettes jouent en joueur 1 et joueur 2. Un appui est
+  mémorisé jusqu'à la lecture de l'image suivante, donc un appui plus court
+  qu'une image n'est jamais perdu. Le stick gauche pilote aussi la croix
+  directionnelle.
 - Quitter un jeu : Retour, ou le même accord L1+R1+Options que le Remote Play.
 
 ### Cores

@@ -1,6 +1,19 @@
 # Retro-gaming plan
 
-Status: **R1 IN PROGRESS** (2026-11-01). Nothing is validated on the GP520 yet.
+Status: **R1 DONE, R2 WORKING ON THE EMULATOR** (2026-11-01). Nothing is validated on the GP520 yet.
+
+## Progress (2026-11-01)
+
+- FACT (emulator, x86_64): the library lists 3 systems and 1207 games from the
+  owner's NAS in about 1 s; Neo Geo covers come from `gamelist.xml`, SNES covers
+  from the libretro thumbnail server (104 of 106 found).
+- FACT (emulator): Snes9x 2010 downloaded from the build server, loaded with
+  `dlopen` from app-private storage (`targetSdk 34`), ran ActRaiser (France) at
+  50.0 fps (PAL) with sound: 3904 frames run, 3894 shown, 3 audio underruns (all
+  at start), 0 dropped audio frames. A gamepad D-pad press moved the game's menu
+  cursor. The picture is 4:3 (1440×1080 on a 1080p screen).
+- NOT_TESTED: two physical pads at once (the code gives each pad its own player
+  port), the GP520, save RAM across sessions, Neo Geo/arcade games.
 
 ## Goal
 
@@ -95,13 +108,20 @@ Retro tab (Compose)
   (`ANativeWindow_setBuffersGeometry` at the core's size, the compositor scales
   to the screen). No OpenGL in R2; hardware-rendered cores (N64, PSP) are out of
   scope.
-- Audio: bounded ring of 4 core frames (about 67 ms at 60 Hz). Overflow drops the
-  oldest samples and is counted; underflow plays silence and is counted. Rate
-  control by audio clock comes later if measurements call for it.
+- Audio: the core's samples are resampled linearly to 48 kHz into a bounded
+  ring of 4096 stereo frames (about 85 ms). The core thread runs a frame only
+  while the ring holds less than 2048 frames, so the audio clock paces the game
+  and the ring never drifts. Overflow drops the incoming frames, underflow plays
+  silence; both are counted and logged when the game closes. Without an audio
+  device the core is paced by its own frame rate.
 - Input: the Android controller events already captured for Remote Play are
   mapped once to a platform-neutral pad state, then to the RetroPad
   (Cross→B, Circle→A, Square→Y, Triangle→X, L1/R1/L2/R2, Select/Start, D-pad,
-  sticks). JNI is called on state changes, not per frame.
+  sticks). JNI is called on state changes, not per frame. Each physical pad gets
+  the next free player port (up to 4) the first time it sends a button, so two
+  pads play as player 1 and player 2. A press is latched until the next frame
+  reads it, so a press shorter than a frame is never lost. The left stick also
+  drives the D-pad.
 - Leaving a game: Back, or the same L1+R1+Options chord as Remote Play.
 
 ### Cores
