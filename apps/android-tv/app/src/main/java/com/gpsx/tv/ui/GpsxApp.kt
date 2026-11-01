@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,6 +85,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -110,6 +112,7 @@ import com.gpsx.tv.remoteplay.cloud.THUMBNAIL_ART_WIDTH
 import com.gpsx.tv.remoteplay.cloud.startLocalSignIn
 import com.gpsx.tv.remoteplay.cloud.PsnRelayLogin
 import com.metallic.chiaki.lib.StreamMetrics
+import com.gpsx.tv.diagnostics.LiveLogServer
 import com.gpsx.tv.diagnostics.StoredReport
 import com.gpsx.tv.diagnostics.reportUploadUrl
 import com.gpsx.tv.update.AppUpdater
@@ -342,6 +345,9 @@ private fun BlurredArtBackground(url: String, strength: Float, modifier: Modifie
     }
 }
 
+/** Home greeting by local hour: "Bonjour." from 5 h to 17 h 59, "Bonsoir." otherwise. */
+internal fun greetingFor(hour: Int): String = if (hour in 5..17) "Bonjour." else "Bonsoir."
+
 private const val FIRST_FRAME_WAIT_NANOS = 15_000_000_000L
 
 private val CLOUD_LAUNCH_STEPS = listOf("Réservation du serveur", "Connexion au stream", "Première image")
@@ -382,7 +388,16 @@ internal fun CloudLaunchScreen(title: String, detail: String, step: Int, onCance
                 drawArc(Signal, angle, 90f, useCenter = false, style = Stroke(6.dp.toPx()))
             }
             Text("LANCEMENT DU JEU CLOUD", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
-            Text(title.ifBlank { "Jeu cloud" }, fontSize = 38.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                title.ifBlank { "Jeu cloud" },
+                fontSize = 38.sp,
+                lineHeight = 44.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 1100.dp).padding(horizontal = 32.dp),
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                 CLOUD_LAUNCH_STEPS.forEachIndexed { index, label ->
                     Text(
@@ -559,7 +574,7 @@ private fun HomeScreen(
     val responsive = LocalResponsiveLayout.current
     ScreenFrame(
         eyebrow = "",
-        title = "Bonsoir.",
+        title = greetingFor(remember { java.time.LocalTime.now().hour }),
         subtitle = remote.consoleName?.let { "$it · ${remote.phase.homeLabel()}" } ?: "Aucune PS5 associée : commencez par Session.",
     ) {
         val tileHeight = if (responsive.short) 92.dp else 118.dp
@@ -1153,9 +1168,33 @@ private fun CapabilityGrid() {
 private fun DiagnosticsScreen(engine: RemotePlayEngine) {
     ScreenFrame("", stringResource(R.string.diagnostic_title), "Rapports de vos sessions, à envoyer depuis le téléphone.") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            LiveLogPanel()
             TestResultsPanel(engine)
         }
     }
+}
+
+/** Starts or stops the live log served on the local network for remote debugging. */
+@Composable
+private fun LiveLogPanel() {
+    var address by remember { mutableStateOf(LiveLogServer.Current.address) }
+    var status by remember { mutableStateOf("") }
+    SectionTitle("Journal en direct", "Pour le dépannage à distance sur votre réseau local · secrets retirés · arrêt auto après 30 min")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (address == null) {
+            FocusButton("Démarrer le journal en direct", modifier = Modifier.testTag("live-log-start")) {
+                address = LiveLogServer.Current.start(LocalTokenServer.lanAddress())
+                status = if (address == null) "Aucun réseau local ou port indisponible." else ""
+            }
+        } else {
+            FocusButton("Arrêter", modifier = Modifier.testTag("live-log-stop")) {
+                LiveLogServer.Current.stop()
+                address = null
+            }
+            Text("Adresse : http://$address", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Signal)
+        }
+    }
+    if (status.isNotEmpty()) Text(status, color = Amber, fontSize = 11.sp)
 }
 
 @Composable

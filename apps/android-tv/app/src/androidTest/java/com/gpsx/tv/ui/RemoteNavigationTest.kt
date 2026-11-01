@@ -67,9 +67,9 @@ class RemoteNavigationTest {
 
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             composeRule.waitUntil(timeoutMillis = 2_000) {
-                composeRule.onAllNodesWithText("Bonsoir.").fetchSemanticsNodes().isNotEmpty()
+                composeRule.onAllNodesWithText(greetingFor(java.time.LocalTime.now().hour)).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Bonsoir.").assertIsDisplayed()
+            composeRule.onNodeWithText(greetingFor(java.time.LocalTime.now().hour)).assertIsDisplayed()
             composeRule.onNode(hasText("Accueil") and hasClickAction()).assertIsSelected()
         }
     }

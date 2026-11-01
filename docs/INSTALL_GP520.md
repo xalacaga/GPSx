@@ -93,6 +93,14 @@ Fallbacks: **Secours : via xbgamestream.com** (the Pylux relay, which receives t
 token to hand it to the TV) and manual NPSSO entry. On the Android emulator the
 phone cannot reach the TV's page (virtual network), so use a fallback there.
 
+## 7. Live log (remote debugging)
+
+Diagnostics → **Démarrer le journal en direct** serves GPSx's own log on the
+local network at the address shown (port 47900, short random code). Lines that
+might carry a secret are dropped and IPv4 addresses are masked; it stops after
+30 minutes or with **Arrêter**. Only the app's own processes are visible (native
+engine and in-process MediaCodec), not the vendor codec service.
+
 ## Report format
 
 `gpsx-stream-test/1`: app version and source revision, device, requested video

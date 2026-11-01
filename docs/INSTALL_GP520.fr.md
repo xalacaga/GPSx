@@ -97,6 +97,15 @@ pour le transmettre à la TV) et la saisie manuelle du NPSSO. Sur l'émulateur
 Android, le téléphone ne peut pas joindre la page de la TV (réseau virtuel) :
 utilisez-y un secours.
 
+## 7. Journal en direct (dépannage à distance)
+
+Diagnostics → **Démarrer le journal en direct** sert le journal de GPSx sur le
+réseau local à l'adresse affichée (port 47900, code court aléatoire). Les lignes
+qui pourraient contenir un secret sont retirées et les adresses IPv4 masquées ;
+il s'arrête au bout de 30 minutes ou avec **Arrêter**. Seuls les processus de
+l'application sont visibles (moteur natif et MediaCodec côté application), pas
+le service de décodage du fabricant.
+
 ## Format des rapports
 
 `gpsx-stream-test/1` : version de l'app et révision source, appareil, profil

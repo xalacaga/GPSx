@@ -16,7 +16,17 @@ import kotlinx.coroutines.withContext
 private const val MAX_ART_BYTES = 8 * 1024 * 1024
 
 /** Width of blurred art: tiny on purpose, it is scaled up into a soft blur. */
-const val BLURRED_ART_WIDTH = 48
+const val BLURRED_ART_WIDTH = 24
+
+/**
+ * Stretches tiny art in two bilinear steps (x4 then x4) on the CPU. A single GPU upscale of a
+ * 24-pixel bitmap to the screen showed visible blocks on the emulator; the pre-smoothed 384-pixel
+ * version only needs a gentle final stretch.
+ */
+private fun smoothBlur(tiny: Bitmap): Bitmap {
+    val mid = Bitmap.createScaledBitmap(tiny, tiny.width * 4, tiny.height * 4, true)
+    return Bitmap.createScaledBitmap(mid, mid.width * 4, mid.height * 4, true).also { if (it !== mid) mid.recycle() }
+}
 
 /** Width of catalog card thumbnails. */
 const val THUMBNAIL_ART_WIDTH = 320
@@ -83,8 +93,10 @@ object CloudArtCache {
         val thumbnail = if (width < THUMBNAIL_ART_WIDTH) cache.get("$THUMBNAIL_ART_WIDTH|$url") else null
         val bitmap =
             withContext(dispatcher) {
-                thumbnail?.let { Bitmap.createScaledBitmap(it, width, (it.height * width / it.width.toFloat()).toInt().coerceAtLeast(1), true) }
-                    ?: loadArt(url, width)
+                val sized =
+                    thumbnail?.let { Bitmap.createScaledBitmap(it, width, (it.height * width / it.width.toFloat()).toInt().coerceAtLeast(1), true) }
+                        ?: loadArt(url, width)
+                if (sized != null && width == BLURRED_ART_WIDTH) smoothBlur(sized) else sized
             }
         if (bitmap != null) cache.put(key, bitmap) else synchronized(failed) { failed += key }
         return bitmap
