@@ -118,6 +118,13 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         }
 
     /** Low-latency MediaCodec hints (on by default). Applies to the next session. */
+    /** Shows the stream statistics over the picture; off unless chosen in Settings (owner request). */
+    var showStreamStats: Boolean
+        get() = settings?.getBoolean("show_stream_stats", false) ?: false
+        set(value) {
+            settings?.edit()?.putBoolean("show_stream_stats", value)?.apply()
+        }
+
     var decoderLowLatency: Boolean
         get() = settings?.getBoolean("decoder_low_latency", true) ?: true
         set(value) {

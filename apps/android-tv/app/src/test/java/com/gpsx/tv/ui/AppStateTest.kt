@@ -8,11 +8,11 @@ import org.junit.Test
 class AppStateTest {
     @Test
     fun `navigation changes only destination`() {
-        val initial = AppUiState(metricsVisible = false)
+        val initial = AppUiState(lowLatency = false)
         val result = reduce(initial, UiAction.Navigate(Destination.DIAGNOSTICS))
 
         assertEquals(Destination.DIAGNOSTICS, result.destination)
-        assertFalse(result.metricsVisible)
+        assertFalse(result.lowLatency)
         assertEquals(SessionPhase.READY, result.sessionPhase)
     }
 

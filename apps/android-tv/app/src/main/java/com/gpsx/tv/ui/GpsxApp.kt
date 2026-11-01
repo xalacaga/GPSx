@@ -891,7 +891,7 @@ private fun SessionScreen(
                         Modifier.align(Alignment.TopStart).padding(18.dp),
                     )
                 }
-                if (fullscreen && state.metricsVisible) {
+                if (fullscreen && engine.showStreamStats) {
                     StreamMetricsOverlay(engine, Modifier.align(Alignment.TopEnd).padding(18.dp))
                 }
                 if (fullscreen && showFullscreenHint) {
@@ -1071,10 +1071,6 @@ private fun SessionActions(
                 act { dispatch(UiAction.StopDemo) }
             }
         }
-        FocusButton(
-            if (state.metricsVisible) "Masquer les stats" else "Afficher les stats",
-            modifier = if (canStart || waking || canStop) Modifier else Modifier.focusRequester(firstAction),
-        ) { dispatch(UiAction.ToggleMetrics) }
     }
     if (vertical) {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) { buttons() }
@@ -1454,6 +1450,7 @@ private fun TestResultsPanel(engine: RemotePlayEngine) {
 @Composable
 private fun SettingsScreen(engine: RemotePlayEngine, retroState: RetroSnapshot, retro: RetroLibrary) {
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
+    var streamStats by remember { mutableStateOf(engine.showStreamStats) }
     ScreenFrame("", stringResource(R.string.settings_title), "Communs à toutes les consoles · réglages PS5 dans l’environnement PS5.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow(
@@ -1463,6 +1460,14 @@ private fun SettingsScreen(engine: RemotePlayEngine, retroState: RetroSnapshot, 
             ) {
                 audioCompatibility = !audioCompatibility
                 engine.audioCompatibility = audioCompatibility
+            }
+            SettingRow(
+                "Statistiques du stream",
+                "Images, débit, latence et sortie audio affichés sur l’image pendant un stream PS5",
+                yesNo(streamStats),
+            ) {
+                streamStats = !streamStats
+                engine.showStreamStats = streamStats
             }
             RetroNasPanel(retroState, retro)
             RetroStorageRows()

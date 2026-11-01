@@ -49,7 +49,6 @@ data class AppUiState(
     /** Share folder of the retro console whose environment is open. */
     val retroFolder: String? = null,
     val sessionPhase: SessionPhase = SessionPhase.READY,
-    val metricsVisible: Boolean = true,
     val quality: StreamQuality = StreamQuality.AUTO,
     val lowLatency: Boolean = true,
     val telemetryEnabled: Boolean = true,
@@ -65,7 +64,6 @@ sealed interface UiAction {
     data object StartDemo : UiAction
     data object ConfirmDemoStarted : UiAction
     data object StopDemo : UiAction
-    data object ToggleMetrics : UiAction
     data object ToggleLowLatency : UiAction
     data object ToggleTelemetry : UiAction
     data object ToggleMicrophone : UiAction
@@ -107,7 +105,6 @@ fun reduce(state: AppUiState, action: UiAction): AppUiState =
                 state
             }
         }
-        UiAction.ToggleMetrics -> state.copy(metricsVisible = !state.metricsVisible)
         UiAction.ToggleLowLatency -> state.copy(lowLatency = !state.lowLatency)
         UiAction.ToggleTelemetry -> state.copy(telemetryEnabled = !state.telemetryEnabled)
         UiAction.ToggleMicrophone -> state.copy(microphoneEnabled = !state.microphoneEnabled)
