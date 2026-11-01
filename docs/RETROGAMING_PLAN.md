@@ -12,8 +12,13 @@ Status: **R1 DONE, R2 WORKING ON THE EMULATOR** (2026-11-01). Nothing is validat
   50.0 fps (PAL) with sound: 3904 frames run, 3894 shown, 3 audio underruns (all
   at start), 0 dropped audio frames. A gamepad D-pad press moved the game's menu
   cursor. The picture is 4:3 (1440×1080 on a 1080p screen).
+- FACT (emulator): FinalBurn Neo v1.0.0.03 rejects the owner's Neo Geo set: it
+  requires `sp-s3.sp1` in `neogeo.zip`, which that older set lacks, even when its
+  BIOS option names another BIOS. FB Alpha 2012 Neo Geo (v0.2.97.29) runs the same
+  set: 2020 Super Baseball reached its attract mode at 59.18 fps. Coin is Select
+  (Create), start is Start (Options).
 - NOT_TESTED: two physical pads at once (the code gives each pad its own player
-  port), the GP520, save RAM across sessions, Neo Geo/arcade games.
+  port), the GP520, save RAM across sessions, the arcade folder.
 
 ## Goal
 
@@ -129,7 +134,8 @@ Retro tab (Compose)
 | System | Core | Licence | Source |
 |---|---|---|---|
 | SNES | Snes9x 2010 | non-commercial | libretro buildbot, armeabi-v7a / arm64-v8a / x86_64 |
-| Neo Geo, arcade | FinalBurn Neo | non-commercial | idem |
+| Neo Geo | FB Alpha 2012 Neo Geo | non-commercial | idem; matches the older romsets Recalbox shipped |
+| Arcade | FinalBurn Neo | non-commercial | idem |
 
 The core installer downloads
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`

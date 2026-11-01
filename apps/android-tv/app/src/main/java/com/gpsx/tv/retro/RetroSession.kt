@@ -79,7 +79,7 @@ class RetroSession(context: Context) : AutoCloseable {
                 systemDir.mkdirs()
                 val sram = File(saves, gameFile.nameWithoutExtension + ".srm")
                 update { copy(detail = "Démarrage de l’émulateur…") }
-                val opened = RetroNative.nativeOpen(coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath)
+                val opened = RetroNative.nativeOpen(coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, "")
                 if (opened == 0L) throw IOException(RetroNative.nativeLastError().ifEmpty { "chargement impossible" })
                 val geometry = RetroNative.nativeGeometry(opened)
                 synchronized(lock) {

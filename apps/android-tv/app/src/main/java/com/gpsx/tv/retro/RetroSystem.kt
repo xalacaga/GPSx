@@ -28,7 +28,9 @@ enum class RetroSystem(
     GBA("Game Boy Advance", null, setOf("gba", "zip"), listOf("gba", "gameboyadvance"), thumbnailSet = "Nintendo - Game Boy Advance"),
     GBC("Game Boy Color", null, setOf("gbc", "zip"), listOf("gbc", "gameboycolor"), thumbnailSet = "Nintendo - Game Boy Color"),
     GB("Game Boy", null, setOf("gb", "zip"), listOf("gb", "gameboy"), thumbnailSet = "Nintendo - Game Boy"),
-    NEOGEO("Neo Geo", "fbneo", setOf("zip"), listOf("neogeo"), keepsZip = true, biosSets = setOf("neogeo")),
+    // FB Alpha 2012 Neo Geo reads the older romsets Recalbox shipped; FinalBurn Neo requires
+    // sp-s3.sp1 in neogeo.zip, which those sets lack (FACT, owner's share, 2026-11-01).
+    NEOGEO("Neo Geo", "fbalpha2012_neogeo", setOf("zip"), listOf("neogeo"), keepsZip = true, biosSets = setOf("neogeo")),
     ARCADE(
         "Arcade",
         "fbneo",
@@ -39,6 +41,7 @@ enum class RetroSystem(
     );
 
     val playable: Boolean get() = core != null
+
 
     /** True when [fileName] has one of this system's extensions and is not a BIOS set. */
     fun accepts(fileName: String): Boolean {

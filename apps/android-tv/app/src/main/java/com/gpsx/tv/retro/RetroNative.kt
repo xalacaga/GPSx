@@ -10,8 +10,11 @@ internal object RetroNative {
         System.loadLibrary("gpsx_retro")
     }
 
-    /** Loads [corePath] and the game; returns a handle, or 0 with [nativeLastError] set. */
-    external fun nativeOpen(corePath: String, gamePath: String, systemDir: String, saveDir: String, sramPath: String): Long
+    /**
+     * Loads [corePath] and the game; returns a handle, or 0 with [nativeLastError] set. [options] holds
+     * "key=value" lines answered to the core's option queries; other options keep their defaults.
+     */
+    external fun nativeOpen(corePath: String, gamePath: String, systemDir: String, saveDir: String, sramPath: String, options: String): Long
 
     external fun nativeLastError(): String
 

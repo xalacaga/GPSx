@@ -18,6 +18,8 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <map>
+#include <sstream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -157,6 +159,8 @@ struct Host {
     std::string sram_path;
     std::vector<uint8_t> game_data;
     std::string game_path;
+    // Core options chosen by GPSx (key → value); other options keep the core's defaults.
+    std::map<std::string, std::string> options;
 
     std::mutex window_mutex;
     ANativeWindow* window = nullptr;
@@ -223,8 +227,21 @@ bool environment(unsigned command, void* data) {
             host->pixel_format = format;
             return true;
         }
-        case kEnvGetVariable:
-            return false;  // cores fall back to their defaults
+        case kEnvGetVariable: {
+            auto* variable = static_cast<Variable*>(data);
+            if (variable == nullptr || variable->key == nullptr) return false;
+            const auto found = host->options.find(variable->key);
+            if (found == host->options.end()) return false;  // the core keeps its default
+            variable->value = found->second.c_str();
+            return true;
+        }
+        case kEnvSetVariables: {
+            // Option list as "Description; value1|value2"; logged so GPSx settings can name them.
+            for (auto* variable = static_cast<const Variable*>(data); variable != nullptr && variable->key != nullptr; ++variable) {
+                __android_log_print(ANDROID_LOG_DEBUG, kTag, "core option %s = %.200s", variable->key, variable->value != nullptr ? variable->value : "");
+            }
+            return true;
+        }
         case kEnvGetVariableUpdate:
             *static_cast<bool*>(data) = false;
             return true;
@@ -247,7 +264,6 @@ bool environment(unsigned command, void* data) {
             return true;
         case kEnvSetPerformanceLevel:
         case kEnvSetInputDescriptors:
-        case kEnvSetVariables:
         case kEnvSetSupportNoGame:
         case kEnvSetSubsystemInfo:
         case kEnvSetControllerInfo:
@@ -476,7 +492,7 @@ std::string string_from(JNIEnv* env, jstring value) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
-    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path) {
+    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path, jstring options) {
     std::lock_guard lock(g_host_mutex);
     g_last_error.clear();
     if (g_host != nullptr) {
@@ -488,6 +504,14 @@ JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
     host->save_dir = string_from(env, save_dir);
     host->sram_path = string_from(env, sram_path);
     host->game_path = string_from(env, game_path);
+    {
+        std::istringstream lines(string_from(env, options));
+        std::string line;
+        while (std::getline(lines, line)) {
+            const size_t equals = line.find('=');
+            if (equals != std::string::npos && equals > 0) host->options[line.substr(0, equals)] = line.substr(equals + 1);
+        }
+    }
     const std::string core = string_from(env, core_path);
 
     host->library = dlopen(core.c_str(), RTLD_NOW | RTLD_LOCAL);

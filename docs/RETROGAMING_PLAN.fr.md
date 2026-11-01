@@ -14,9 +14,15 @@
   affichées, 3 sous-alimentations audio (toutes au démarrage), 0 échantillon
   audio jeté. Un appui sur la croix directionnelle d'une manette a déplacé le
   curseur du menu du jeu. L'image est en 4:3 (1440×1080 sur un écran 1080p).
+- FACT (émulateur) : FinalBurn Neo v1.0.0.03 refuse le romset Neo Geo du
+  propriétaire : il exige `sp-s3.sp1` dans `neogeo.zip`, absent de ce romset plus
+  ancien, même quand son réglage de BIOS en désigne un autre. FB Alpha 2012 Neo Geo
+  (v0.2.97.29) lit ce même romset : 2020 Super Baseball a atteint son mode
+  démonstration à 59,18 images/s. Le crédit est Select (Create), le départ Start
+  (Options).
 - NOT_TESTED : deux manettes physiques en même temps (le code donne à chaque
-  manette son propre port joueur), le GP520, la SRAM entre deux parties, les jeux
-  Neo Geo et arcade.
+  manette son propre port joueur), le GP520, la SRAM entre deux parties, le
+  dossier arcade.
 
 ## Objectif
 
@@ -138,7 +144,8 @@ Onglet Rétro (Compose)
 | Système | Core | Licence | Source |
 |---|---|---|---|
 | SNES | Snes9x 2010 | non commerciale | buildbot libretro, armeabi-v7a / arm64-v8a / x86_64 |
-| Neo Geo, arcade | FinalBurn Neo | non commerciale | idem |
+| Neo Geo | FB Alpha 2012 Neo Geo | non commerciale | idem ; correspond aux anciens romsets fournis par Recalbox |
+| Arcade | FinalBurn Neo | non commerciale | idem |
 
 L'installateur télécharge
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`
