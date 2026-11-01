@@ -15,7 +15,7 @@ fix for `set_surface(NULL)` returning with the codec mutex still locked (and
 re-locking it in `kill_decoder`); the codec is created on the first sample with the
 codec read from the stream; stale decoded frames are skipped; optional low-latency
 decoder hints; on cloud sessions an IDR request (Takion IDRREQUEST) is sent at
-most once per second when a frame misses its reference or FEC fails; samples are copied into a queue fed to the codec by a separate thread, which waits up to 5 s for an input buffer instead of dropping them, so a decoder stall never blocks network reception; PS4 cloud streams can use Android's software H.264 decoder (set from Kotlin); for the hardware decoder the H.264 SPS is rewritten to announce at most 4 reference frames (PS4 cloud declares 9, more output buffers than the GP520 decoder grants); the Takion receive thread runs at nice -10 on Android.
+most once per second when a frame misses its reference or FEC fails; samples are copied into a queue fed to the codec by a separate thread, which waits up to 5 s for an input buffer instead of dropping them, so a decoder stall never blocks network reception; PS4 cloud streams can use Android's software H.264 decoder (set from Kotlin); for the hardware decoder the H.264 SPS is rewritten to announce at most 4 reference frames (PS4 cloud declares 9, more output buffers than the GP520 decoder grants); the Takion receive thread runs at nice -10 on Android; on cloud sessions a frame whose reference was lost is still handed to the decoder instead of being dropped.
 
 Rebuild the stripped `RelWithDebInfo` libraries for all ABIs with
 `tools/powershell/build-pylux-native.ps1`. See `docs/PROVENANCE.md` and

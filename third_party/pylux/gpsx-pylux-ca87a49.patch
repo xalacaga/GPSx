@@ -449,363 +449,6 @@ index 039a4d9..82e956f 100644
  	return arr;
  }
  
-diff --git a/android/app/src/main/cpp/h264-sps-fix.c b/android/app/src/main/cpp/h264-sps-fix.c
-new file mode 100644
-index 0000000..8f872bc
---- /dev/null
-+++ b/android/app/src/main/cpp/h264-sps-fix.c
-@@ -0,0 +1,326 @@
-+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
-+
-+// GPSx: H.264 SPS rewrite for hardware decoders with few output buffers, in the spirit of
-+// Moonlight's SPS fix-ups: caps num_ref_frames and max_dec_frame_buffering.
-+
-+#include "h264-sps-fix.h"
-+
-+#include <stdlib.h>
-+#include <string.h>
-+
-+typedef struct
-+{
-+	const uint8_t *data;
-+	size_t size_bits;
-+	size_t pos;
-+	bool error;
-+} BitReader;
-+
-+typedef struct
-+{
-+	uint8_t *data;
-+	size_t capacity;
-+	size_t pos;
-+	bool error;
-+} BitWriter;
-+
-+static uint32_t br_u(BitReader *r, int n)
-+{
-+	uint32_t v = 0;
-+	for(int i = 0; i < n; i++)
-+	{
-+		if(r->pos >= r->size_bits)
-+		{
-+			r->error = true;
-+			return 0;
-+		}
-+		v = (v << 1) | ((r->data[r->pos >> 3] >> (7 - (r->pos & 7))) & 1);
-+		r->pos++;
-+	}
-+	return v;
-+}
-+
-+static uint32_t br_ue(BitReader *r)
-+{
-+	int zeros = 0;
-+	while(!r->error && br_u(r, 1) == 0)
-+	{
-+		if(++zeros > 31)
-+		{
-+			r->error = true;
-+			return 0;
-+		}
-+	}
-+	return zeros ? ((1u << zeros) - 1 + br_u(r, zeros)) : 0;
-+}
-+
-+static void bw_u(BitWriter *w, int n, uint32_t v)
-+{
-+	for(int i = n - 1; i >= 0; i--)
-+	{
-+		if((w->pos >> 3) >= w->capacity)
-+		{
-+			w->error = true;
-+			return;
-+		}
-+		uint8_t *byte = &w->data[w->pos >> 3];
-+		if((w->pos & 7) == 0)
-+			*byte = 0;
-+		*byte |= ((v >> i) & 1) << (7 - (w->pos & 7));
-+		w->pos++;
-+	}
-+}
-+
-+static void bw_ue(BitWriter *w, uint32_t v)
-+{
-+	uint32_t x = v + 1;
-+	int bits = 0;
-+	for(uint32_t t = x; t; t >>= 1)
-+		bits++;
-+	bw_u(w, bits - 1, 0);
-+	bw_u(w, bits, x);
-+}
-+
-+/** Copies n plain bits, or one Exp-Golomb value, from the reader to the writer. */
-+static uint32_t copy_u(BitReader *r, BitWriter *w, int n)
-+{
-+	uint32_t v = br_u(r, n);
-+	bw_u(w, n, v);
-+	return v;
-+}
-+
-+static uint32_t copy_ue(BitReader *r, BitWriter *w)
-+{
-+	uint32_t v = br_ue(r);
-+	bw_ue(w, v);
-+	return v;
-+}
-+
-+static int32_t copy_se(BitReader *r, BitWriter *w)
-+{
-+	uint32_t v = copy_ue(r, w);
-+	return (v & 1) ? (int32_t)((v + 1) / 2) : -(int32_t)(v / 2);
-+}
-+
-+/** Removes emulation-prevention bytes; returns the RBSP size. */
-+static size_t unescape(const uint8_t *in, size_t size, uint8_t *out)
-+{
-+	size_t o = 0;
-+	for(size_t i = 0; i < size; i++)
-+	{
-+		if(i + 2 < size && in[i] == 0 && in[i + 1] == 0 && in[i + 2] == 3)
-+		{
-+			out[o++] = 0;
-+			out[o++] = 0;
-+			i += 2;
-+			continue;
-+		}
-+		out[o++] = in[i];
-+	}
-+	return o;
-+}
-+
-+/** Adds emulation-prevention bytes; out must hold size * 3 / 2 + 1 bytes. */
-+static size_t escape(const uint8_t *in, size_t size, uint8_t *out)
-+{
-+	size_t o = 0;
-+	int zeros = 0;
-+	for(size_t i = 0; i < size; i++)
-+	{
-+		if(zeros >= 2 && in[i] <= 3)
-+		{
-+			out[o++] = 3;
-+			zeros = 0;
-+		}
-+		out[o++] = in[i];
-+		zeros = in[i] == 0 ? zeros + 1 : 0;
-+	}
-+	return o;
-+}
-+
-+/**
-+ * Rewrites one SPS NAL payload (NAL header byte first, escaped). Returns the new escaped payload
-+ * in *out (malloc'd) and its size, or 0 when the SPS is left alone: unsupported syntax (high
-+ * profiles with scaling lists, HRD parameters), an existing bitstream restriction, or a parse error.
-+ */
-+static size_t rewrite_sps(const uint8_t *nal, size_t nal_size, uint32_t max_refs, uint8_t **out)
-+{
-+	uint8_t *rbsp = malloc(nal_size);
-+	uint8_t *written = malloc(nal_size + 32);
-+	if(!rbsp || !written)
-+		goto fail;
-+	size_t rbsp_size = unescape(nal, nal_size, rbsp);
-+	BitReader r = { rbsp, rbsp_size * 8, 0, false };
-+	BitWriter w = { written, nal_size + 32, 0, false };
-+
-+	copy_u(&r, &w, 8); // NAL header
-+	uint32_t profile = copy_u(&r, &w, 8);
-+	copy_u(&r, &w, 8); // constraint flags
-+	copy_u(&r, &w, 8); // level_idc
-+	copy_ue(&r, &w); // seq_parameter_set_id
-+	if(profile == 100 || profile == 110 || profile == 122 || profile == 244 || profile == 44 || profile == 83
-+		|| profile == 86 || profile == 118 || profile == 128 || profile == 138 || profile == 139 || profile == 134)
-+	{
-+		uint32_t chroma = copy_ue(&r, &w);
-+		if(chroma == 3)
-+			copy_u(&r, &w, 1);
-+		copy_ue(&r, &w);
-+		copy_ue(&r, &w);
-+		copy_u(&r, &w, 1);
-+		if(copy_u(&r, &w, 1)) // seq_scaling_matrix_present_flag
-+			goto fail;
-+	}
-+	copy_ue(&r, &w); // log2_max_frame_num_minus4
-+	uint32_t poc_type = copy_ue(&r, &w);
-+	if(poc_type == 0)
-+		copy_ue(&r, &w);
-+	else if(poc_type == 1)
-+	{
-+		copy_u(&r, &w, 1);
-+		copy_se(&r, &w);
-+		copy_se(&r, &w);
-+		uint32_t cycle = copy_ue(&r, &w);
-+		if(cycle > 255)
-+			goto fail;
-+		for(uint32_t i = 0; i < cycle; i++)
-+			copy_se(&r, &w);
-+	}
-+	uint32_t num_ref_frames = br_ue(&r);
-+	if(num_ref_frames <= max_refs)
-+		goto fail; // already within the limit: nothing to change
-+	num_ref_frames = max_refs;
-+	bw_ue(&w, num_ref_frames);
-+	copy_u(&r, &w, 1); // gaps_in_frame_num_value_allowed_flag
-+	copy_ue(&r, &w);
-+	copy_ue(&r, &w);
-+	if(!copy_u(&r, &w, 1)) // frame_mbs_only_flag
-+		copy_u(&r, &w, 1);
-+	copy_u(&r, &w, 1); // direct_8x8_inference_flag
-+	if(copy_u(&r, &w, 1)) // frame_cropping_flag
-+	{
-+		copy_ue(&r, &w);
-+		copy_ue(&r, &w);
-+		copy_ue(&r, &w);
-+		copy_ue(&r, &w);
-+	}
-+	uint32_t vui = br_u(&r, 1);
-+	bw_u(&w, 1, 1);
-+	if(vui)
-+	{
-+		if(copy_u(&r, &w, 1)) // aspect_ratio_info_present_flag
-+		{
-+			if(copy_u(&r, &w, 8) == 255)
-+				copy_u(&r, &w, 32);
-+		}
-+		if(copy_u(&r, &w, 1)) // overscan_info_present_flag
-+			copy_u(&r, &w, 1);
-+		if(copy_u(&r, &w, 1)) // video_signal_type_present_flag
-+		{
-+			copy_u(&r, &w, 4);
-+			if(copy_u(&r, &w, 1))
-+				copy_u(&r, &w, 24);
-+		}
-+		if(copy_u(&r, &w, 1)) // chroma_loc_info_present_flag
-+		{
-+			copy_ue(&r, &w);
-+			copy_ue(&r, &w);
-+		}
-+		if(copy_u(&r, &w, 1)) // timing_info_present_flag
-+		{
-+			copy_u(&r, &w, 32);
-+			copy_u(&r, &w, 32);
-+			copy_u(&r, &w, 1);
-+		}
-+		if(copy_u(&r, &w, 1) || copy_u(&r, &w, 1)) // nal / vcl HRD parameters
-+			goto fail;
-+		copy_u(&r, &w, 1); // pic_struct_present_flag
-+		if(copy_u(&r, &w, 1)) // bitstream_restriction_flag: keep it, capping max_dec_frame_buffering
-+		{
-+			copy_u(&r, &w, 1); // motion_vectors_over_pic_boundaries_flag
-+			copy_ue(&r, &w);   // max_bytes_per_pic_denom
-+			copy_ue(&r, &w);   // max_bits_per_mb_denom
-+			copy_ue(&r, &w);   // log2_max_mv_length_horizontal
-+			copy_ue(&r, &w);   // log2_max_mv_length_vertical
-+			uint32_t reorder = br_ue(&r);
-+			bw_ue(&w, reorder < num_ref_frames ? reorder : num_ref_frames);
-+			uint32_t buffering = br_ue(&r);
-+			bw_ue(&w, buffering < num_ref_frames ? buffering : num_ref_frames);
-+			goto trailing;
-+		}
-+	}
-+	else
-+	{
-+		for(int i = 0; i < 8; i++) // aspect, overscan, signal, chroma loc, timing, NAL HRD, VCL HRD, pic_struct: all off
-+			bw_u(&w, 1, 0);
-+	}
-+	if(r.error)
-+		goto fail;
-+	// bitstream_restriction: no reordering, buffering limited to the capped reference count.
-+	bw_u(&w, 1, 1);
-+	bw_u(&w, 1, 1);  // motion_vectors_over_pic_boundaries_flag
-+	bw_ue(&w, 2);    // max_bytes_per_pic_denom
-+	bw_ue(&w, 1);    // max_bits_per_mb_denom
-+	bw_ue(&w, 16);   // log2_max_mv_length_horizontal
-+	bw_ue(&w, 16);   // log2_max_mv_length_vertical
-+	bw_ue(&w, 0);    // max_num_reorder_frames
-+	bw_ue(&w, num_ref_frames); // max_dec_frame_buffering
-+trailing:
-+	if(r.error)
-+		goto fail;
-+	bw_u(&w, 1, 1);  // rbsp_stop_one_bit
-+	while(w.pos & 7)
-+		bw_u(&w, 1, 0);
-+	if(w.error)
-+		goto fail;
-+
-+	size_t plain = w.pos >> 3;
-+	*out = malloc(plain * 3 / 2 + 1);
-+	if(!*out)
-+		goto fail;
-+	size_t escaped = escape(written, plain, *out);
-+	free(rbsp);
-+	free(written);
-+	return escaped;
-+
-+fail:
-+	free(rbsp);
-+	free(written);
-+	return 0;
-+}
-+
-+static size_t next_start_code(const uint8_t *buf, size_t size, size_t from)
-+{
-+	for(size_t i = from; i + 2 < size; i++)
-+		if(buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1)
-+			return (i > 0 && buf[i - 1] == 0) ? i - 1 : i;
-+	return size;
-+}
-+
-+bool gpsx_h264_fix_sps(const uint8_t *buf, size_t size, uint32_t max_refs, uint8_t **out, size_t *out_size)
-+{
-+	size_t scan = size < 512 ? size : 512;
-+	for(size_t i = 0; i + 3 < scan; i++)
-+	{
-+		if(buf[i] != 0 || buf[i + 1] != 0 || buf[i + 2] != 1 || (buf[i + 3] & 0x1f) != 7)
-+			continue;
-+		size_t nal = i + 3;
-+		size_t end = next_start_code(buf, size, nal);
-+		uint8_t *sps = NULL;
-+		size_t sps_size = rewrite_sps(buf + nal, end - nal, max_refs, &sps);
-+		if(!sps_size)
-+			return false;
-+		*out_size = nal + sps_size + (size - end);
-+		*out = malloc(*out_size);
-+		if(!*out)
-+		{
-+			free(sps);
-+			return false;
-+		}
-+		memcpy(*out, buf, nal);
-+		memcpy(*out + nal, sps, sps_size);
-+		memcpy(*out + nal + sps_size, buf + end, size - end);
-+		free(sps);
-+		return true;
-+	}
-+	return false;
-+}
-diff --git a/android/app/src/main/cpp/h264-sps-fix.h b/android/app/src/main/cpp/h264-sps-fix.h
-new file mode 100644
-index 0000000..f0a7b63
---- /dev/null
-+++ b/android/app/src/main/cpp/h264-sps-fix.h
-@@ -0,0 +1,19 @@
-+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
-+
-+#ifndef GPSX_H264_SPS_FIX_H
-+#define GPSX_H264_SPS_FIX_H
-+
-+#include <stdbool.h>
-+#include <stddef.h>
-+#include <stdint.h>
-+
-+/**
-+ * GPSx: finds the first H.264 SPS in the first 512 bytes of an Annex B sample and, when it uses
-+ * more than max_refs reference frames, rewrites it with num_ref_frames capped to max_refs and the
-+ * VUI bitstream restriction's max_dec_frame_buffering (and max_num_reorder_frames) capped likewise,
-+ * adding the restriction when absent. Returns true with a new malloc'd sample in *out; false
-+ * leaves the sample unchanged (no SPS, nothing to cap or unsupported syntax).
-+ */
-+bool gpsx_h264_fix_sps(const uint8_t *buf, size_t size, uint32_t max_refs, uint8_t **out, size_t *out_size);
-+
-+#endif
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
 index a256204..f868d13 100644
 --- a/android/app/src/main/cpp/video-decoder.c
@@ -1568,7 +1211,7 @@ index 2ef782c..8ece59f 100644
  	if(takion_handshake(takion, &seq_num_remote_initial) != CHIAKI_ERR_SUCCESS)
  		goto beach;
 diff --git a/lib/src/videoreceiver.c b/lib/src/videoreceiver.c
-index a1c68db..8891f0e 100644
+index a1c68db..6ef2f9b 100644
 --- a/lib/src/videoreceiver.c
 +++ b/lib/src/videoreceiver.c
 @@ -5,6 +5,22 @@
@@ -1610,11 +1253,28 @@ index a1c68db..8891f0e 100644
  		return CHIAKI_ERR_SUCCESS;
  	}
  
-@@ -209,6 +227,7 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
+@@ -208,10 +226,20 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
+ 				if(!recovered)
  				{
  					video_receiver->frames_lost++;
- 					CHIAKI_LOGW(video_receiver->log, "Missing reference frame %d for decoding frame %d", (int)ref_frame_index, (int)video_receiver->frame_index_cur);
+-					CHIAKI_LOGW(video_receiver->log, "Missing reference frame %d for decoding frame %d", (int)ref_frame_index, (int)video_receiver->frame_index_cur);
+-					video_receiver->frame_index_prev = video_receiver->frame_index_cur;
+-					video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
+-					return CHIAKI_ERR_SUCCESS;
 +					request_idr_if_cloud(video_receiver);
- 					video_receiver->frame_index_prev = video_receiver->frame_index_cur;
- 					video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
- 					return CHIAKI_ERR_SUCCESS;
++					// GPSx: cloud sessions decode the frame anyway. Dropping it waits for an IDR, and PS4 cloud
++					// servers never send one, so every later frame was dropped too. FACT (GP520 live log,
++					// 0.2.14): 331 FEC failures in 2.5 min led to 2520 dropped frames (stutter with the
++					// software decoder, a frozen picture with the hardware one). A decoder given the frame
++					// conceals the missing reference and the picture heals as later frames refresh it.
++					if(!chiaki_service_type_is_cloud(video_receiver->session->service_type))
++					{
++						CHIAKI_LOGW(video_receiver->log, "Missing reference frame %d for decoding frame %d", (int)ref_frame_index, (int)video_receiver->frame_index_cur);
++						video_receiver->frame_index_prev = video_receiver->frame_index_cur;
++						video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
++						return CHIAKI_ERR_SUCCESS;
++					}
++					CHIAKI_LOGW(video_receiver->log, "Missing reference frame %d for decoding frame %d, decoding it anyway (cloud)", (int)ref_frame_index, (int)video_receiver->frame_index_cur);
+ 				}
+ 			}
+ 		}
