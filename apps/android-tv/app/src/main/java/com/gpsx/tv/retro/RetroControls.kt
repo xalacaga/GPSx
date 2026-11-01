@@ -66,6 +66,17 @@ object RetroControls {
                 )
         }
 
+    private val KEYBOARD_GENRES =
+        listOf("strat", "gestion", "management", "aventure", "adventure", "simulation", "rpg", "rôle", "role", "wargame", "éducatif", "educational", "point")
+
+    /**
+     * Whether [game] is probably played with keyboard and mouse: on Amiga, genres from a scraped
+     * `gamelist.xml` (strategy, management, adventure, simulation, role-playing…). Without genres
+     * nothing can be inferred, and the owner's own mark is the only source.
+     */
+    fun keyboardLikely(game: RetroGame): Boolean =
+        game.system == RetroSystem.AMIGA && game.genre.lowercase().let { genre -> KEYBOARD_GENRES.any { it in genre } }
+
     /** Shown under every layout: leaving a game works the same as in Remote Play. */
     const val QUIT_HINT = "L1 + R1 + Options maintenus 1 s, ou Retour sur la télécommande : quitter le jeu"
 }

@@ -78,12 +78,17 @@ object ShareScanner {
         }
         if (system == RetroSystem.AMIGA) {
             return AmigaReleases.group(files.map { it.first }).map { release ->
+                // A scraper lists either the first disk or every disk; any of them identifies the game.
+                val info = release.disks.firstNotNullOfOrNull { described[it.joinToString("/").lowercase(Locale.ROOT)] }
                 RetroGame(
                     system = system,
                     path = root + release.disks.first(),
-                    title = release.title,
-                    year = release.year,
-                    genre = release.publisher,
+                    title = info?.name?.takeIf(String::isNotBlank) ?: release.title,
+                    year = info?.year ?: release.year,
+                    genre = info?.genre?.takeIf(String::isNotBlank) ?: release.publisher,
+                    players = info?.players.orEmpty(),
+                    description = info?.description.orEmpty(),
+                    image = info?.image?.takeIf(String::isNotBlank)?.let { root + it.split('/') }.orEmpty(),
                     disks = if (release.disks.size > 1) release.disks.map { root + it } else emptyList(),
                 )
             }

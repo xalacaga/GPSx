@@ -30,6 +30,8 @@ data class RetroSnapshot(
     val scanning: Boolean = false,
     val detail: String = "",
     val shelves: List<RetroShelf> = emptyList(),
+    /** Games the owner marked as needing the keyboard, by [RetroLibrary.compatKey]. */
+    val keyboardGames: Set<String> = emptySet(),
     /** Compatibility found on this TV, by [RetroLibrary.compatKey]: [COMPAT_OK] or "ko:<reason>". */
     val compatibility: Map<String, String> = emptyMap(),
 )
@@ -53,6 +55,7 @@ class RetroLibrary(
 ) : AutoCloseable {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     private val compatPreferences = context.applicationContext.getSharedPreferences(COMPAT_PREFERENCES, Context.MODE_PRIVATE)
+    private val keyboardPreferences = context.applicationContext.getSharedPreferences(KEYBOARD_PREFERENCES, Context.MODE_PRIVATE)
     private val passwordStore = EncryptedSecretStore(context.applicationContext, SECRET_PREFERENCES, SECRET_KEY_ALIAS) { it.length in 1..256 }
     private val coverDir = File(context.applicationContext.cacheDir, "retro-covers")
     private val main = Handler(Looper.getMainLooper())
@@ -69,6 +72,7 @@ class RetroLibrary(
             shareUrl = preferences.getString(KEY_SHARE, null) ?: ShareAddress.DEFAULT,
             user = preferences.getString(KEY_USER, null).orEmpty(),
             compatibility = loadCompatibility(),
+            keyboardGames = keyboardPreferences.all.keys.toSet(),
         )
     @Volatile private var source: RomSource = createSource(snapshot.shareUrl, snapshot.user, passwordStore.load())
 
@@ -166,6 +170,13 @@ class RetroLibrary(
     }
 
     fun markPending(game: RetroGame) = markCompat(game, COMPAT_PENDING)
+
+    /** The owner's mark for a game that needs the keyboard (shown with a ⌨ badge). */
+    fun setKeyboardGame(game: RetroGame, keyboard: Boolean) {
+        val key = compatKey(game)
+        keyboardPreferences.edit().apply { if (keyboard) putBoolean(key, true) else remove(key) }.apply()
+        update { copy(keyboardGames = if (keyboard) keyboardGames + key else keyboardGames - key) }
+    }
 
     private fun loadCompatibility(): Map<String, String> =
         compatPreferences.all.mapNotNull { (key, value) ->
@@ -293,6 +304,7 @@ class RetroLibrary(
         private const val KEY_SHARE = "share_url"
         private const val KEY_USER = "share_user"
         private const val COMPAT_PREFERENCES = "gpsx_retro_compat"
+        private const val KEYBOARD_PREFERENCES = "gpsx_retro_keyboard"
         private const val SECRET_PREFERENCES = "gpsx_retro_account"
         private const val SECRET_KEY_ALIAS = "gpsx_retro_smb_password_v1"
         private const val ART_CACHE_BYTES = 24 * 1024 * 1024

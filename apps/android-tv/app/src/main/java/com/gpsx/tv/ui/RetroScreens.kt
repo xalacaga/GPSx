@@ -180,7 +180,7 @@ internal fun RetroGamesScreen(
     ScreenFrame("", "Jeux", summary) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
-                RetroGameSheet(game, library) { onPlay(game) }
+                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames) { onPlay(game) }
                 return@Column
             }
             if (incompatible > 0) {
@@ -197,7 +197,13 @@ internal fun RetroGamesScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { item ->
                         val requester = requesters.getOrPut(item) { FocusRequester() }
-                        RetroGameCard(item, library, retro.compatibility[RetroLibrary.compatKey(item)], Modifier.weight(1f).focusRequester(requester)) {
+                        RetroGameCard(
+                            item,
+                            library,
+                            retro.compatibility[RetroLibrary.compatKey(item)],
+                            keyboard = RetroLibrary.compatKey(item) in retro.keyboardGames,
+                            Modifier.weight(1f).focusRequester(requester),
+                        ) {
                             lastSelected = item
                             selected = item
                         }
@@ -215,7 +221,7 @@ internal fun RetroGamesScreen(
 }
 
 @Composable
-private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String?, modifier: Modifier, onClick: () -> Unit) {
+private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String?, keyboard: Boolean, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier.height(96.dp).clip(RoundedCornerShape(3.dp))
@@ -238,16 +244,22 @@ private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String
         Column {
             Text(game.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(game.facts(), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            when {
-                compat == COMPAT_OK -> Text("✓ Compatible", color = Go, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                compat?.startsWith("ko") == true -> Text("✗ Incompatible", color = Danger, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                when {
+                    compat == COMPAT_OK -> Text("✓ Compatible", color = Go, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    compat?.startsWith("ko") == true -> Text("✗ Incompatible", color = Danger, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+                when {
+                    keyboard -> Text("⌨ Clavier", color = Amber, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    RetroControls.keyboardLikely(game) -> Text("⌨ Clavier probable", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, onPlay: () -> Unit) {
+private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, keyboard: Boolean, onPlay: () -> Unit) {
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(game) { runCatching { playFocus.requestFocus() } }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -267,6 +279,15 @@ private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, onPlay: () ->
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FocusButton("▶ Jouer", primary = true, modifier = Modifier.focusRequester(playFocus).testTag("retro-play"), onClick = onPlay)
+                // The owner marks keyboard games after trying them; nothing in TOSEC names tells.
+                FocusButton(if (keyboard) "⌨ Jeu au clavier : oui" else "⌨ Marquer : jeu au clavier", modifier = Modifier.testTag("retro-keyboard")) {
+                    library.setKeyboardGame(game, !keyboard)
+                }
+            }
+            when {
+                keyboard -> Text("Jeu au clavier : Create ouvre le clavier virtuel ; Entrée, Espace, F1 et F2 sont sur la manette.", color = Amber, fontSize = 12.sp)
+                RetroControls.keyboardLikely(game) ->
+                    Text("Genre souvent joué au clavier et à la souris : Create ouvre le clavier virtuel, le stick droit sert de souris.", color = Muted, fontSize = 12.sp)
             }
             if (!game.system.playable) Text("Pas encore d’émulateur pour la ${game.system.label}.", color = Amber, fontSize = 12.sp)
             RetroControlsPanel(game.system, Modifier.fillMaxWidth())
