@@ -127,12 +127,12 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         }
 
     /**
-     * PS4 cloud streams decoded by Android's software H.264 decoder (on by default). HYPOTHESIS from
-     * the GP520 live logs: its hardware decoder froze on the PS4 start screen after a lost reference,
-     * while the emulator's software decoder recovered. Applies to the next session.
+     * PS4 cloud streams decoded by Android's software H.264 decoder (off by default since hardware
+     * variant 3 works on the GP520; the software path loaded its CPU, with lost frames and lag).
+     * Applies to the next session.
      */
     var softwareDecoderForPs4Cloud: Boolean
-        get() = settings?.getBoolean("software_decoder_ps4_cloud", true) ?: true
+        get() = settings?.getBoolean("software_decoder_ps4_cloud", false) ?: false
         set(value) {
             settings?.edit()?.putBoolean("software_decoder_ps4_cloud", value)?.apply()
         }
@@ -140,10 +140,13 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
     /**
      * Hardware H.264 workaround tried on PS4 cloud streams when the software decoder is off:
      * 1 = 4 references and frame_num gaps allowed, 2 = Moonlight style (1 reference, parameter sets as
-     * codec config), 3 = 2 with real presentation times. Test switch for the GP520 frozen picture.
+     * codec config), 3 = 2 with real presentation times (default). FACT (GP520 live log, 0.2.18): with
+     * variants 1 and 2 OMX.MS.AVC.Decoder produced new frames continuously (presentation times 4..1849,
+     * ~56 fps) yet the screen kept the first picture; with presentation times 1/60 s apart (variant 3)
+     * the game showed and played well. The MStar display path schedules frames by presentation time.
      */
     var hardwareH264Variant: Int
-        get() = (settings?.getInt("hardware_h264_variant", 1) ?: 1).coerceIn(1, 3)
+        get() = (settings?.getInt("hardware_h264_variant", 3) ?: 3).coerceIn(1, 3)
         set(value) {
             settings?.edit()?.putInt("hardware_h264_variant", value.coerceIn(1, 3))?.apply()
         }

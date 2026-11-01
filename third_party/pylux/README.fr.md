@@ -27,7 +27,9 @@ tout en les déclarant impossibles) et annoncer au plus 4 images de référence 
 la référence est perdue est quand même transmise au décodeur au lieu d'être jetée ; un sélecteur de variante
 H.264 matérielle (1 : 4 références, 2 : méthode Moonlight avec 1 référence et paramètres
 en codec config, 3 : la 2 avec des horodatages de 1/60 s) et un journal des sorties du
-décodeur aident à diagnostiquer le décodeur matériel de la GP520.
+décodeur ; la variante 3 est la valeur par défaut de GPSx : l'affichage MStar de la GP520
+ne montrait que la première image H.264 tant que les horodatages n'étaient pas espacés de
+1/60 s.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et
