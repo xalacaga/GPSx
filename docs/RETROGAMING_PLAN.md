@@ -75,7 +75,7 @@ system with an optional `gamelist.xml`.
 
 ## Architecture
 
-The split follows `AGENTS.md`: Kotlin owns UI, lifecycle, settings, network file
+The split follows the project's architecture rules: Kotlin owns UI, lifecycle, settings, network file
 access and input capture; the native adapter owns the core, its thread, video and
 audio. Frames and samples never cross JNI.
 

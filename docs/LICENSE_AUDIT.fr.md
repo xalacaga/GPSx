@@ -76,7 +76,7 @@ Conséquences (lecture d'ingénierie, pas un avis juridique) :
 Signalements d'ingénierie uniquement, pas un avis juridique ; pas encore évalués :
 
 - Marques Sony (PlayStation, PS5, DualSense, Remote Play) dans le nom de l'application, l'icône, la fiche du store et l'UI. Utiliser uniquement une formulation descriptive de compatibilité, en attendant une revue.
-- Conditions d'utilisation du PlayStation Network, et flux OAuth utilisé pour obtenir l'identifiant de compte PSN nécessaire à l'enregistrement. Ce flux manipule des URL de redirection et des jetons contenant des secrets (voir `AGENTS.md`).
+- Conditions d'utilisation du PlayStation Network, et flux OAuth utilisé pour obtenir l'identifiant de compte PSN nécessaire à l'enregistrement. Ce flux manipule des URL de redirection et des jetons contenant des secrets, jamais journalisés.
 - Politique de distribution des stores pour un client Remote Play non officiel.
 
 ## Candidats tiers compatibles (pas encore adoptés)

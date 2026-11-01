@@ -38,9 +38,6 @@ Use explicit focus groups/requesters and test every screen by D-pad and DualSens
 The first emulator-only implementation candidate is documented in
 `ANDROID_NATIVE_ADAPTER.md`. It uses an Android-only C++ adapter built by the
 pinned NDK; the portable Rust crates remain free of JNI/NDK dependencies.
-The next input-boundary candidate is specified in
-`ANDROID_INPUT_ADAPTER_PLAN.md`; it requires an independent boundary review
-before JNI implementation.
 
 Recommended operations: create/destroy engine, start/stop discovery, register, connect/disconnect, set/clear Surface generation, submit raw input event batches, update audio route, and snapshot batched metrics/events.
 

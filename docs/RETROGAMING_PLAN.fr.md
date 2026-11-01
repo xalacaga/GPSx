@@ -81,7 +81,7 @@ par système, avec un `gamelist.xml` facultatif.
 
 ## Architecture
 
-Le découpage suit `AGENTS.fr.md` : Kotlin gère l'interface, le cycle de vie, les
+Le découpage suit les règles d'architecture du projet : Kotlin gère l'interface, le cycle de vie, les
 réglages, l'accès réseau aux fichiers et la capture des entrées ; l'adaptateur
 natif gère le core, son thread, la vidéo et l'audio. Images et échantillons ne
 traversent jamais JNI.

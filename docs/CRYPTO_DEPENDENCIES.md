@@ -9,7 +9,7 @@ received independent `GO`. The session dependency graph is integrated.
 
 The registration-only direct subset proposed on 2026-10-26 is `aes`,
 `cfb-mode`, `hmac`, `sha2`, and `zeroize`. It was authorized by the independent
-remediation review of `REGISTRATION_CRYPTO_PLAN.md`. `subtle` is
+remediation review of the registration cryptography plan. `subtle` is
 present transitively through `digest/mac`; `secrecy`, `getrandom`,
 AES-GCM/GHASH, and secp256k1 ECDH are not part of this narrow slice.
 

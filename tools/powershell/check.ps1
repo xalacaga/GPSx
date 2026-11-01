@@ -283,7 +283,7 @@ try {
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('audit', '--file', 'fuzz/Cargo.lock')
     Invoke-ExternalChecked -FilePath $cargoPath -Arguments @('deny', '--manifest-path', 'fuzz/Cargo.toml', '--locked', 'check')
 
-    # The portable core must never depend on platform crates (AGENTS.md).
+    # The portable core must never depend on platform crates (project architecture rule).
     $corePackages = $coreCrates
     $treeArguments = @('tree', '--edges', 'normal,build', '--prefix', 'none') + ($corePackages | ForEach-Object { '-p', $_ })
     $tree = & $cargoPath @treeArguments

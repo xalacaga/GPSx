@@ -56,5 +56,5 @@ GPSx comme source d’applications inconnues. La politique réelle du GP520 rest
 - Aucun code téléchargé n’est exécuté avant vérification et installation par Android.
 - Rétrogradations et changements de canal exigent une procédure de récupération explicite.
 
-Le stockage d’authentification et la chaîne de mise à jour exigent une contre-revue
-sécurité Claude Code supplémentaire avant implémentation, selon `CROSS_REVIEW.fr.md`.
+Le stockage d’authentification et la chaîne de mise à jour exigent une revue de
+sécurité supplémentaire avant toute modification.

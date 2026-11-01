@@ -74,7 +74,7 @@ Consequences (engineering reading, not legal advice):
 Engineering flags only, not legal advice; not yet assessed:
 
 - Sony trademarks (PlayStation, PS5, DualSense, Remote Play) in the app name, icon, store listing, and UI. Use descriptive compatibility wording only, pending review.
-- PlayStation Network terms of service, and the OAuth flow used to obtain the PSN account ID for registration. That flow handles secret-bearing redirect URLs and tokens (see `AGENTS.md`).
+- PlayStation Network terms of service, and the OAuth flow used to obtain the PSN account ID for registration. That flow handles secret-bearing redirect URLs and tokens, which are never logged.
 - Store distribution policy for an unofficial Remote Play client.
 
 ## Compatible third-party candidates (not yet adopted)

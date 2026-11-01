@@ -56,5 +56,5 @@ hardware gate opens.
 - Updates never execute downloaded code before Android verifies and installs it.
 - Downgrades and cross-channel installs require an explicit recovery procedure.
 
-Authentication storage and the updater supply chain require an extra Claude Code
-security review before implementation, as required by `CROSS_REVIEW.md`.
+Authentication storage and the updater supply chain require an extra security
+review before any change.

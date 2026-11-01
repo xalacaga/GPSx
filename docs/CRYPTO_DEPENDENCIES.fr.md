@@ -10,7 +10,7 @@ dépendances de session est intégré.
 
 Le sous-ensemble direct réservé à l’enregistrement proposé le 2026-10-26 est
 `aes`, `cfb-mode`, `hmac`, `sha2` et `zeroize`. Il a été autorisé par le GO de
-la contre-revue de `REGISTRATION_CRYPTO_PLAN.fr.md`. `subtle` est présent
+la contre-revue du plan de cryptographie d’enregistrement. `subtle` est présent
 transitivement via `digest/mac` ; `secrecy`, `getrandom`, AES-GCM/GHASH et ECDH
 secp256k1 ne font pas partie de ce lot étroit.
 

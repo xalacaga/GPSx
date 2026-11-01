@@ -34,3 +34,12 @@
 
 # Local screenshots and scratch output.
 /tmp/
+
+# AI assistant files and generated knowledge graph: kept locally, not in the repository (owner decision 2026-11-01)
+CLAUDE.md
+CLAUDE.fr.md
+AGENTS.md
+AGENTS.fr.md
+.codex/
+.claude/
+graphify-out/
