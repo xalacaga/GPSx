@@ -355,15 +355,15 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/AppState.kt": {
-    "mtime": 1793435771.8521802,
-    "seen": 1793436328.5473866,
-    "ast_hash": "ac734ce9e2e40878ac3bc66e8314c7f5",
+    "mtime": 1793557054.4021883,
+    "seen": 1793557324.4503188,
+    "ast_hash": "7b2b6f1f506f17082fdb27bc6e57e389",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/GpsxApp.kt": {
-    "mtime": 1793555146.5284142,
-    "seen": 1793555339.7225378,
-    "ast_hash": "25386fd26065f709b3642dccb92a1ea9",
+    "mtime": 1793557169.0474823,
+    "seen": 1793557324.4503248,
+    "ast_hash": "1966d4252abdc431450012a1401c926f",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/Theme.kt": {
@@ -373,9 +373,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/ui/AppStateTest.kt": {
-    "mtime": 1793308120.7270954,
-    "seen": 1793436328.5474002,
-    "ast_hash": "be10a2452c001d498eb543bacea0bfce",
+    "mtime": 1793557054.4031909,
+    "seen": 1793557324.45039,
+    "ast_hash": "6ac8e41bed32bb8d695c55c5fea30acf",
     "semantic_hash": ""
   },
   "apps/android-tv/build.gradle.kts": {
@@ -565,9 +565,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/RemoteNavigationTest.kt": {
-    "mtime": 1793526187.2544627,
-    "seen": 1793551270.2655568,
-    "ast_hash": "8ffa0d06c880d3d80eb282955fdd87b3",
+    "mtime": 1793557054.4099505,
+    "seen": 1793557324.4501803,
+    "ast_hash": "928a8ae34651da20c4e0477b0fa64b1c",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/androidTest/java/com/gpsx/tv/ui/LargeTextLegalTest.kt": {
@@ -1375,9 +1375,9 @@
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/main/java/com/gpsx/tv/ui/RetroScreens.kt": {
-    "mtime": 1793555250.6844764,
-    "seen": 1793555339.7225437,
-    "ast_hash": "c2f96ed06090d4b81dae987388f38d16",
+    "mtime": 1793557156.904819,
+    "seen": 1793557324.4503336,
+    "ast_hash": "cddc66af8bb2a539607a2c26dab879e1",
     "semantic_hash": ""
   },
   "apps/android-tv/app/src/test/java/com/gpsx/tv/diagnostics/LiveLogServerTest.kt": {
