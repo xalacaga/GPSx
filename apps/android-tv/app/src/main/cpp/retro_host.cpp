@@ -164,6 +164,8 @@ struct Host {
     std::string game_path;
     // Core options chosen by GPSx (key → value); other options keep the core's defaults.
     std::map<std::string, std::string> options;
+    // Default of every option the core declared (first value of "Description; v1|v2").
+    std::map<std::string, std::string> option_defaults;
     // First error the core logged while loading the game (arcade cores report missing ROMs this way).
     bool loading = false;
     std::string load_error;
@@ -256,15 +258,27 @@ bool environment(unsigned command, void* data) {
         case kEnvGetVariable: {
             auto* variable = static_cast<Variable*>(data);
             if (variable == nullptr || variable->key == nullptr) return false;
-            const auto found = host->options.find(variable->key);
-            if (found == host->options.end()) return false;  // the core keeps its default
+            // GPSx's choice first, else the default the core declared: cores read option values
+            // through this call and some leave settings empty when it answers nothing (PUAE: model
+            // and Kickstart stayed "").
+            auto found = host->options.find(variable->key);
+            if (found == host->options.end()) {
+                found = host->option_defaults.find(variable->key);
+                if (found == host->option_defaults.end()) return false;
+            }
             variable->value = found->second.c_str();
             return true;
         }
         case kEnvSetVariables: {
             // Option list as "Description; value1|value2"; logged so GPSx settings can name them.
             for (auto* variable = static_cast<const Variable*>(data); variable != nullptr && variable->key != nullptr; ++variable) {
-                __android_log_print(ANDROID_LOG_DEBUG, kTag, "core option %s = %.200s", variable->key, variable->value != nullptr ? variable->value : "");
+                const std::string text = variable->value != nullptr ? variable->value : "";
+                __android_log_print(ANDROID_LOG_DEBUG, kTag, "core option %s = %.200s", variable->key, text.c_str());
+                const size_t start = text.find("; ");
+                if (start != std::string::npos) {
+                    const std::string values = text.substr(start + 2);
+                    host->option_defaults[variable->key] = values.substr(0, values.find('|'));
+                }
             }
             return true;
         }

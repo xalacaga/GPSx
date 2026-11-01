@@ -44,11 +44,17 @@ enum class RetroSystem(
     ;
 
     /**
-     * Core options GPSx sets for this system, as "key=value" lines. Amiga: each disk of a game goes
-     * in its own drive (DF0–DF3), so most multi-disk games run without swapping disks.
+     * Core options GPSx sets for this system, as "key=value" lines; other options take the core's
+     * declared defaults. SNES: a 4:3 picture (the core's "auto" widens PAL games). Amiga: each disk
+     * of a game goes in its own drive (DF0–DF3), so most multi-disk games run without swapping disks.
      */
     val coreOptions: String
-        get() = if (this == AMIGA) "puae_floppy_multidrive=enabled\n" else ""
+        get() =
+            when (this) {
+                SNES -> "snes9x_2010_aspect=4:3\n"
+                AMIGA -> "puae_floppy_multidrive=enabled\n"
+                else -> ""
+            }
 
     /** Folder of the system on the share holding its BIOS files, copied to the core's system folder. */
     val biosFolder: String? get() = if (this == AMIGA) "bios" else null

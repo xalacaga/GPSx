@@ -55,6 +55,7 @@ class AmigaReleasesTest {
         assertEquals(RetroSystem.AMIGA, RetroSystem.fromFolder("amiga"))
         assertEquals("puae_floppy_multidrive=enabled\n", RetroSystem.AMIGA.coreOptions)
         assertEquals("bios", RetroSystem.AMIGA.biosFolder)
-        assertEquals("", RetroSystem.SNES.coreOptions)
+        assertEquals("snes9x_2010_aspect=4:3\n", RetroSystem.SNES.coreOptions)
+        assertEquals("", RetroSystem.NEOGEO.coreOptions)
     }
 }
