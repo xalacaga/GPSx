@@ -7,6 +7,8 @@
 - Les gates de contre-revue sont supprimés ; voir `CROSS_REVIEW.fr.md`.
 - Nouveau périmètre : streaming de jeux cloud PlayStation Plus en plus du Remote
   Play console, à partir du moteur AGPL Pylux. Voir `CLOUD_GAMING_PLAN.fr.md`.
+- Nouveau périmètre (01/11/2026) : une section Rétro qui héberge des cores
+  libretro, avec les jeux du NAS du propriétaire. Voir `RETROGAMING_PLAN.fr.md`.
 - Le gate matériel GP520 de `OFFLINE_FIRST.fr.md` est inchangé.
 
 Les sections ci-dessous sont le plan d'origine de la phase 0, gardé pour

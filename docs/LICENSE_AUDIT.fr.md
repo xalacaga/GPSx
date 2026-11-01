@@ -90,6 +90,16 @@ Signalements d'ingénierie uniquement, pas un avis juridique ; pas encore évalu
 
 Chacun doit encore figurer dans le registre de provenance et le SBOM avant adoption.
 
+## Bibliothèques Android adoptées (section rétro)
+
+| Composant | Licence | Usage |
+|---|---|---|
+| jcifs-ng 2.1.10 (`eu.agno3.jcifs:jcifs-ng`) | LGPL-2.1 | Lit les jeux du propriétaire sur un partage SMB ; bibliothèque JVM liée dynamiquement, compatible AGPL-3.0 |
+| Bouncy Castle `bcprov` (apporté par jcifs-ng) | MIT | Primitives cryptographiques NTLM/SMB internes à jcifs-ng |
+| API SLF4J (apportée par jcifs-ng) | MIT | Façade de journalisation, aucune implémentation embarquée |
+
+Les cores d'émulation libretro ne sont **pas** distribués avec GPSx : l'application les télécharge à la demande du propriétaire (voir `RETROGAMING_PLAN.fr.md`).
+
 ## Dépendances
 
 Le manifeste bureau de chiaki-ng inclut SDL2, protobuf, OpenSSL, json-c, libevent, miniupnpc, Opus, lcms, SpeexDSP et Vulkan. Chaque dépendance transitive épinglée nécessite son propre enregistrement de licence en cas de réutilisation. [Manifeste vcpkg chiaki-ng](https://github.com/chiaki-ng/chiaki-ng/blob/main/vcpkg.json)

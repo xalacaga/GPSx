@@ -7,6 +7,8 @@
 - Cross-review gates are retired; see `CROSS_REVIEW.md`.
 - New scope: PlayStation Plus cloud game streaming alongside console Remote
   Play, based on the AGPL Pylux engine. See `CLOUD_GAMING_PLAN.md`.
+- New scope (2026-11-01): a Retro section hosting libretro cores, with games
+  from the owner's NAS. See `RETROGAMING_PLAN.md`.
 - The physical GP520 gate in `OFFLINE_FIRST.md` is unchanged.
 
 The sections below are the original Phase 0 plan, kept for history.

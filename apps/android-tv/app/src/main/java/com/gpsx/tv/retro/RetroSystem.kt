@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
+package com.gpsx.tv.retro
+
+import java.util.Locale
+
+/**
+ * A system the Retro section knows, recognised from an EmulationStation-style folder name
+ * (Recalbox/Batocera: one folder per system). [core] is the libretro core GPSx installs for it;
+ * null means the system is listed but cannot be played yet. See docs/RETROGAMING_PLAN.md.
+ */
+enum class RetroSystem(
+    val label: String,
+    val core: String?,
+    val extensions: Set<String>,
+    /** Normalised folder-name prefixes (lowercase, letters and digits only). */
+    private val folderPrefixes: List<String>,
+    /** Arcade sets are loaded as zip files by the core; console games are unzipped first. */
+    val keepsZip: Boolean = false,
+    /** Sets that are BIOS files, not games, for this system. */
+    val biosSets: Set<String> = emptySet(),
+    /** libretro thumbnail set whose box art is named after No-Intro file names; null when none fits. */
+    val thumbnailSet: String? = null,
+) {
+    SNES("Super Nintendo", "snes9x2010", setOf("sfc", "smc", "fig", "swc", "zip"), listOf("snes", "sfc", "supernintendo", "superfamicom"), thumbnailSet = "Nintendo - Super Nintendo Entertainment System"),
+    NES("Nintendo NES", null, setOf("nes", "zip"), listOf("nes", "famicom", "nintendoentertainment"), thumbnailSet = "Nintendo - Nintendo Entertainment System"),
+    MEGADRIVE("Mega Drive", null, setOf("md", "gen", "bin", "smd", "zip"), listOf("megadrive", "genesis", "md"), thumbnailSet = "Sega - Mega Drive - Genesis"),
+    GBA("Game Boy Advance", null, setOf("gba", "zip"), listOf("gba", "gameboyadvance"), thumbnailSet = "Nintendo - Game Boy Advance"),
+    GBC("Game Boy Color", null, setOf("gbc", "zip"), listOf("gbc", "gameboycolor"), thumbnailSet = "Nintendo - Game Boy Color"),
+    GB("Game Boy", null, setOf("gb", "zip"), listOf("gb", "gameboy"), thumbnailSet = "Nintendo - Game Boy"),
+    NEOGEO("Neo Geo", "fbneo", setOf("zip"), listOf("neogeo"), keepsZip = true, biosSets = setOf("neogeo")),
+    ARCADE(
+        "Arcade",
+        "fbneo",
+        setOf("zip"),
+        listOf("mame", "arcade", "fbneo", "fba", "finalburn"),
+        keepsZip = true,
+        biosSets = setOf("neogeo", "pgm", "decocass", "isgsm", "skns", "nmk004", "ym2608", "cchip", "qsound"),
+    );
+
+    val playable: Boolean get() = core != null
+
+    /** True when [fileName] has one of this system's extensions and is not a BIOS set. */
+    fun accepts(fileName: String): Boolean {
+        val dot = fileName.lastIndexOf('.')
+        if (dot <= 0) return false
+        val extension = fileName.substring(dot + 1).lowercase(Locale.ROOT)
+        if (extension !in extensions) return false
+        return fileName.substring(0, dot).lowercase(Locale.ROOT) !in biosSets
+    }
+
+    companion object {
+        /**
+         * The system a share folder holds, or null when the name means nothing to GPSx. Longer
+         * prefixes win, so "Game Boy Color" is GBC and not GB, and "SNES SFC French Best Set" is SNES.
+         */
+        fun fromFolder(name: String): RetroSystem? {
+            val normalised = name.lowercase(Locale.ROOT).filter { it in 'a'..'z' || it in '0'..'9' }
+            if (normalised.isEmpty()) return null
+            return entries
+                .flatMap { system -> system.folderPrefixes.map { prefix -> prefix to system } }
+                .filter { (prefix, _) -> normalised.startsWith(prefix) }
+                .maxByOrNull { (prefix, _) -> prefix.length }
+                ?.second
+        }
+    }
+}

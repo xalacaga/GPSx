@@ -78,6 +78,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
@@ -115,6 +117,8 @@ import com.metallic.chiaki.lib.StreamMetrics
 import com.gpsx.tv.diagnostics.LiveLogServer
 import com.gpsx.tv.diagnostics.StoredReport
 import com.gpsx.tv.diagnostics.reportUploadUrl
+import com.gpsx.tv.retro.RetroLibrary
+import com.gpsx.tv.retro.RetroSnapshot
 import com.gpsx.tv.update.AppUpdater
 import com.gpsx.tv.update.ReleaseManifest
 import com.gpsx.tv.update.UpdateCheck
@@ -123,14 +127,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val PanelShape = RoundedCornerShape(3.dp)
+internal val PanelShape = RoundedCornerShape(3.dp)
 
-private data class ResponsiveLayout(
+internal data class ResponsiveLayout(
     val compact: Boolean,
     val short: Boolean,
 )
 
-private val LocalResponsiveLayout = staticCompositionLocalOf { ResponsiveLayout(compact = false, short = false) }
+internal val LocalResponsiveLayout = staticCompositionLocalOf { ResponsiveLayout(compact = false, short = false) }
 
 @Composable
 fun GpsxApp() {
@@ -152,6 +156,13 @@ fun GpsxApp(engine: RemotePlayEngine) {
     val controllerMonitor = remember(context) { GameControllerMonitor(context.applicationContext) }
     val cloud = remember(engine) { CloudPlayController(context.applicationContext, engine) }
     var cloudState by remember { mutableStateOf(cloud.snapshot()) }
+    val retro = remember(context) { RetroLibrary(context.applicationContext) }
+    var retroState by remember { mutableStateOf(retro.snapshot()) }
+
+    DisposableEffect(retro) {
+        retro.setListener { retroState = it }
+        onDispose(retro::close)
+    }
 
     DisposableEffect(cloud) {
         cloud.setListener { cloudState = it }
@@ -276,8 +287,8 @@ fun GpsxApp(engine: RemotePlayEngine) {
                 Box(Modifier.fillMaxSize()) {
                     key(state.destination) {
                         when (state.destination) {
-                            Destination.HOME -> HomeScreen(remote, controllers, cloudState, ::dispatch)
-                            Destination.CONSOLES -> ConsolesScreen(remote, ::dispatch)
+                            Destination.HOME -> HomeScreen(remote, controllers, cloudState, retroState, ::dispatch)
+                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, ::dispatch)
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.CONTROLLERS ->
@@ -524,7 +535,7 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
 
 /** Screen header: one big tight title, a short signal rule and a single muted line. */
 @Composable
-private fun ScreenFrame(
+internal fun ScreenFrame(
     @Suppress("UNUSED_PARAMETER") eyebrow: String,
     title: String,
     subtitle: String,
@@ -569,13 +580,14 @@ private fun HomeScreen(
     remote: RemotePlaySnapshot,
     controllers: List<ConnectedGameController>,
     cloudState: CloudSnapshot,
+    retroState: RetroSnapshot,
     dispatch: (UiAction) -> Unit,
 ) {
     val responsive = LocalResponsiveLayout.current
     ScreenFrame(
         eyebrow = "",
         title = greetingFor(remember { java.time.LocalTime.now().hour }),
-        subtitle = remote.consoleName?.let { "$it · ${remote.phase.homeLabel()}" } ?: "Aucune PS5 associée : commencez par Session.",
+        subtitle = "PS5 en Remote Play, jeux cloud PlayStation Plus et consoles rétro de votre NAS.",
     ) {
         val tileHeight = if (responsive.short) 92.dp else 118.dp
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -597,20 +609,35 @@ private fun HomeScreen(
                     modifier = Modifier.fillMaxWidth().height(tileHeight),
                 ) { dispatch(UiAction.Navigate(Destination.CLOUD)) }
                 ArcadeTile(
-                    title = "Manettes",
+                    title = "Rétro",
                     detail =
-                        when (controllers.size) {
-                            0 -> "Aucune connectée"
-                            1 -> controllers.first().name
-                            else -> "${controllers.size} connectées"
+                        when {
+                            retroState.signInRequired -> "Connecter le NAS"
+                            retroState.shelves.isEmpty() && retroState.scanning -> "Lecture du NAS…"
+                            retroState.shelves.isEmpty() -> "Consoles rétro du NAS"
+                            else -> "${retroState.shelves.size} consoles · ${retroState.shelves.sumOf { it.games.size }} jeux"
                         },
                     modifier = Modifier.fillMaxWidth().height(tileHeight),
-                ) { dispatch(UiAction.Navigate(Destination.CONTROLLERS)) }
-                ArcadeTile(
-                    title = "Réglages",
-                    detail = "Image, son, mises à jour",
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                ) { dispatch(UiAction.Navigate(Destination.SETTINGS)) }
+                ) { dispatch(UiAction.Navigate(Destination.CONSOLES)) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ArcadeTile(
+                        title = "Manettes",
+                        detail =
+                            when (controllers.size) {
+                                0 -> "Aucune connectée"
+                                1 -> controllers.first().name
+                                else -> "${controllers.size} connectées"
+                            },
+                        modifier = Modifier.weight(1f).height(tileHeight),
+                        small = true,
+                    ) { dispatch(UiAction.Navigate(Destination.CONTROLLERS)) }
+                    ArcadeTile(
+                        title = "Réglages",
+                        detail = "Image, son, mises à jour",
+                        modifier = Modifier.weight(1f).height(tileHeight),
+                        small = true,
+                    ) { dispatch(UiAction.Navigate(Destination.SETTINGS)) }
+                }
             }
         }
     }
@@ -644,7 +671,7 @@ private fun PlayTile(console: String, status: String, statusColor: Color, modifi
 }
 
 @Composable
-private fun ArcadeTile(title: String, detail: String, modifier: Modifier, onClick: () -> Unit) {
+private fun ArcadeTile(title: String, detail: String, modifier: Modifier, small: Boolean = false, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier
@@ -656,10 +683,10 @@ private fun ArcadeTile(title: String, detail: String, modifier: Modifier, onClic
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
+            Text(title, fontSize = if (small) 20.sp else 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, maxLines = 1)
             Text(detail, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text("→", color = if (focused) Signal else Line, fontSize = 26.sp, fontWeight = FontWeight.Black)
+        if (!small) Text("→", color = if (focused) Signal else Line, fontSize = 26.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -686,8 +713,16 @@ private fun RemotePlayPhase.homeColor(): Color =
     }
 
 @Composable
-private fun ConsolesScreen(remote: RemotePlaySnapshot, dispatch: (UiAction) -> Unit) {
-    ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx. L’association se fait depuis Session.") {
+private fun ConsolesScreen(remote: RemotePlaySnapshot, retroState: RetroSnapshot, retro: RetroLibrary, dispatch: (UiAction) -> Unit) {
+    // A retro console opens its game list in place; Back returns to the consoles with focus on it.
+    var openFolder by remember { mutableStateOf<String?>(null) }
+    var lastFolder by remember { mutableStateOf<String?>(null) }
+    val shelf = retroState.shelves.firstOrNull { it.folder == openFolder }
+    if (shelf != null) {
+        RetroGamesScreen(shelf, retro) { openFolder = null }
+        return
+    }
+    ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx et les consoles rétro de votre NAS.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val name = remote.consoleName
             ConsoleCard(
@@ -698,6 +733,10 @@ private fun ConsolesScreen(remote: RemotePlaySnapshot, dispatch: (UiAction) -> U
                 Modifier.fillMaxWidth(),
             ) {
                 dispatch(if (name == null) UiAction.Navigate(Destination.SESSION) else UiAction.StartDemo)
+            }
+            RetroConsolesPanel(retroState, retro, focusFolder = lastFolder) {
+                lastFolder = it.folder
+                openFolder = it.folder
             }
         }
     }
@@ -1001,7 +1040,7 @@ private fun RegistrationGuide() {
 }
 
 @Composable
-private fun LabeledInput(
+internal fun LabeledInput(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -1010,6 +1049,7 @@ private fun LabeledInput(
     previousFocusRequester: FocusRequester? = null,
     nextFocusRequester: FocusRequester? = null,
     testTag: String? = null,
+    secret: Boolean = false,
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(3.dp)
@@ -1021,6 +1061,7 @@ private fun LabeledInput(
             onValueChange = onValueChange,
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = SoftWhite),
+            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
             modifier =
                 Modifier.fillMaxWidth()
                     .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
@@ -1387,7 +1428,7 @@ private fun AboutScreen(firstLegalFocusRequester: FocusRequester) {
 }
 
 @Composable
-private fun FocusButton(
+internal fun FocusButton(
     label: String,
     primary: Boolean = false,
     modifier: Modifier = Modifier,
@@ -1489,14 +1530,14 @@ private fun SettingRow(title: String, detail: String, value: String, onClick: ()
 
 
 @Composable
-private fun StatusPill(text: String, color: Color, modifier: Modifier = Modifier) {
+internal fun StatusPill(text: String, color: Color, modifier: Modifier = Modifier) {
     Box(modifier.background(color).padding(horizontal = 8.dp, vertical = 4.dp)) {
         Text(text, color = Ink, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = .6.sp)
     }
 }
 
 @Composable
-private fun SectionTitle(title: String, subtitle: String) {
+internal fun SectionTitle(title: String, subtitle: String) {
     Column(Modifier.padding(top = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).background(Signal))

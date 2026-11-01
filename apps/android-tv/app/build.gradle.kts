@@ -241,6 +241,9 @@ dependencies {
     implementation("androidx.tv:tv-material:1.1.0")
     // On-device QR codes (Apache-2.0); no network QR service sees the encoded links.
     implementation("com.google.zxing:core:3.5.3")
+    // Retro section: reads the owner's games from an SMB share (LGPL-2.1, used as a separate library;
+    // pulls bcprov MIT and slf4j-api MIT). See docs/RETROGAMING_PLAN.md.
+    implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

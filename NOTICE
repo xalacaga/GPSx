@@ -37,6 +37,15 @@ subtle 2.6.1 (BSD-3-Clause), cfg-if 1.0.5 (MIT OR Apache-2.0), cpufeatures
 (MIT OR Apache-2.0). Their license texts and notices remain those distributed
 by their respective packages.
 
+Third-party Android libraries (retro section)
+==============================================
+
+jcifs-ng 2.1.10 (https://github.com/AgNO3/jcifs-ng) is used unmodified under
+the GNU Lesser General Public License version 2.1. It brings Bouncy Castle
+bcprov (MIT) and the SLF4J API (MIT). Their license texts and notices remain
+those distributed by their respective packages. libretro emulator cores are not
+distributed with GPSx.
+
 libsecp256k1 vendored by secp256k1-sys 0.14.1
 ================================================
 

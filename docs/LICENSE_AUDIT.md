@@ -88,6 +88,16 @@ Engineering flags only, not legal advice; not yet assessed:
 
 Each one still needs an entry in the provenance ledger and the SBOM before adoption.
 
+## Adopted Android runtime libraries (retro section)
+
+| Component | License | Use |
+|---|---|---|
+| jcifs-ng 2.1.10 (`eu.agno3.jcifs:jcifs-ng`) | LGPL-2.1 | Reads the owner's games from an SMB share; dynamically linked JVM library, compatible with AGPL-3.0 |
+| Bouncy Castle `bcprov` (pulled by jcifs-ng) | MIT | NTLM/SMB cryptographic primitives inside jcifs-ng |
+| SLF4J API (pulled by jcifs-ng) | MIT | Logging facade, no binding packaged |
+
+libretro emulator cores are **not** distributed with GPSx: the app downloads them on the owner's request (see `RETROGAMING_PLAN.md`).
+
 ## Dependency considerations
 
 The chiaki-ng desktop manifest includes SDL2, protobuf, OpenSSL, json-c, libevent, miniupnpc, Opus, lcms, SpeexDSP, and Vulkan. Each pinned transitive dependency needs its own license record if reused. [chiaki-ng vcpkg manifest](https://github.com/chiaki-ng/chiaki-ng/blob/main/vcpkg.json)

@@ -1,0 +1,146 @@
+# Plan rétro-gaming
+
+État : **R1 EN COURS** (01/11/2026). Rien n'est encore validé sur le GP520.
+
+## Objectif
+
+Jouer aux jeux de vieilles consoles et d'arcade du propriétaire sur Android TV,
+depuis une section **Rétro** de GPSx, avec le même aspect, les mêmes manettes et
+la même navigation que les sections PlayStation. GPSx héberge lui-même des cores
+d'émulation libretro (la même interface de core que RetroArch) ; il n'embarque
+pas RetroArch et ne le lance pas.
+
+## Décisions du propriétaire (01/11/2026)
+
+- Les jeux viennent du partage NAS du propriétaire `\\192.168.1.230\Public\Retrogaming`.
+  GPSx ne fournit, ne télécharge et ne référence jamais de ROM ni de BIOS.
+- Il n'y aura aucun usage commercial. Les cores dont la licence interdit l'usage
+  commercial (Snes9x, FinalBurn Neo, MAME 2003-Plus…) sont donc acceptables.
+- Ces cores ne sont **jamais versionnés dans le dépôt ni intégrés à l'APK** :
+  GPSx est sous AGPL-3.0-only et ne peut pas ajouter de restriction à ce qu'il
+  distribue. L'application télécharge un core à la demande du propriétaire depuis
+  le serveur de build officiel libretro, dans son stockage privé, comme RetroArch.
+
+- Les systèmes rétro sont dans le menu **Consoles**, sous la PS5 : une carte par
+  système trouvé sur le partage, et une carte ouvre la liste des jeux de ce
+  système avec leurs jaquettes. L'accueil présente PS5, Cloud et Rétro côte à
+  côte. Les images des consoles sont des dessins originaux de GPSx (ni photo, ni
+  logo, ni marque).
+- Les jaquettes absentes de `gamelist.xml` viennent du serveur de vignettes
+  libretro (comme dans RetroArch). Elles appartiennent à leurs éditeurs et ne sont
+  pas libres de droit : GPSx n'en fournit aucune ; la TV télécharge une jaquette
+  pour afficher le jeu du propriétaire et la garde en cache.
+
+## Contenu du partage (FACT, inventaire en lecture seule du 01/11/2026)
+
+| Dossier | Contenu | Métadonnées |
+|---|---|---|
+| `SNES SFC French Best Set` | 106 jeux SNES zippés (noms No-Intro) | aucune ; noms tirés des fichiers |
+| `neogeo` | 151 jeux rangés par genre, BIOS `neogeo.zip` présent | `gamelist.xml` (descriptions en français), images |
+| `mame` | 951 jeux, surtout obscurs (poker, fléchettes, quiz), quelques disques CHD | `gamelist.xml`, images, vidéos |
+
+L'organisation est celle d'EmulationStation (Recalbox/Batocera) : un dossier
+par système, avec un `gamelist.xml` facultatif.
+
+## Ordre des travaux
+
+| Étape | Contenu | Critère de sortie |
+|---|---|---|
+| R0 | Ce plan | Plan rédigé en anglais et en français |
+| R1 | **Ludothèque** : onglet Rétro, réglages NAS, parcours SMB, lecture des `gamelist.xml`, liste des jeux par système | L'émulateur liste les dossiers SNES et Neo Geo d'un partage de test ; tests JVM verts |
+| R2 | **Hôte libretro natif** et installateur de cores ; SNES avec Snes9x 2010 | Un homebrew SNES tourne sur l'émulateur avec image, son et manette |
+| R3 | Validation GP520 (seulement après ouverture du gate matériel par le propriétaire) | Régularité des images P50/P95/P99 et sous-alimentations audio mesurées sur le GP520 |
+| R4 | Neo Geo et la partie jouable du dossier MAME avec FinalBurn Neo | `neogeo.zip` trouvé à côté du jeu ; un jeu Neo Geo tourne |
+| R5 | Sauvegardes d'état, synchronisation SRAM, disposition des boutons par système | Sauvegarder et reprendre une partie après redémarrage de l'application |
+
+## Architecture
+
+Le découpage suit `AGENTS.fr.md` : Kotlin gère l'interface, le cycle de vie, les
+réglages, l'accès réseau aux fichiers et la capture des entrées ; l'adaptateur
+natif gère le core, son thread, la vidéo et l'audio. Images et échantillons ne
+traversent jamais JNI.
+
+```
+Onglet Rétro (Compose)
+  └─ RetroLibrary (Kotlin) ── SmbRomSource (jcifs-ng) ── partage NAS
+        │  jeu choisi → copie dans le cache de l'appli (décompressé pour les consoles)
+        ▼
+  RetroSession (Kotlin) ── JNI : load(core, jeu), start, pause, stop, état manette
+        ▼
+  retro_host (adaptateur natif, C++)
+     thread du core : dlopen(core) → retro_run() au rythme du core
+     vidéo : retro_video_refresh → ANativeWindow (copie logicielle, RGB565/XRGB8888)
+     audio : retro_audio_sample_batch → anneau PCM borné → callback AAudio
+     entrées : retro_input_state ← dernier état manette écrit par JNI à chaque changement
+```
+
+### Ludothèque (R1)
+
+- Paquet `com.gpsx.tv.retro` : `RetroSystem` (dossier → système, core,
+  extensions), `GameList` (lecture de `gamelist.xml`), `RomName` (nettoyage des
+  noms No-Intro), `SmbRomSource`, `RetroLibrary` (détenteur d'état comme
+  `CloudPlayController`).
+- L'accès SMB utilise **jcifs-ng** (LGPL-2.1, compatible AGPL-3.0 en tant que
+  bibliothèque séparée). Le partage est ouvert en invité ; si un mot de passe
+  devient nécessaire, il est stocké comme le jeton PSN et jamais journalisé.
+- Le système est reconnu au nom du dossier (`snes`, `SNES…`, `neogeo`, `mame`,
+  `megadrive`, `gba`…), sans tenir compte de la casse ; les dossiers inconnus
+  apparaissent comme « pas encore pris en charge ».
+- La liste affiche nom, année, genre et joueurs depuis `gamelist.xml` s'il
+  existe, sinon le nom de fichier nettoyé. Les images sont chargées à la demande
+  par SMB et mises en cache.
+
+### Hôte natif (R2)
+
+- Un seul core à la fois, possédé par un thread natif dédié (les cores libretro
+  sont mono-thread). États : `IDLE → LOADED → RUNNING ⇄ PAUSED → STOPPED`, plus
+  `FAILED` avec une raison.
+- Vidéo : l'image du core est copiée dans le tampon de l'`ANativeWindow`
+  (`ANativeWindow_setBuffersGeometry` à la taille du core, le compositeur met à
+  l'échelle de l'écran). Pas d'OpenGL en R2 ; les cores à rendu matériel (N64,
+  PSP) sont hors périmètre.
+- Audio : anneau borné de 4 images du core (environ 67 ms à 60 Hz). Un
+  débordement jette les échantillons les plus anciens et est compté ; une
+  sous-alimentation joue du silence et est comptée. Le pilotage du débit par
+  l'horloge audio viendra plus tard si les mesures le demandent.
+- Entrées : les événements manette Android déjà capturés pour le Remote Play sont
+  traduits une fois en état de manette neutre, puis en RetroPad (Croix→B,
+  Rond→A, Carré→Y, Triangle→X, L1/R1/L2/R2, Select/Start, croix directionnelle,
+  sticks). JNI est appelé aux changements d'état, pas à chaque image.
+- Quitter un jeu : Retour, ou le même accord L1+R1+Options que le Remote Play.
+
+### Cores
+
+| Système | Core | Licence | Source |
+|---|---|---|---|
+| SNES | Snes9x 2010 | non commerciale | buildbot libretro, armeabi-v7a / arm64-v8a / x86_64 |
+| Neo Geo, arcade | FinalBurn Neo | non commerciale | idem |
+
+L'installateur télécharge
+`https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`
+en HTTPS avec validation normale des certificats, le décompresse dans
+`filesDir/retro/cores/`, note son SHA-256 et sa taille, et le charge avec
+`dlopen`. L'ABI est celle du processus (`armeabi-v7a` sur le GP520).
+
+## Risques et inconnues
+
+- HYPOTHESIS : le `dlopen` d'un core téléchargé dans le stockage privé
+  fonctionne avec `targetSdk 34` (Android bloque l'exécution de fichiers des
+  données de l'appli par `execve`, pas le chargement de bibliothèques). À
+  vérifier sur l'émulateur en R2.
+- HYPOTHESIS : Snes9x 2010 tourne à pleine vitesse sur le processeur ARM 32 bits
+  du GP520.
+- Sécurité : un core est du code natif exécuté dans GPSx. Il n'est téléchargé
+  qu'à la demande du propriétaire, en HTTPS depuis le serveur officiel, et son
+  empreinte est affichée et journalisée. Les builds nightly changent, donc
+  l'empreinte ne peut pas être fixée à l'avance.
+- UNKNOWN : le NAS accepte-t-il un accès SMB2/3 invité depuis Android, ou faut-il
+  un utilisateur et un mot de passe ?
+- Les jeux d'arcade doivent correspondre à la version de romset du core ; un jeu
+  qui ne correspond pas échoue au chargement et est signalé comme tel.
+
+## Hors périmètre
+
+- Fournir, télécharger ou référencer des ROM ou des BIOS.
+- Les systèmes à rendu matériel (N64, PSP, Dreamcast) et les jeux d'arcade sur CHD.
+- Jeu en réseau, succès, shaders.
