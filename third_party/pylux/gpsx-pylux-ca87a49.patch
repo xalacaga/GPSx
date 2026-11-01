@@ -26,10 +26,10 @@ index 52e65dc..3faaa9c 100644
          src/main/cpp/audio-decoder.c
          src/main/cpp/opus-decoder.h
 diff --git a/android/app/src/main/cpp/audio-output.cpp b/android/app/src/main/cpp/audio-output.cpp
-index 53157f1..199222a 100644
+index 53157f1..2b30657 100644
 --- a/android/app/src/main/cpp/audio-output.cpp
 +++ b/android/app/src/main/cpp/audio-output.cpp
-@@ -9,6 +9,11 @@
+@@ -9,8 +9,17 @@
  
  #include <oboe/Oboe.h>
  
@@ -40,8 +40,14 @@ index 53157f1..199222a 100644
 +
  #define BUFFER_CHUNK_SIZE 1024
  #define BUFFER_CHUNKS_COUNT 32
++// GPSx: jitter buffer. Playback starts (and restarts after running dry) only once this much audio
++// is buffered, and audio beyond JITTER_MAX_MS is dropped so the delay cannot grow.
++#define JITTER_TARGET_MS 40
++#define JITTER_MAX_MS 120
  
-@@ -28,16 +33,195 @@ public:
+ using AudioBuffer = CircularBuffer<BUFFER_CHUNKS_COUNT, BUFFER_CHUNK_SIZE>;
+ 
+@@ -28,16 +37,198 @@ public:
  	void onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error) override;
  };
  
@@ -81,6 +87,9 @@ index 53157f1..199222a 100644
 +	std::atomic<uint32_t> overflows { 0 };
 +	std::atomic<uint32_t> reopens { 0 };
 +	std::atomic<uint32_t> callbacks { 0 };
++	// GPSx: bytes in buf (pushed minus popped) and whether playback waits to refill to the target.
++	std::atomic<int64_t> buffered_bytes { 0 };
++	std::atomic<bool> prebuffering { true };
  
  	AudioOutput() : stream_callback(this) {}
  };
@@ -237,7 +246,7 @@ index 53157f1..199222a 100644
  extern "C" void *android_chiaki_audio_output_new(ChiakiLog *log)
  {
  	auto r = new AudioOutput();
-@@ -50,33 +234,33 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
+@@ -50,33 +241,33 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
  	if(!audio_output)
  		return;
  	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
@@ -292,9 +301,11 @@ index 53157f1..199222a 100644
  }
  
  extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_count, void *audio_output)
-@@ -86,11 +270,23 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
+@@ -85,12 +276,25 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
+ 
  	size_t buf_size = samples_count * sizeof(int16_t);
  	size_t pushed = ao->buf.Push(reinterpret_cast<uint8_t *>(buf), buf_size);
++	ao->buffered_bytes += (int64_t)pushed;
  	if(pushed < buf_size)
 -		CHIAKI_LOGW(ao->log, "Audio Output Buffer Overflow!");
 +		ao->overflows++;
@@ -317,20 +328,55 @@ index 53157f1..199222a 100644
  	if(stream->getFormat() != oboe::AudioFormat::I16)
  	{
  		CHIAKI_LOGE(audio_output->log, "Oboe stream has invalid format in callback");
-@@ -102,11 +298,10 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
+@@ -101,12 +305,45 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
+ 	size_t buf_size_requested = static_cast<size_t>(bytes_per_frame * num_frames);
  	auto buf = reinterpret_cast<uint8_t *>(audio_data);
  
++	// GPSx: jitter buffer. Without it the callback played whatever had arrived, so any irregular
++	// packet timing emptied the buffer (a gap) and the next burst overflowed it: audible stutter
++	// (owner report on PS4 cloud, GP520, 0.2.19; earlier reports counted 14 underflows and 24
++	// overflows in 47 s). Silence is played while refilling to JITTER_TARGET_MS.
++	int64_t bytes_per_ms = (int64_t)bytes_per_frame * stream->getSampleRate() / 1000;
++	int64_t target = bytes_per_ms * JITTER_TARGET_MS;
++	int64_t buffered = audio_output->buffered_bytes.load();
++	if(audio_output->prebuffering.load())
++	{
++		if(buffered < target + (int64_t)buf_size_requested)
++		{
++			memset(buf, 0, buf_size_requested);
++			return oboe::DataCallbackResult::Continue;
++		}
++		audio_output->prebuffering = false;
++	}
++	// Keep the delay bounded: drop the oldest audio beyond JITTER_MAX_MS, down to the target.
++	if(buffered > bytes_per_ms * JITTER_MAX_MS)
++	{
++		int64_t excess = buffered - target;
++		excess -= excess % bytes_per_frame;
++		while(excess > 0)
++		{
++			size_t chunk = excess > (int64_t)buf_size_requested ? buf_size_requested : (size_t)excess;
++			size_t dropped = audio_output->buf.Pop(buf, chunk);
++			audio_output->buffered_bytes -= (int64_t)dropped;
++			if(dropped == 0)
++				break;
++			excess -= (int64_t)dropped;
++		}
++	}
++
  	size_t buf_size_delivered = audio_output->buf.Pop(buf, buf_size_requested);
 -	//CHIAKI_LOGW(audio_output->log, "Delivered %llu", (unsigned long long)buf_size_delivered);
++	audio_output->buffered_bytes -= (int64_t)buf_size_delivered;
  
  	if(buf_size_delivered < buf_size_requested)
  	{
 -		CHIAKI_LOGV(audio_output->log, "Audio Output Buffer Underflow!");
 +		audio_output->underflows++;
++		audio_output->prebuffering = true;
  		memset(buf + buf_size_delivered, 0, buf_size_requested - buf_size_delivered);
  	}
  
-@@ -121,4 +316,13 @@ void AudioOutputCallback::onErrorBeforeClose(oboe::AudioStream *stream, oboe::Re
+@@ -121,4 +358,13 @@ void AudioOutputCallback::onErrorBeforeClose(oboe::AudioStream *stream, oboe::Re
  void AudioOutputCallback::onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error)
  {
  	CHIAKI_LOGE(audio_output->log, "Oboe reported error after close: %s", oboe::convertToText(error));
@@ -364,7 +410,7 @@ index b521ebe..5fa4475 100644
  #ifdef __cplusplus
  }
 diff --git a/android/app/src/main/cpp/chiaki-jni.c b/android/app/src/main/cpp/chiaki-jni.c
-index 039a4d9..13726c9 100644
+index 039a4d9..f1b1a82 100644
 --- a/android/app/src/main/cpp/chiaki-jni.c
 +++ b/android/app/src/main/cpp/chiaki-jni.c
 @@ -436,7 +436,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject
@@ -377,7 +423,7 @@ index 039a4d9..13726c9 100644
  	if(log_file)
  		E->ReleaseStringUTFChars(env, log_file_str, log_file);
  
-@@ -848,9 +849,51 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
+@@ -848,9 +849,39 @@ JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlon
  // Cheap best-effort read (same as Qt's polling timer); video_receiver-derived
  // values go through locked accessors, the rest are unlocked scalar reads. Only
  // called while a session is live and the overlay is toggled on.
@@ -391,18 +437,6 @@ index 039a4d9..13726c9 100644
 +JNIEXPORT void JNICALL JNI_FCN(videoSetLowLatencyHints)(JNIEnv *env, jobject obj, jboolean enabled)
 +{
 +	android_chiaki_video_decoder_set_low_latency_hints(enabled ? true : false);
-+}
-+
-+// GPSx: software H.264 decoding for decoders created afterwards (PS4 cloud streams).
-+JNIEXPORT void JNICALL JNI_FCN(videoSetSoftwareH264)(JNIEnv *env, jobject obj, jboolean enabled)
-+{
-+	android_chiaki_video_decoder_set_software_h264(enabled ? true : false);
-+}
-+
-+// GPSx: hardware H.264 workaround variant (1: 4 references, 2: Moonlight-style, 3: 2 + real timestamps).
-+JNIEXPORT void JNICALL JNI_FCN(videoSetHardwareH264Variant)(JNIEnv *env, jobject obj, jint variant)
-+{
-+	android_chiaki_video_decoder_set_hardware_h264_variant((int)variant);
 +}
 +
 +// GPSx: Android output device ID for audio streams opened afterwards (0 = system routing).
@@ -430,7 +464,7 @@ index 039a4d9..13726c9 100644
  	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
  	if(session)
  	{
-@@ -872,10 +915,22 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
+@@ -872,10 +903,22 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetMetrics)(JNIEnv *env, jobject o
  			vals[5] = (jdouble)session->session.connect_info.video_profile.width;
  			vals[6] = (jdouble)session->session.connect_info.video_profile.height;
  		}
@@ -456,7 +490,7 @@ index 039a4d9..13726c9 100644
  }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..73cda45 100644
+index a256204..377e134 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
 @@ -1,6 +1,7 @@
@@ -467,7 +501,7 @@ index a256204..73cda45 100644
  
  #include <jni.h>
  
-@@ -8,11 +9,78 @@
+@@ -8,11 +9,33 @@
  #include <media/NdkMediaFormat.h>
  #include <android/native_window_jni.h>
  
@@ -481,8 +515,10 @@ index a256204..73cda45 100644
 +// queue's byte limit (about 10 s of 720p cloud video).
 +#define FEED_INPUT_WAIT_MS 5000
 +#define SAMPLE_QUEUE_MAX_BYTES (24 * 1024 * 1024)
-+// GPSx: reference frames announced to a hardware H.264 decoder (see enqueue_sample).
-+#define H264_HARDWARE_MAX_REFS 4
++// GPSx: reference frames announced to the H.264 decoder (see enqueue_sample) and the H.264
++// presentation time step (see create_codec_locked).
++#define H264_MAX_REFS 1
++#define H264_PTS_STEP_US 16667
 +
 +// GPSx: 1 = try the low-latency decoder hints first (default), 0 = plain configure. Set from Kotlin.
 +static volatile int g_low_latency_hints = 1;
@@ -492,53 +528,6 @@ index a256204..73cda45 100644
 +	g_low_latency_hints = enabled ? 1 : 0;
 +}
 +
-+// GPSx: 1 = H.264 decoders created afterwards use Android's software decoder. Set from Kotlin for
-+// PS4 cloud streams only.
-+static volatile int g_software_h264 = 0;
-+
-+void android_chiaki_video_decoder_set_software_h264(bool enabled)
-+{
-+	g_software_h264 = enabled ? 1 : 0;
-+}
-+
-+/**
-+ * GPSx: creates the decoder for mime. With g_software_h264, H.264 goes to Android's software
-+ * decoder: like the emulator's, it keeps decoding P-frames whose reference was lost and the
-+ * picture rebuilds from later frames, whereas the GP520's hardware decoder (OMX.MS.AVC.Decoder)
-+ * repeated its last good frame and waited for an IDR that PS4 cloud servers never send
-+ * (HYPOTHESIS from the GP520 live logs until a GP520 run confirms it).
-+ */
-+// GPSx: hardware H.264 workaround variant, read when a decoder is created.
-+//  1: SPS rewritten with frame_num gaps allowed and at most 4 references (0.2.16).
-+//  2: Moonlight style: at most 1 reference (max_dec_frame_buffering 1), parameter sets queued with
-+//     BUFFER_FLAG_CODEC_CONFIG. Moonlight's decoder errata list H.264 decoders that crash or hang
-+//     without these.
-+//  3: variant 2 with presentation times 1/60 s apart instead of 1 us.
-+static volatile int g_hw_h264_variant = 1;
-+
-+void android_chiaki_video_decoder_set_hardware_h264_variant(int variant)
-+{
-+	g_hw_h264_variant = variant < 1 ? 1 : (variant > 3 ? 3 : variant);
-+}
-+
-+static AMediaCodec *create_decoder_for(AndroidChiakiVideoDecoder *decoder, const char *mime)
-+{
-+	if(g_software_h264 && strcmp(mime, "video/avc") == 0)
-+	{
-+		static const char *software[] = { "c2.android.avc.decoder", "OMX.google.h264.decoder" };
-+		for(size_t i = 0; i < sizeof(software) / sizeof(software[0]); i++)
-+		{
-+			AMediaCodec *codec = AMediaCodec_createCodecByName(software[i]);
-+			if(codec)
-+			{
-+				CHIAKI_LOGI(decoder->log, "Using software H.264 decoder %s", software[i]);
-+				return codec;
-+			}
-+		}
-+		CHIAKI_LOGW(decoder->log, "No software H.264 decoder found; using the default decoder");
-+	}
-+	return AMediaCodec_createDecoderByType(mime);
-+}
  
  static void *android_chiaki_video_decoder_output_thread_func(void *user);
 +static void *android_chiaki_video_decoder_feeder_thread_func(void *user);
@@ -546,7 +535,7 @@ index a256204..73cda45 100644
  
  ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec)
  {
-@@ -23,7 +91,46 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
+@@ -23,7 +46,44 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
  	decoder->target_height = target_height;
  	decoder->target_codec = codec;
  	decoder->shutdown_output = false;
@@ -559,10 +548,8 @@ index a256204..73cda45 100644
 +	decoder->queue_bytes = 0;
 +	decoder->samples_overflowed = 0;
 +	decoder->samples_not_fed = 0;
-+	decoder->level_raised_logged = false;
-+	decoder->hw_variant = 1;
++	decoder->sps_rewrite_logged = false;
 +	decoder->pts_step = 1;
-+	decoder->outputs_logged = 0;
 +	decoder->frames_rendered = 0;
 +	memset(decoder->queued_at_us, 0, sizeof(decoder->queued_at_us));
 +	decoder->decode_latency_us = 0;
@@ -594,7 +581,7 @@ index a256204..73cda45 100644
  }
  
  static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
-@@ -52,49 +159,49 @@ static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
+@@ -52,49 +112,48 @@ static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
  
  void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder)
  {
@@ -658,14 +645,12 @@ index a256204..73cda45 100644
 +{
  	const char *mime = chiaki_codec_is_h265(decoder->target_codec) ? "video/hevc" : "video/avc";
  	CHIAKI_LOGI(decoder->log, "Initializing decoder with mime %s", mime);
-+	decoder->hw_variant = g_hw_h264_variant;
-+	bool hardware_h264 = !chiaki_codec_is_h265(decoder->target_codec) && !g_software_h264;
-+	decoder->pts_step = (hardware_h264 && decoder->hw_variant == 3) ? 16667 : 1;
-+	if(hardware_h264)
-+		CHIAKI_LOGI(decoder->log, "Hardware H.264 variant %d", decoder->hw_variant);
++	// GPSx: H.264 presentation times 1/60 s apart. FACT (GP520 live log, 0.2.18): with the upstream
++	// 1 us step OMX.MS.AVC.Decoder output new frames continuously (~56 fps) while the MStar display
++	// path kept showing the first one; with 1/60 s steps the PS4 cloud game played well.
++	decoder->pts_step = chiaki_codec_is_h265(decoder->target_codec) ? 1 : H264_PTS_STEP_US;
  
--	decoder->codec = AMediaCodec_createDecoderByType(mime);
-+	decoder->codec = create_decoder_for(decoder, mime);
+ 	decoder->codec = AMediaCodec_createDecoderByType(mime);
  	if(!decoder->codec)
  	{
  		CHIAKI_LOGE(decoder->log, "Failed to create AMediaCodec for mime type %s", mime);
@@ -674,7 +659,7 @@ index a256204..73cda45 100644
  	}
  
  	AMediaFormat *format = AMediaFormat_new();
-@@ -102,11 +209,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -102,11 +161,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
  
@@ -707,7 +692,7 @@ index a256204..73cda45 100644
 +	{
 +		CHIAKI_LOGW(decoder->log, "AMediaCodec refused low-latency hints (%d), retrying without", (int)r);
 +		AMediaCodec_delete(decoder->codec);
-+		decoder->codec = create_decoder_for(decoder, mime);
++		decoder->codec = AMediaCodec_createDecoderByType(mime);
 +		r = decoder->codec ? AMediaCodec_configure(decoder->codec, format, decoder->window, NULL, 0) : AMEDIA_ERROR_UNKNOWN;
 +	}
 +configured:
@@ -720,7 +705,7 @@ index a256204..73cda45 100644
  		goto error_codec;
  	}
  
-@@ -125,15 +265,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -125,15 +217,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  		goto error_codec;
  	}
  
@@ -829,7 +814,7 @@ index a256204..73cda45 100644
  
  beach:
  	chiaki_mutex_unlock(&decoder->codec_mutex);
-@@ -151,24 +380,159 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -151,24 +332,158 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  
  	if(!decoder->codec)
  	{
@@ -859,7 +844,7 @@ index a256204..73cda45 100644
 +			decoder->samples_without_codec++;
 +			goto beach;
 +		}
-+	}
+ 	}
 +	if(decoder->detected_codec < 0)
 +	{
 +		int sniffed = sniff_codec(buf, buf_size);
@@ -881,7 +866,7 @@ index a256204..73cda45 100644
 +	}
 +	decoder->samples_queued++;
 +	r = enqueue_sample(decoder, buf, buf_size);
-+
+ 
 +beach:
 +	chiaki_mutex_unlock(&decoder->codec_mutex);
 +	return r;
@@ -914,23 +899,21 @@ index a256204..73cda45 100644
 +	if(!copy)
 +		return false;
 +	memcpy(copy, buf, buf_size);
-+	// GPSx: H.264 SPS rewrite for the hardware decoder. FACT (GP520 live logs): OMX.MS.AVC.Decoder
-+	// showed the PS4 cloud start picture and then froze, even with lost frames handed over; the PS4
-+	// slices dumped on the emulator skip frame_num values after a loss (2 then 5) while the SPS
-+	// declares gaps impossible. Android's software decoder tolerates that and showed the game.
-+	// The rewrite allows gaps and caps the announced references to 4 (P-slices use one reference).
-+	// HYPOTHESIS until a GP520 run shows the picture with the hardware decoder.
-+	if(!chiaki_codec_is_h265(decoder->target_codec) && !g_software_h264)
++	// GPSx: H.264 SPS rewrite, part of the combination that plays PS4 cloud on the GP520 hardware
++	// decoder (with codec-config parameter sets and 1/60 s presentation times). The PS4 slices skip
++	// frame_num values after a loss (2 then 5) while the SPS declares gaps impossible, so gaps are
++	// allowed; references are capped to 1 as Moonlight does (P-slices use one reference). Which of the
++	// three parts the MStar decoder strictly needs was not isolated: presentation times were decisive.
++	if(!chiaki_codec_is_h265(decoder->target_codec))
 +	{
 +		uint8_t *fixed = NULL;
 +		size_t fixed_size = 0;
-+		uint32_t max_refs = decoder->hw_variant >= 2 ? 1 : H264_HARDWARE_MAX_REFS;
-+		if(gpsx_h264_fix_sps(copy, buf_size, max_refs, &fixed, &fixed_size))
++		if(gpsx_h264_fix_sps(copy, buf_size, H264_MAX_REFS, &fixed, &fixed_size))
 +		{
-+			if(!decoder->level_raised_logged)
++			if(!decoder->sps_rewrite_logged)
 +			{
-+				CHIAKI_LOGI(decoder->log, "Rewrote H.264 SPS for the hardware decoder (frame_num gaps allowed, at most %u references)", (unsigned)max_refs);
-+				decoder->level_raised_logged = true;
++				CHIAKI_LOGI(decoder->log, "Rewrote H.264 SPS for the decoder (frame_num gaps allowed, at most %d reference)", H264_MAX_REFS);
++				decoder->sps_rewrite_logged = true;
 +			}
 +			free(copy);
 +			copy = fixed;
@@ -945,10 +928,11 @@ index a256204..73cda45 100644
 +		decoder->samples_overflowed++;
 +		CHIAKI_LOGE(decoder->log, "Video sample queue full (%zu samples), dropping sample", (size_t)GPSX_SAMPLE_QUEUE_CAP);
 +		return false;
- 	}
-+	// GPSx: variants 2 and 3 queue a parameter-set-only sample (SPS/PPS, no slice) as codec config.
++	}
++	// GPSx: a parameter-set-only H.264 sample (SPS/PPS, no slice) is queued as codec config, as
++	// Moonlight does; its decoder errata list H.264 decoders that crash without it.
 +	uint32_t flags = 0;
-+	if(!chiaki_codec_is_h265(decoder->target_codec) && !g_software_h264 && decoder->hw_variant >= 2 && is_parameter_sets_only(copy, buf_size))
++	if(!chiaki_codec_is_h265(decoder->target_codec) && is_parameter_sets_only(copy, buf_size))
 +		flags = AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG;
 +	size_t tail = (decoder->queue_head + decoder->queue_count) % GPSX_SAMPLE_QUEUE_CAP;
 +	decoder->queue[tail].data = copy;
@@ -960,7 +944,7 @@ index a256204..73cda45 100644
 +	chiaki_mutex_unlock(&decoder->queue_mutex);
 +	return true;
 +}
- 
++
 +/**
 + * GPSx: hands one queued sample to the codec. Caller holds codec_mutex.
 + * Waits for an input buffer instead of dropping the sample: a dropped frame breaks the reference
@@ -996,19 +980,19 @@ index a256204..73cda45 100644
  		}
  
  		size_t codec_buf_size;
-@@ -180,7 +544,10 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -180,7 +495,10 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  			codec_sample_size = codec_buf_size;
  		}
  		memcpy(codec_buf, buf, codec_sample_size);
 -		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
 +		decoder->queued_at_us[decoder->timestamp_cur % 64] = chiaki_time_now_monotonic_us();
-+		// GPSx: pts_step is 1 (consecutive integers, as upstream) except in hardware variant 3.
++		// GPSx: pts_step is 1 (consecutive integers, as upstream) for H.265, 1/60 s for H.264.
 +		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur * decoder->pts_step, flags);
 +		decoder->timestamp_cur++;
  		if(status != AMEDIA_OK)
  		{
  			CHIAKI_LOGE(decoder->log, "AMediaCodec_queueInputBuffer() failed: %d", (int)status);
-@@ -188,10 +555,35 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -188,10 +506,35 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  		buf += codec_sample_size;
  		buf_size -= codec_sample_size;
  	}
@@ -1047,7 +1031,7 @@ index a256204..73cda45 100644
  }
  
  static void *android_chiaki_video_decoder_output_thread_func(void *user)
-@@ -204,7 +596,44 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+@@ -204,7 +547,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
  		ssize_t status = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);
  		if(status >= 0)
  		{
@@ -1070,11 +1054,6 @@ index a256204..73cda45 100644
 +				info = next_info;
 +				eos = (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) != 0;
 +			}
-+			// GPSx: log the first output buffers, then one in 300, to see whether the decoder keeps
-+			// producing new frames (presentation times advance) or repeats one.
-+			uint32_t seen = ++decoder->outputs_logged;
-+			if(seen <= 12 || seen % 300 == 0)
-+				CHIAKI_LOGI(decoder->log, "Decoder output %u: pts %lld size %d flags %u (dropped late %u)", (unsigned)seen, (long long)info.presentationTimeUs, (int)info.size, (unsigned)info.flags, (unsigned)decoder->frames_dropped_late);
  			AMediaCodec_releaseOutputBuffer(decoder->codec, (size_t)status, info.size != 0);
 +			if(info.size != 0)
 +			{
@@ -1092,7 +1071,7 @@ index a256204..73cda45 100644
  			if(info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM)
  			{
  				CHIAKI_LOGI(decoder->log, "AMediaCodec reported EOS");
-@@ -213,6 +642,16 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+@@ -213,6 +588,16 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
  		}
  		else
  		{
@@ -1110,7 +1089,7 @@ index a256204..73cda45 100644
  			bool shutdown = decoder->shutdown_output;
  			chiaki_mutex_unlock(&decoder->codec_mutex);
 diff --git a/android/app/src/main/cpp/video-decoder.h b/android/app/src/main/cpp/video-decoder.h
-index f2ea0e5..2980d71 100644
+index f2ea0e5..9baf79d 100644
 --- a/android/app/src/main/cpp/video-decoder.h
 +++ b/android/app/src/main/cpp/video-decoder.h
 @@ -11,6 +11,16 @@
@@ -1130,7 +1109,7 @@ index f2ea0e5..2980d71 100644
  typedef struct android_chiaki_video_decoder_t
  {
  	ChiakiLog *log;
-@@ -23,10 +33,42 @@ typedef struct android_chiaki_video_decoder_t
+@@ -23,10 +33,36 @@ typedef struct android_chiaki_video_decoder_t
  	int32_t target_width;
  	int32_t target_height;
  	ChiakiCodec target_codec;
@@ -1154,10 +1133,8 @@ index f2ea0e5..2980d71 100644
 +	size_t queue_bytes;
 +	volatile uint32_t samples_overflowed;
 +	volatile uint32_t samples_not_fed;
-+	bool level_raised_logged; // GPSx: the SPS level rewrite has been logged once
-+	int hw_variant; // GPSx: hardware H.264 variant of this decoder (see android_chiaki_video_decoder_set_hardware_h264_variant)
-+	uint64_t pts_step; // GPSx: presentation time step per sample (1, or 16667 us for variant 3)
-+	uint32_t outputs_logged; // GPSx: decoder output buffers seen, for the start-up output log
++	bool sps_rewrite_logged; // GPSx: the H.264 SPS rewrite has been logged once
++	uint64_t pts_step; // GPSx: presentation time step per sample (1 for H.265, 16667 us for H.264)
 +	bool codec_failed; // GPSx: codec creation failed once; do not retry on every sample
 +	volatile int detected_codec; // GPSx: -1 unknown, 0 H.264, 1 H.265 (from the first sample)
  } AndroidChiakiVideoDecoder;
@@ -1166,38 +1143,9 @@ index f2ea0e5..2980d71 100644
  void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder);
 +// GPSx: whether decoders created afterwards try the low-latency hints first.
 +void android_chiaki_video_decoder_set_low_latency_hints(bool enabled);
-+// GPSx: whether H.264 decoders created afterwards use Android's software decoder.
-+void android_chiaki_video_decoder_set_software_h264(bool enabled);
-+// GPSx: hardware H.264 workaround variant for decoders created afterwards (1, 2 or 3).
-+void android_chiaki_video_decoder_set_hardware_h264_variant(int variant);
  void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder, JNIEnv *env, jobject surface);
  bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
  
-diff --git a/lib/include/chiaki/streamconnection.h b/lib/include/chiaki/streamconnection.h
-index 534afeb..b4f460d 100644
---- a/lib/include/chiaki/streamconnection.h
-+++ b/lib/include/chiaki/streamconnection.h
-@@ -108,6 +108,8 @@ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_toggle_mute_direct_message(
- CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_stop(ChiakiStreamConnection *stream_connection);
- 
- CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end);
-+/** GPSx: asks the server for a new IDR frame (TakionMessage IDRREQUEST, no payload). */
-+CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamConnection *stream_connection);
- 
- /**
-  * Thread-safe read of the currently-decoded video resolution (the negotiated/adaptive
-diff --git a/lib/include/chiaki/videoreceiver.h b/lib/include/chiaki/videoreceiver.h
-index 7d0a538..5aa5276 100644
---- a/lib/include/chiaki/videoreceiver.h
-+++ b/lib/include/chiaki/videoreceiver.h
-@@ -34,6 +34,7 @@ typedef struct chiaki_video_receiver_t
- 	uint64_t cumulative_frames_lost; // running total for the stats overlay (never reset mid-session)
- 	int32_t reference_frames[16];
- 	ChiakiBitstream bitstream;
-+	uint64_t last_idr_request_ms; // GPSx: rate limit for stream_connection_send_idr_request()
- } ChiakiVideoReceiver;
- 
- CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receiver, struct chiaki_session_t *session, ChiakiPacketStats *packet_stats);
 diff --git a/lib/src/ctrl.c b/lib/src/ctrl.c
 index 9e3625b..6b6d94d 100644
 --- a/lib/src/ctrl.c
@@ -1231,37 +1179,6 @@ index 9e3625b..6b6d94d 100644
  		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
  
  	// if we already got more data than the header, put the rest in the buffer.
-diff --git a/lib/src/streamconnection.c b/lib/src/streamconnection.c
-index 9dbef76..9093f5f 100644
---- a/lib/src/streamconnection.c
-+++ b/lib/src/streamconnection.c
-@@ -1428,6 +1428,26 @@ static ChiakiErrorCode stream_connection_send_heartbeat(ChiakiStreamConnection *
- 	return chiaki_takion_send_message_data(&stream_connection->takion, 1, 1, buf, stream.bytes_written, NULL);
- }
- 
-+// GPSx: IDRREQUEST exists in the Takion message types but no known client sends it. PS4 cloud
-+// servers (protocol 9) were seen not to answer corrupt-frame reports with a new IDR, leaving the
-+// picture frozen after an early loss, so the video receiver sends this on cloud sessions only.
-+CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamConnection *stream_connection)
-+{
-+	tkproto_TakionMessage msg = { 0 };
-+	msg.type = tkproto_TakionMessage_PayloadType_IDRREQUEST;
-+
-+	uint8_t buf[0x10];
-+	pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
-+	if(!pb_encode(&stream, tkproto_TakionMessage_fields, &msg))
-+	{
-+		CHIAKI_LOGE(stream_connection->log, "StreamConnection IDR request protobuf encoding failed");
-+		return CHIAKI_ERR_UNKNOWN;
-+	}
-+
-+	CHIAKI_LOGW(stream_connection->log, "StreamConnection requesting IDR");
-+	return chiaki_takion_send_message_data(&stream_connection->takion, 1, 2, buf, stream.bytes_written, NULL);
-+}
-+
- CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end)
- {
- 	tkproto_TakionMessage msg = { 0 };
 diff --git a/lib/src/takion.c b/lib/src/takion.c
 index 2ef782c..8ece59f 100644
 --- a/lib/src/takion.c
@@ -1293,49 +1210,18 @@ index 2ef782c..8ece59f 100644
  	if(takion_handshake(takion, &seq_num_remote_initial) != CHIAKI_ERR_SUCCESS)
  		goto beach;
 diff --git a/lib/src/videoreceiver.c b/lib/src/videoreceiver.c
-index a1c68db..6ef2f9b 100644
+index a1c68db..2682b8a 100644
 --- a/lib/src/videoreceiver.c
 +++ b/lib/src/videoreceiver.c
-@@ -5,6 +5,22 @@
+@@ -5,6 +5,7 @@
  
  #include <string.h>
  
-+#include <chiaki/time.h>
-+
-+#define IDR_REQUEST_INTERVAL_MS 1000
-+
-+/** GPSx: on cloud sessions, ask for a new IDR at most once per IDR_REQUEST_INTERVAL_MS. */
-+static void request_idr_if_cloud(ChiakiVideoReceiver *video_receiver)
-+{
-+	if(!chiaki_service_type_is_cloud(video_receiver->session->service_type))
-+		return;
-+	uint64_t now = chiaki_time_now_monotonic_ms();
-+	if(video_receiver->last_idr_request_ms != 0 && now - video_receiver->last_idr_request_ms < IDR_REQUEST_INTERVAL_MS)
-+		return;
-+	video_receiver->last_idr_request_ms = now;
-+	stream_connection_send_idr_request(&video_receiver->session->stream_connection);
-+}
 +
  static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *video_receiver);
  
  static void add_ref_frame(ChiakiVideoReceiver *video_receiver, int32_t frame)
-@@ -44,6 +60,7 @@ CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receive
- 	video_receiver->frame_index_cur = -1;
- 	video_receiver->frame_index_prev = -1;
- 	video_receiver->frame_index_prev_complete = 0;
-+	video_receiver->last_idr_request_ms = 0;
- 
- 	chiaki_frame_processor_init(&video_receiver->frame_processor, video_receiver->log);
- 	video_receiver->packet_stats = packet_stats;
-@@ -172,6 +189,7 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
- 		video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
- 		video_receiver->frame_index_prev = video_receiver->frame_index_cur;
- 		CHIAKI_LOGW(video_receiver->log, "FEC failed for frame %d, requesting resend", (int)video_receiver->frame_index_cur);
-+		request_idr_if_cloud(video_receiver);
- 		return CHIAKI_ERR_SUCCESS;
- 	}
- 
-@@ -208,10 +226,20 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
+@@ -208,10 +209,19 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
  				if(!recovered)
  				{
  					video_receiver->frames_lost++;
@@ -1343,9 +1229,8 @@ index a1c68db..6ef2f9b 100644
 -					video_receiver->frame_index_prev = video_receiver->frame_index_cur;
 -					video_receiver->frame_index_prev_complete = video_receiver->frame_index_cur;
 -					return CHIAKI_ERR_SUCCESS;
-+					request_idr_if_cloud(video_receiver);
 +					// GPSx: cloud sessions decode the frame anyway. Dropping it waits for an IDR, and PS4 cloud
-+					// servers never send one, so every later frame was dropped too. FACT (GP520 live log,
++					// servers never sent one (nor answered an IDR request), so every later frame was dropped too. FACT (GP520 live log,
 +					// 0.2.14): 331 FEC failures in 2.5 min led to 2520 dropped frames (stutter with the
 +					// software decoder, a frozen picture with the hardware one). A decoder given the frame
 +					// conceals the missing reference and the picture heals as later frames refresh it.

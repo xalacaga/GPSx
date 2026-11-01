@@ -33,8 +33,6 @@ import com.metallic.chiaki.lib.Target
 import com.metallic.chiaki.lib.discoveryWakeup
 import com.metallic.chiaki.lib.setAudioCompatibilityMode
 import com.metallic.chiaki.lib.setDecoderLowLatencyHints
-import com.metallic.chiaki.lib.setHardwareH264Variant
-import com.metallic.chiaki.lib.setSoftwareH264Decoder
 import com.metallic.chiaki.lib.setPreferredAudioDevice
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -124,31 +122,6 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
         get() = settings?.getBoolean("decoder_low_latency", true) ?: true
         set(value) {
             settings?.edit()?.putBoolean("decoder_low_latency", value)?.apply()
-        }
-
-    /**
-     * PS4 cloud streams decoded by Android's software H.264 decoder (off by default since hardware
-     * variant 3 works on the GP520; the software path loaded its CPU, with lost frames and lag).
-     * Applies to the next session.
-     */
-    var softwareDecoderForPs4Cloud: Boolean
-        get() = settings?.getBoolean("software_decoder_ps4_cloud", false) ?: false
-        set(value) {
-            settings?.edit()?.putBoolean("software_decoder_ps4_cloud", value)?.apply()
-        }
-
-    /**
-     * Hardware H.264 workaround tried on PS4 cloud streams when the software decoder is off:
-     * 1 = 4 references and frame_num gaps allowed, 2 = Moonlight style (1 reference, parameter sets as
-     * codec config), 3 = 2 with real presentation times (default). FACT (GP520 live log, 0.2.18): with
-     * variants 1 and 2 OMX.MS.AVC.Decoder produced new frames continuously (presentation times 4..1849,
-     * ~56 fps) yet the screen kept the first picture; with presentation times 1/60 s apart (variant 3)
-     * the game showed and played well. The MStar display path schedules frames by presentation time.
-     */
-    var hardwareH264Variant: Int
-        get() = (settings?.getInt("hardware_h264_variant", 3) ?: 3).coerceIn(1, 3)
-        set(value) {
-            settings?.edit()?.putInt("hardware_h264_variant", value.coerceIn(1, 3))?.apply()
         }
 
     /** Per-session test reports, uploaded on request from the Diagnostics screen. */
@@ -373,8 +346,6 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
                 runCatching { streamWifiLock?.acquire() }
                 runCatching { applyAudioApiPreference() }
                 runCatching { setDecoderLowLatencyHints(decoderLowLatency) }
-                runCatching { setSoftwareH264Decoder(softwareDecoderForPs4Cloud && connectInfo.serviceType == "psnow") }
-                runCatching { setHardwareH264Variant(hardwareH264Variant) }
                 val newSession = Session(connectInfo, sessionLogFile?.absolutePath)
                 newSession.eventCallback = { event ->
                     when (event) {

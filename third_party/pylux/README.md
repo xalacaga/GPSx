@@ -5,17 +5,27 @@ GPSx ships the native Remote Play and PlayStation Plus cloud engine built from
 `ca87a49a12bab071948f565ca53ffdad790775d3`, licensed AGPL-3.0-only with the
 OpenSSL exception (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
 
-`gpsx-pylux-ca87a49.patch` holds the GPSx changes: Windows-host protobuf Python
-override, null checks before `display_sink.cantdisplay_cb`, no per-packet DEBUG
-session logging, low-latency decoder hints with a plain retry, and a shared Oboe audio output
-that reopens after route changes (and on request from GPSx when a Bluetooth output
-appears), can target a given output device, and reports its state and device;
-video decoder counters (samples before the decoder exists, queued, rendered) and a
-fix for `set_surface(NULL)` returning with the codec mutex still locked (and
-re-locking it in `kill_decoder`); the codec is created on the first sample with the
-codec read from the stream; stale decoded frames are skipped; optional low-latency
-decoder hints; on cloud sessions an IDR request (Takion IDRREQUEST) is sent at
-most once per second when a frame misses its reference or FEC fails; samples are copied into a queue fed to the codec by a separate thread, which waits up to 5 s for an input buffer instead of dropping them, so a decoder stall never blocks network reception; PS4 cloud streams can use Android's software H.264 decoder (set from Kotlin); for the hardware decoder the H.264 SPS is rewritten to allow frame_num gaps (PS4 cloud skips frame_num after a loss while declaring gaps impossible) and to announce at most 4 reference frames; the Takion receive thread runs at nice -10 on Android; on cloud sessions a frame whose reference was lost is still handed to the decoder instead of being dropped; a hardware H.264 variant switch (1: 4 references, 2: Moonlight style with 1 reference and parameter sets as codec config, 3: 2 with 1/60 s presentation times) and decoder output logging; variant 3 is the GPSx default: the GP520 (MStar) display path showed only the first H.264 frame until presentation times were 1/60 s apart.
+`gpsx-pylux-ca87a49.patch` holds the GPSx changes:
+
+- Build: Windows-host protobuf Python override; no per-packet DEBUG session logging.
+- Robustness: null checks before `display_sink.cantdisplay_cb`; `set_surface(NULL)`
+  no longer returns with the codec mutex locked (nor re-locks it in `kill_decoder`).
+- Audio: a shared Oboe output that reopens after route changes (and on request when a
+  Bluetooth output appears), can target an output device and reports its state; a
+  40 ms jitter buffer (refilled after running dry, delay capped at 120 ms).
+- Video decoder: counters (samples before the decoder exists, queued, rendered);
+  optional low-latency hints with a plain retry; the codec follows the codec read from
+  the stream; only the newest decoded frame is rendered; samples are copied into a
+  queue fed to the codec by a separate thread that waits up to 5 s for an input buffer,
+  so a decoder stall neither drops frames nor blocks network reception; output format
+  changes are logged.
+- H.264 (PS4 cloud on the GP520 MStar decoder): presentation times 1/60 s apart (with
+  the upstream 1 us step the MStar display path kept the first picture), SPS rewritten
+  to allow frame_num gaps and announce 1 reference frame, parameter sets queued as
+  codec config.
+- Cloud: a frame whose reference was lost is still decoded instead of being dropped
+  (PS4 cloud servers never send a new IDR); the Takion receive thread runs at nice -10
+  on Android.
 
 Rebuild the stripped `RelWithDebInfo` libraries for all ABIs with
 `tools/powershell/build-pylux-native.ps1`. See `docs/PROVENANCE.md` and
