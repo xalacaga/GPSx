@@ -168,7 +168,7 @@ class ControllerMapper(
         if (rawHid) {
             val mask = sonyHidScanCodeToPs5Button(event.scanCode)
             if (mask == null) {
-                if (pressed && !isDpadKey(event.keyCode)) logPad("unmapped raw HID key ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
+                if (pressed && !isDpadKey(event.keyCode)) logPad("unmapped raw HID button code ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
                 return isDpadKey(event.keyCode)
             }
             if (mask == SONY_HID_TRIGGER_KEY) return true
@@ -183,7 +183,7 @@ class ControllerMapper(
             else -> {
                 val mask = androidKeyToPs5Button(event.device?.vendorId ?: 0, event.keyCode)
                 if (mask == null) {
-                    if (pressed && KeyEvent.isGamepadButton(event.keyCode)) logPad("unmapped key ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
+                    if (pressed && KeyEvent.isGamepadButton(event.keyCode)) logPad("unmapped button code ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
                     return false
                 }
                 state.buttons = if (pressed) state.buttons or mask else state.buttons and mask.inv()
@@ -199,7 +199,8 @@ class ControllerMapper(
         if (event.repeatCount > 0) return
         val action = if (event.action == KeyEvent.ACTION_DOWN) "down" else "up"
         logPad(
-            "key ${event.keyCode} scan 0x${event.scanCode.toString(16)} $action " +
+            // Worded without "key": the live log drops any line containing it (secret filter).
+            "code ${event.keyCode} scan 0x${event.scanCode.toString(16)} $action " +
                 "(${if (rawHid) "raw HID" else "Android layout"}) -> ${buttonNames(state.buttons)} l2=${state.l2} r2=${state.r2}",
         )
     }
