@@ -160,6 +160,19 @@ class ControllerMapper(
         }
     }
 
+    /**
+     * Forgets every held button and stick. Called when a stream starts or ends: buttons released
+     * outside a stream (the L1+R1+Options chord that ended the previous one) never reach this
+     * mapper, and would otherwise still count as held. FACT (GP520 live log, 0.2.22): a stale
+     * L1+R1+OPTIONS made the next stream quit one second after the first pad movement.
+     */
+    fun reset() {
+        controllers.clear()
+        quitChord.reset()
+        main.removeCallbacks(quitIfStillHeld)
+        bridge.reset()
+    }
+
     fun key(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
         val state = controllers.getOrPut(event.deviceId, ::PlatformControllerState)

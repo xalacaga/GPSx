@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var remotePlayEngine: RemotePlayEngine
     private lateinit var controllerMapper: ControllerMapper
     private lateinit var retroSession: RetroSession
+    private var mapperSawStream = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,10 +40,11 @@ class MainActivity : ComponentActivity() {
             if (retroSession.isPlaying) retroSession.padMapper.key(event)
             return true
         }
+        val streaming = streamingWithFreshPads()
         if (gameController && event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) {
-            return if (remotePlayEngine.isStreaming()) controllerMapper.key(event) else true
+            return if (streaming) controllerMapper.key(event) else true
         }
-        if (remotePlayEngine.isStreaming() && controllerMapper.key(event)) return true
+        if (streaming && controllerMapper.key(event)) return true
         // A pad button that reaches the UI during a session can act as Back and end the stream:
         // log it (no "key" wording, which the live log filters) to see why it was not consumed.
         if (gameController && remotePlayEngine.isStreaming()) {
@@ -62,9 +64,19 @@ class MainActivity : ComponentActivity() {
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
         when {
             retroSession.isPlaying && retroSession.padMapper.motion(event) -> true
-            remotePlayEngine.isStreaming() && controllerMapper.motion(event) -> true
+            streamingWithFreshPads() && controllerMapper.motion(event) -> true
             else -> super.dispatchGenericMotionEvent(event)
         }
+
+    /** Whether a stream runs; the pad state is cleared each time a stream starts or ends. */
+    private fun streamingWithFreshPads(): Boolean {
+        val streaming = remotePlayEngine.isStreaming()
+        if (streaming != mapperSawStream) {
+            controllerMapper.reset()
+            mapperSawStream = streaming
+        }
+        return streaming
+    }
 
     override fun onDestroy() {
         if (::retroSession.isInitialized) retroSession.close()

@@ -10,6 +10,10 @@ internal class GpsxInputBridge {
         nativeReset()
     }
 
+    /** Forgets every pad's state, as when the bridge is created. */
+    @Synchronized
+    fun reset() = nativeReset()
+
     @Synchronized
     fun normalize(
         deviceId: Int,
