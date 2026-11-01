@@ -450,7 +450,7 @@ index 039a4d9..82e956f 100644
  }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..f868d13 100644
+index a256204..cc5fbbe 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
 @@ -1,6 +1,7 @@
@@ -870,12 +870,12 @@ index a256204..f868d13 100644
 +	if(!copy)
 +		return false;
 +	memcpy(copy, buf, buf_size);
-+	// GPSx: H.264 SPS rewrite for the hardware decoder. FACT (GP520 live logs): with a clean PS4 cloud
-+	// stream OMX.MS.AVC.Decoder froze on the first picture and refused the output buffers ACodec asked
-+	// for ("setting nBufferCountActual to 11 failed"); the SPS declares 9 reference frames and
-+	// max_dec_frame_buffering 9 (no reordering). Android's software decoder showed the game. Capping
-+	// the announced references to 4 keeps the buffer need within what the chip grants; P-frames
-+	// normally reference the previous frame. HYPOTHESIS until a GP520 run shows the picture.
++	// GPSx: H.264 SPS rewrite for the hardware decoder. FACT (GP520 live logs): OMX.MS.AVC.Decoder
++	// showed the PS4 cloud start picture and then froze, even with lost frames handed over; the PS4
++	// slices dumped on the emulator skip frame_num values after a loss (2 then 5) while the SPS
++	// declares gaps impossible. Android's software decoder tolerates that and showed the game.
++	// The rewrite allows gaps and caps the announced references to 4 (P-slices use one reference).
++	// HYPOTHESIS until a GP520 run shows the picture with the hardware decoder.
 +	if(!chiaki_codec_is_h265(decoder->target_codec) && !g_software_h264)
 +	{
 +		uint8_t *fixed = NULL;
@@ -884,7 +884,7 @@ index a256204..f868d13 100644
 +		{
 +			if(!decoder->level_raised_logged)
 +			{
-+				CHIAKI_LOGI(decoder->log, "Capped H.264 SPS reference frames to %d for the hardware decoder", H264_HARDWARE_MAX_REFS);
++				CHIAKI_LOGI(decoder->log, "Rewrote H.264 SPS for the hardware decoder (frame_num gaps allowed, at most %d references)", H264_HARDWARE_MAX_REFS);
 +				decoder->level_raised_logged = true;
 +			}
 +			free(copy);

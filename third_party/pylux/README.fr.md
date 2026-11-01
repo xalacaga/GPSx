@@ -22,8 +22,8 @@ FEC échoue ; les échantillons sont copiés dans une file qu'un fil séparé do
 attendant jusqu'à 5 s un tampon d'entrée au lieu de les jeter, si bien qu'un décodeur
 bloqué ne bloque jamais la réception réseau ; les flux PS4 cloud peuvent utiliser le
 décodeur H.264 logiciel d'Android (réglé depuis Kotlin) ; pour le décodeur matériel, le SPS H.264
-est réécrit pour annoncer au plus 4 images de référence (le PS4 cloud en annonce 9, plus
-de tampons que le décodeur de la GP520 n'en accorde) ; le fil de réception Takion tourne en nice -10 sous Android ; en cloud, une image dont
+est réécrit pour autoriser les trous de frame_num (le PS4 cloud en saute après une perte
+tout en les déclarant impossibles) et annoncer au plus 4 images de référence ; le fil de réception Takion tourne en nice -10 sous Android ; en cloud, une image dont
 la référence est perdue est quand même transmise au décodeur au lieu d'être jetée.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
