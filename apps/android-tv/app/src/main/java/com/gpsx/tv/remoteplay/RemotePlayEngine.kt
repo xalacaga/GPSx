@@ -402,6 +402,10 @@ class RemotePlayEngine(context: Context? = null) : AutoCloseable {
 
     fun setSurface(value: Surface?) {
         val active = synchronized(lock) {
+            // A resize (window to full screen) reports the same Surface again. Re-attaching it makes the
+            // native decoder call setOutputSurface on its own output, which some TV decoders may answer
+            // with a black picture (HYPOTHESIS for the GP520 PS4 cloud black screen), so only real changes pass.
+            if (value === surface) return
             surface = value
             session
         }

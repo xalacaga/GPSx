@@ -55,6 +55,7 @@ by name.
 
 ## What GPSx does differently
 
+- **Update 2026-11-01:** the default sign-in is now a page served by the TV on the local network (random single-use path, one token, 10-minute limit, no logging) where the owner pastes the NPSSO copied from Sony's `ssocookie` page on a phone; no third party sees the token. The `xbgamestream.com` relay stays as an explicit fallback.
 - **Update 2026-10-31:** by owner decision GPSx now also offers Pylux's relay sign-in (QR code, `xbgamestream.com` receives the NPSSO), with an explicit warning; it never logs the token or the code, uses a CSPRNG code and renders the QR locally. The original direction below remains the fallback.
 - **PSN login stays between the device and Sony.** On TV, Pylux sends the user
   to `xbgamestream.com`, which returns the NPSSO token, and it logs the response

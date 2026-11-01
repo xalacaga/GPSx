@@ -59,6 +59,7 @@ par leur nom.
 
 ## Ce que GPSx fait autrement
 
+- **Mise à jour 2026-11-01 :** la connexion par défaut est désormais une page servie par la TV sur le réseau local (chemin aléatoire à usage unique, un seul jeton, limite de 10 minutes, aucune journalisation) où le propriétaire colle le NPSSO copié depuis la page `ssocookie` de Sony sur un téléphone ; aucun tiers ne voit le jeton. Le relais `xbgamestream.com` reste un secours explicite.
 - **Mise à jour 2026-10-31 :** par décision du propriétaire, GPSx propose aussi la connexion par relais de Pylux (QR code, `xbgamestream.com` reçoit le NPSSO), avec un avertissement explicite ; il ne journalise jamais le jeton ni le code, utilise un code CSPRNG et génère le QR localement. L'orientation d'origine ci-dessous reste le secours.
 - **La connexion PSN reste entre l'appareil et Sony.** Sur TV, Pylux renvoie
   l'utilisateur vers `xbgamestream.com`, qui rend le jeton NPSSO, et journalise

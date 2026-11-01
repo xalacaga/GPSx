@@ -81,13 +81,21 @@ des mesures, le modèle de l'appareil, la version d'Android, la bande/le lien/le
 RSSI Wi-Fi et l'état du son : ni SSID, ni BSSID, ni adresse IP, ni nom de
 console, ni clé d'enregistrement, ni jeton PSN.
 
-## 6. Connexion cloud (QR code)
+## 6. Connexion cloud (QR code, Wi-Fi local)
 
-Cloud → **Se connecter avec le téléphone (QR code)**, scannez, connectez-vous à
-Sony sur le téléphone ; GPSx récupère la session en quelques secondes. Comme dans
-Pylux, cela passe par le relais Pylux `xbgamestream.com`, qui reçoit le jeton de
-session PSN (NPSSO) pour le transmettre à la TV. GPSx le chiffre sur l'appareil et
-ne le journalise jamais. La saisie manuelle du NPSSO reste disponible en secours.
+Le téléphone doit être sur le même réseau que la TV. Cloud → **Se connecter avec
+le téléphone (Wi-Fi local)** affiche un QR code qui ouvre une page servie par la
+TV elle-même. Sur le téléphone, connectez-vous sur playstation.com, ouvrez
+`https://ca.account.sony.com/api/v1/ssocookie`, copiez la valeur `npsso` et
+collez-la dans la page de la TV. Aucun serveur tiers : le jeton traverse une fois
+le réseau local, en HTTP non chiffré, vers une adresse aléatoire à usage unique.
+La page accepte un seul jeton puis s'arrête ; elle s'arrête aussi au bout de
+10 minutes. GPSx chiffre le jeton sur l'appareil et ne le journalise jamais.
+
+Secours : **Secours : via xbgamestream.com** (le relais Pylux, qui reçoit le jeton
+pour le transmettre à la TV) et la saisie manuelle du NPSSO. Sur l'émulateur
+Android, le téléphone ne peut pas joindre la page de la TV (réseau virtuel) :
+utilisez-y un secours.
 
 ## Format des rapports
 

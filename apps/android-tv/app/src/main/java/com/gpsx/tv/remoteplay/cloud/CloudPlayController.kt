@@ -30,6 +30,8 @@ data class CloudSnapshot(
     val signedIn: Boolean = false,
     val loading: Boolean = false,
     val provisioning: Boolean = false,
+    /** Game being provisioned, shown by the launch screen; empty when no launch is in progress. */
+    val launchingTitle: String = "",
     val detail: String = "Connectez votre compte PlayStation pour voir le catalogue cloud.",
     val warning: String = "",
     val games: List<CloudGame> = emptyList(),
@@ -120,11 +122,11 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
     fun play(game: CloudGame) {
         if (!game.playable || snapshot().provisioning) return
         cancelProvisioning.set(false)
-        update { copy(provisioning = true, detail = "Réservation d’un serveur pour ${game.name}…") }
+        update { copy(provisioning = true, launchingTitle = game.name, detail = "Réservation d’un serveur pour ${game.name}…") }
         worker.execute {
             val npsso = tokenStore.load()
             if (npsso == null) {
-                update { copy(provisioning = false, signedIn = false, detail = "Reconnectez votre compte PlayStation.") }
+                update { copy(provisioning = false, launchingTitle = "", signedIn = false, detail = "Reconnectez votre compte PlayStation.") }
                 return@execute
             }
             ensureSsl()
@@ -168,19 +170,19 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                     result?.errorMessage?.takeIf(String::isNotBlank)?.let(::provisioningFailureLabel)
                         ?: result?.let { ErrorCode(it.err).toString() }
                         ?: "le moteur natif a échoué"
-                update { copy(provisioning = false, detail = "Échec de la réservation : $reason") }
+                update { copy(provisioning = false, launchingTitle = "", detail = "Échec de la réservation : $reason") }
                 return@execute
             }
             // The native flow checks cancellation only between steps, so the final allocation can
             // still succeed after Cancel; never start a stream the user abandoned.
             if (cancelProvisioning.get() || closed.get()) {
-                update { copy(provisioning = false, detail = "Réservation annulée.") }
+                update { copy(provisioning = false, launchingTitle = "", detail = "Réservation annulée.") }
                 return@execute
             }
             if (result.datacenterPings.isNotEmpty()) {
                 regionPreferences.edit().putString(datacenterKey(game), result.datacenterPings.take(MAX_PREFERENCE_LENGTH)).apply()
             }
-            update { copy(provisioning = false, detail = "Serveur réservé (${result.rttMs} ms). Démarrage du stream…") }
+            // The engine enters CONNECTING before provisioning ends, so the launch screen stays up between the two.
             engine.startCloud(
                 ConnectInfo(
                     ps5 = result.platform == "ps5",
@@ -207,11 +209,14 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                 ),
                 game.name,
             )
+            update { copy(provisioning = false, launchingTitle = "", detail = "Serveur réservé (${result.rttMs} ms). Démarrage du stream…") }
         }
     }
 
     fun cancelProvisioning() {
+        if (!snapshot().provisioning) return
         cancelProvisioning.set(true)
+        update { copy(detail = "Annulation… le moteur s’arrête à la fin de l’étape en cours.") }
     }
 
     override fun close() {

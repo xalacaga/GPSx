@@ -78,13 +78,20 @@ stays on the device. Reports contain measurements, device model, Android version
 Wi-Fi band/link/RSSI and audio state only: no SSID, BSSID, IP address, console
 name, registration key or PSN token.
 
-## 6. Cloud sign-in (QR code)
+## 6. Cloud sign-in (QR code, local Wi-Fi)
 
-Cloud → **Se connecter avec le téléphone (QR code)**, scan, sign in to Sony on the
-phone; GPSx picks up the session within a few seconds. As in Pylux, this goes
-through the Pylux relay `xbgamestream.com`, which receives the PSN session token
-(NPSSO) to hand it to the TV. GPSx encrypts it on the device and never logs it.
-Manual NPSSO entry stays available as a fallback.
+The phone must be on the same network as the TV. Cloud → **Se connecter avec le
+téléphone (Wi-Fi local)** shows a QR code that opens a page served by the TV itself.
+On the phone, sign in at playstation.com, open
+`https://ca.account.sony.com/api/v1/ssocookie`, copy the `npsso` value and paste
+it into the TV's page. No third-party server is involved: the token crosses the
+home network once, in plain HTTP, to a random single-use address. The page
+accepts one token, then stops; it also stops after 10 minutes. GPSx encrypts the
+token on the device and never logs it.
+
+Fallbacks: **Secours : via xbgamestream.com** (the Pylux relay, which receives the
+token to hand it to the TV) and manual NPSSO entry. On the Android emulator the
+phone cannot reach the TV's page (virtual network), so use a fallback there.
 
 ## Report format
 

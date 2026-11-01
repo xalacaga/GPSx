@@ -6,7 +6,13 @@ import android.os.Build
 import android.provider.Settings
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,6 +57,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -86,6 +93,8 @@ import com.gpsx.tv.remoteplay.cloud.CloudCategory
 import com.gpsx.tv.remoteplay.cloud.CloudGame
 import com.gpsx.tv.remoteplay.cloud.CloudPlayController
 import com.gpsx.tv.remoteplay.cloud.CloudSnapshot
+import com.gpsx.tv.remoteplay.cloud.LocalTokenServer
+import com.gpsx.tv.remoteplay.cloud.startLocalSignIn
 import com.gpsx.tv.remoteplay.cloud.PsnRelayLogin
 import com.metallic.chiaki.lib.StreamMetrics
 import com.gpsx.tv.diagnostics.StoredReport
@@ -179,7 +188,56 @@ fun GpsxApp(engine: RemotePlayEngine) {
         dispatch(UiAction.Navigate(Destination.HOME))
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Ink)) {
+    // A cloud launch (server reservation, stream connection, first picture) takes tens of seconds
+    // with nothing else on screen, so a launch screen covers it until a frame has been rendered.
+    var firstFrameRendered by remember { mutableStateOf(false) }
+    LaunchedEffect(remote.phase, remote.cloudTitle) {
+        firstFrameRendered = false
+        if (remote.cloudTitle == null || remote.phase != RemotePlayPhase.STREAMING) return@LaunchedEffect
+        val deadline = System.nanoTime() + FIRST_FRAME_WAIT_NANOS
+        while (System.nanoTime() < deadline && (engine.metrics()?.videoFramesRendered ?: 0L) == 0L) {
+            delay(200)
+        }
+        firstFrameRendered = true
+    }
+    val cloudStreamStarting =
+        remote.cloudTitle != null && state.destination == Destination.SESSION &&
+            (remote.phase == RemotePlayPhase.CONNECTING || (remote.phase == RemotePlayPhase.STREAMING && !firstFrameRendered))
+    val cloudLaunchVisible = cloudState.provisioning || cloudStreamStarting
+    fun cancelCloudLaunch() {
+        if (cloudState.provisioning) {
+            cloud.cancelProvisioning()
+        } else {
+            engine.stop()
+            dispatch(UiAction.Navigate(Destination.CLOUD))
+        }
+    }
+
+    BackHandler(enabled = cloudLaunchVisible, onBack = ::cancelCloudLaunch)
+
+    // Controller shoulder buttons switch tabs (L1 left, R1 right) outside a stream; during a stream
+    // MainActivity hands them to the game before they reach the UI.
+    var tabFocusRequest by remember { mutableStateOf(0) }
+    fun switchTab(step: Int): Boolean {
+        if (fullscreenStream || cloudLaunchVisible) return false
+        val tabs = Destination.entries
+        val next = tabs.getOrNull(tabs.indexOf(state.destination) + step) ?: return true
+        dispatch(UiAction.Navigate(next))
+        tabFocusRequest++
+        return true
+    }
+
+    BoxWithConstraints(
+        modifier =
+            Modifier.fillMaxSize().background(Ink).onPreviewKeyEvent { event ->
+                when {
+                    event.type != KeyEventType.KeyDown -> false
+                    event.key == Key.ButtonL1 -> switchTab(-1)
+                    event.key == Key.ButtonR1 -> switchTab(1)
+                    else -> false
+                }
+            },
+    ) {
         val responsive = ResponsiveLayout(compact = maxWidth < 1100.dp, short = maxHeight < 650.dp)
         CompositionLocalProvider(
             LocalContentColor provides SoftWhite,
@@ -191,6 +249,7 @@ fun GpsxApp(engine: RemotePlayEngine) {
                     firstLegalFocusRequester,
                     controllerCount = controllers.size,
                     visible = !fullscreenStream,
+                    tabFocusRequest = tabFocusRequest,
                     onNavigate = { dispatch(UiAction.Navigate(it)) },
                 )
                 Box(Modifier.fillMaxSize()) {
@@ -211,6 +270,82 @@ fun GpsxApp(engine: RemotePlayEngine) {
                     }
                 }
             }
+            if (cloudLaunchVisible) {
+                val step =
+                    when {
+                        cloudState.provisioning -> 0
+                        remote.phase == RemotePlayPhase.CONNECTING -> 1
+                        else -> 2
+                    }
+                CloudLaunchScreen(
+                    title = if (cloudState.provisioning) cloudState.launchingTitle else remote.cloudTitle.orEmpty(),
+                    detail =
+                        when (step) {
+                            0 -> cloudState.detail
+                            1 -> remote.detail
+                            else -> "Réception de la première image…"
+                        },
+                    step = step,
+                    onCancel = ::cancelCloudLaunch,
+                )
+            }
+        }
+    }
+}
+
+private const val FIRST_FRAME_WAIT_NANOS = 15_000_000_000L
+
+private val CLOUD_LAUNCH_STEPS = listOf("Réservation du serveur", "Connexion au stream", "Première image")
+
+/**
+ * Full-screen wait while a cloud game starts. It sits above the session screen, whose Surface
+ * stays alive underneath so the decoder exists before the first frame arrives.
+ */
+@Composable
+internal fun CloudLaunchScreen(title: String, detail: String, step: Int, onCancel: () -> Unit) {
+    val cancelFocus = remember { FocusRequester() }
+    val startedAt = remember { System.nanoTime() }
+    var elapsedSeconds by remember { mutableStateOf(0L) }
+    LaunchedEffect(Unit) {
+        runCatching { cancelFocus.requestFocus() }
+        while (true) {
+            elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000L
+            delay(500)
+        }
+    }
+    val spin = rememberInfiniteTransition(label = "cloud-launch")
+    val angle by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(1_100, easing = LinearEasing)), label = "cloud-launch-angle")
+    Box(
+        Modifier.fillMaxSize().background(Ink)
+            // Only Cancel is focusable here: keep the D-pad from reaching the screens underneath.
+            .onPreviewKeyEvent { it.key in setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight) }
+            .testTag("cloud-launch"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Canvas(Modifier.size(72.dp)) {
+                drawCircle(Line, style = Stroke(6.dp.toPx()))
+                drawArc(Signal, angle, 90f, useCenter = false, style = Stroke(6.dp.toPx()))
+            }
+            Text("LANCEMENT DU JEU CLOUD", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+            Text(title.ifBlank { "Jeu cloud" }, fontSize = 38.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                CLOUD_LAUNCH_STEPS.forEachIndexed { index, label ->
+                    Text(
+                        (if (index < step) "✓ " else "${index + 1}. ") + label,
+                        color = when {
+                            index == step -> SoftWhite
+                            index < step -> Go
+                            else -> Muted
+                        },
+                        fontSize = 14.sp,
+                        fontWeight = if (index == step) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+            Text(detail, color = Chalk, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(720.dp))
+            Text("Patientez : $elapsedSeconds s", color = Muted, fontSize = 13.sp)
+            FocusButton("Annuler", modifier = Modifier.focusRequester(cancelFocus).testTag("cloud-launch-cancel"), onClick = onCancel)
         }
     }
 }
@@ -223,6 +358,8 @@ private fun TopBar(
     firstLegalFocusRequester: FocusRequester,
     controllerCount: Int,
     visible: Boolean = true,
+    /** Incremented to put focus on the selected tab (after an L1/R1 tab switch). */
+    tabFocusRequest: Int = 0,
     onNavigate: (Destination) -> Unit,
 ) {
     val responsive = LocalResponsiveLayout.current
@@ -231,6 +368,9 @@ private fun TopBar(
     // Kept in composition while streaming so focus is not reset to Home when the bar comes back.
     LaunchedEffect(homeFocusRequester) {
         homeFocusRequester.requestFocus()
+    }
+    LaunchedEffect(tabFocusRequest) {
+        if (tabFocusRequest > 0 && visible) runCatching { tabRequesters.getValue(selected).requestFocus() }
     }
     if (!visible) return
     Column(Modifier.fillMaxWidth()) {
@@ -548,11 +688,14 @@ private fun SessionScreen(
                         Text(remote.detail, color = Muted, fontSize = 14.sp)
                     }
                 }
-                StatusPill(
-                    if (fullscreen) remote.cloudTitle ?: remote.consoleName ?: "PS5" else remote.phase.label(),
-                    remote.phase.accent(),
-                    Modifier.align(Alignment.TopStart).padding(18.dp),
-                )
+                // In a game the title leaves with the Back hint after 10 s, so nothing stays over the picture.
+                if (!fullscreen || showFullscreenHint) {
+                    StatusPill(
+                        if (fullscreen) remote.cloudTitle ?: remote.consoleName ?: "PS5" else remote.phase.label(),
+                        remote.phase.accent(),
+                        Modifier.align(Alignment.TopStart).padding(18.dp),
+                    )
+                }
                 if (fullscreen && state.metricsVisible) {
                     StreamMetricsOverlay(engine, Modifier.align(Alignment.TopEnd).padding(18.dp))
                 }
@@ -571,7 +714,9 @@ private fun SessionScreen(
                 }
             }
 
-            if (remote.consoleName == null) {
+            // Never below a running or cloud stream: focus would land on these fields when the launch
+            // screen closes and scroll the picture away.
+            if (remote.consoleName == null && !fullscreen && !(remote.cloudTitle != null && remote.phase in BUSY_PHASES)) {
                 SectionTitle(
                     "Enregistrer GPSx sur la PS5",
                     "Association chiffrée dans le stockage privé Android ; aucun secret n’est journalisé",
@@ -1283,80 +1428,152 @@ private fun CloudScreen(cloudState: CloudSnapshot, cloud: CloudPlayController) {
 @Composable
 private fun PsnSignInPanel(cloud: CloudPlayController) {
     val scope = rememberCoroutineScope()
+    var localUrl by remember { mutableStateOf<String?>(null) }
+    var localServer by remember { mutableStateOf<LocalTokenServer?>(null) }
+    var localStatus by remember { mutableStateOf("") }
     var relay by remember { mutableStateOf<PsnRelayLogin?>(null) }
     var relayStatus by remember { mutableStateOf("") }
     var manualToken by remember { mutableStateOf("") }
+    val localCancelFocus = remember { FocusRequester() }
     val cancelFocus = remember { FocusRequester() }
     val signInFocus = remember { FocusRequester() }
-    var relayTouched by remember { mutableStateOf(false) }
-    // Keep D-pad focus inside the panel when the sign-in button and the QR code swap places.
-    LaunchedEffect(relay) {
-        if (!relayTouched) return@LaunchedEffect
-        runCatching { if (relay != null) cancelFocus.requestFocus() else signInFocus.requestFocus() }
+    var touched by remember { mutableStateOf(false) }
+    // Leaving the screen stops the local server.
+    DisposableEffect(localServer) {
+        val server = localServer
+        onDispose { server?.close() }
     }
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(Panel).padding(17.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text("Connexion PlayStation Network", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Text(
-            "Un abonnement PlayStation Plus Premium est nécessaire. Scannez le QR code avec votre téléphone, " +
-                "connectez-vous à votre compte Sony, puis GPSx récupère la session automatiquement.",
-            color = SoftWhite,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-        )
-        Text(
-            "Comme dans Pylux, la connexion passe par le serveur xbgamestream.com (équipe Pylux), qui reçoit votre " +
-                "jeton de session PSN pour le transmettre à la TV. GPSx le chiffre ensuite sur l’appareil et ne le journalise jamais. " +
-                "Client non officiel : usage aux risques du titulaire du compte.",
-            color = Amber,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            lineHeight = 15.sp,
-        )
-    }
-    val current = relay
-    if (current == null) {
-        FocusButton(
-            "Se connecter avec le téléphone (QR code)",
-            primary = true,
-            modifier = Modifier.focusRequester(signInFocus).testTag("psn-relay-sign-in"),
-        ) {
-            relayTouched = true
-            val login = PsnRelayLogin()
-            relay = login
-            relayStatus = "Préparation du code…"
-            scope.launch {
-                if (!withContext(Dispatchers.IO) { login.register() }) {
-                    relayStatus = "Le serveur de connexion ne répond pas. Réessayez plus tard."
-                    return@launch
-                }
-                relayStatus = "Scannez le QR code et connectez-vous sur le téléphone. En attente…"
-                // Poll for up to 10 minutes; leaving the screen cancels the coroutine.
-                repeat(200) {
-                    delay(3_000)
-                    if (relay !== login) return@launch
-                    val token = withContext(Dispatchers.IO) { login.poll() }
-                    if (token != null) {
-                        relay = null
-                        relayStatus = ""
-                        cloud.signIn(token)
-                        return@launch
-                    }
-                }
-                relayStatus = "Code expiré. Recommencez."
+    // Keep D-pad focus inside the panel when the sign-in buttons and a QR code swap places.
+    LaunchedEffect(localUrl, relay) {
+        if (!touched) return@LaunchedEffect
+        runCatching {
+            when {
+                localUrl != null -> localCancelFocus.requestFocus()
+                relay != null -> cancelFocus.requestFocus()
+                else -> signInFocus.requestFocus()
             }
         }
-    } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+    }
+    val currentLocal = localUrl
+    val current = relay
+    // While a QR code is shown, only the QR and its steps stay on screen so nothing scrolls away.
+    if (currentLocal == null && current == null) {
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(Panel).padding(17.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Connexion PlayStation Network", color = Signal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "PlayStation Plus Premium requis. Téléphone sur le même Wi-Fi que la TV, aucun serveur tiers.",
+                color = SoftWhite,
+                fontSize = 12.sp,
+            )
+            Text(
+                "Jeton chiffré sur la TV, jamais journalisé. Client non officiel : à vos risques.",
+                color = Amber,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+    if (currentLocal != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(8.dp)) {
-                QrCode(current.loginUrl, 240.dp)
+                QrCode(currentLocal, 220.dp)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Scannez avec le téléphone", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("1. Connectez-vous sur playstation.com", color = SoftWhite, fontSize = 14.sp)
+                Text("2. Ouvrez ${LocalTokenServer.SSO_COOKIE_URL.removePrefix("https://")}", color = SoftWhite, fontSize = 14.sp)
+                Text("3. Copiez la valeur npsso et collez-la dans la page", color = SoftWhite, fontSize = 14.sp)
+                Text(currentLocal.removePrefix("http://"), color = Muted, fontSize = 11.sp)
+                Text("En attente du téléphone (10 min au plus)…", color = Chalk, fontSize = 12.sp)
+                FocusButton("Annuler", modifier = Modifier.focusRequester(localCancelFocus).testTag("psn-local-cancel")) {
+                    localServer?.close()
+                    localServer = null
+                    localUrl = null
+                    localStatus = ""
+                }
+            }
+        }
+    } else if (current == null) {
+        // Stacked, not side by side: DOWN from the Cloud tab must land on the local sign-in, not on the fallback.
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton(
+                "Se connecter avec le téléphone (Wi-Fi local)",
+                primary = true,
+                modifier = Modifier.focusRequester(signInFocus).testTag("psn-local-sign-in"),
+            ) {
+                touched = true
+                lateinit var server: LocalTokenServer
+                server =
+                    LocalTokenServer(
+                        onFinish = { token ->
+                            scope.launch(Dispatchers.Main) {
+                                if (localServer !== server) return@launch
+                                localServer = null
+                                localUrl = null
+                                if (token != null) {
+                                    localStatus = ""
+                                    cloud.signIn(token)
+                                } else {
+                                    localStatus = "Code expiré. Recommencez."
+                                }
+                            }
+                        },
+                    )
+                val url = startLocalSignIn(server)
+                if (url == null) {
+                    localStatus = "Aucun réseau local trouvé : connectez la TV au Wi-Fi ou en Ethernet."
+                } else {
+                    localServer = server
+                    localUrl = url
+                    localStatus = ""
+                }
+            }
+            FocusButton("Secours : via xbgamestream.com", modifier = Modifier.testTag("psn-relay-sign-in")) {
+                touched = true
+                val login = PsnRelayLogin()
+                relay = login
+                relayStatus = "Préparation du code…"
+                scope.launch {
+                    if (!withContext(Dispatchers.IO) { login.register() }) {
+                        relayStatus = "Le serveur de connexion ne répond pas. Réessayez plus tard."
+                        return@launch
+                    }
+                    relayStatus = "Scannez le QR code et connectez-vous sur le téléphone. En attente…"
+                    // Poll for up to 10 minutes; leaving the screen cancels the coroutine.
+                    repeat(200) {
+                        delay(3_000)
+                        if (relay !== login) return@launch
+                        val token = withContext(Dispatchers.IO) { login.poll() }
+                        if (token != null) {
+                            relay = null
+                            relayStatus = ""
+                            cloud.signIn(token)
+                            return@launch
+                        }
+                    }
+                    relayStatus = "Code expiré. Recommencez."
+                }
+            }
+        }
+        if (localStatus.isNotEmpty()) Text(localStatus, color = Amber, fontSize = 11.sp)
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(8.dp)) {
+                QrCode(current.loginUrl, 220.dp)
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Code : ${current.code}", fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
                 Text(current.loginUrl.removePrefix("https://"), color = Muted, fontSize = 11.sp)
-                Text(relayStatus, color = SoftWhite, fontSize = 12.sp)
+                Text(relayStatus, color = SoftWhite, fontSize = 13.sp)
+                Text(
+                    "Secours : xbgamestream.com (équipe Pylux) reçoit votre jeton PSN pour le transmettre à la TV.",
+                    color = Amber,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 FocusButton("Annuler", modifier = Modifier.focusRequester(cancelFocus)) {
                     relay = null
                     relayStatus = ""
@@ -1364,10 +1581,11 @@ private fun PsnSignInPanel(cloud: CloudPlayController) {
             }
         }
     }
-    if (current == null && relayStatus.isNotEmpty()) Text(relayStatus, color = Amber, fontSize = 11.sp)
+    if (currentLocal != null || current != null) return
+    if (relayStatus.isNotEmpty()) Text(relayStatus, color = Amber, fontSize = 11.sp)
     SectionTitle(
         "Saisie du jeton NPSSO (secours)",
-        "Sur un appareil connecté à playstation.com, ouvrez ca.account.sony.com/api/v1/ssocookie et collez la valeur npsso.",
+        "Copiez la valeur npsso de ca.account.sony.com/api/v1/ssocookie et collez-la ici.",
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
         LabeledInput("Jeton NPSSO", manualToken, { manualToken = it.take(512) }, Modifier.weight(1f), testTag = "npsso-input")
@@ -1395,16 +1613,48 @@ private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayControl
     if (cloudState.warning.isNotEmpty()) {
         Text(cloudState.warning, color = Amber, fontSize = 11.sp)
     }
-    LabeledInput(
-        "Rechercher un jeu",
-        query,
-        {
-            query = it.take(80)
-            visibleCount = CLOUD_PAGE_SIZE
-        },
-        Modifier.fillMaxWidth(),
-        testTag = "cloud-search",
-    )
+    // The search field opens only on demand: a focused text field raises the TV keyboard, which
+    // swallows the D-pad, so merely moving through this screen must never land in it.
+    var searching by remember { mutableStateOf(false) }
+    var searchHadFocus by remember { mutableStateOf(false) }
+    val searchButtonFocus = remember { FocusRequester() }
+    val searchFieldFocus = remember { FocusRequester() }
+    fun closeSearch() {
+        searching = false
+        searchHadFocus = false
+        runCatching { searchButtonFocus.requestFocus() }
+    }
+    BackHandler(enabled = searching, onBack = ::closeSearch)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+        FocusButton(
+            if (query.isBlank()) "Rechercher un jeu" else "Recherche : ${query.take(30)}",
+            modifier = Modifier.focusRequester(searchButtonFocus).testTag("cloud-search-open"),
+        ) { searching = true }
+        if (query.isNotBlank() && !searching) {
+            FocusButton("Effacer") {
+                query = ""
+                visibleCount = CLOUD_PAGE_SIZE
+            }
+        }
+        if (searching) {
+            LaunchedEffect(Unit) { runCatching { searchFieldFocus.requestFocus() } }
+            LabeledInput(
+                "Nom du jeu",
+                query,
+                {
+                    query = it.take(80)
+                    visibleCount = CLOUD_PAGE_SIZE
+                },
+                Modifier.weight(1f).onFocusChanged {
+                    if (it.hasFocus) searchHadFocus = true else if (searchHadFocus) closeSearch()
+                },
+                focusRequester = searchFieldFocus,
+                previousFocusRequester = searchButtonFocus,
+                nextFocusRequester = searchButtonFocus,
+                testTag = "cloud-search",
+            )
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         matches.take(visibleCount).chunked(columns).forEach { rowGames ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
