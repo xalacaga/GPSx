@@ -25,6 +25,13 @@
   choix de la voiture. La part des 951 jeux arcade acceptés par FinalBurn Neo est
   UNKNOWN : beaucoup sont des machines de jeu d'argent ou de quiz que seul MAME
   émule.
+- Amiga (code en place, NOT_TESTED) : le dossier `amiga` du partage contient des
+  images de disquettes TOSEC. Les disquettes d'une même version forment un seul
+  jeu, et une seule version par titre est gardée (jeu complet d'abord, puis le
+  moins de modifications, mauvais dumps en dernier). Un jeu sur plusieurs
+  disquettes est copié avec une liste M3U et chaque disquette va dans son propre
+  lecteur (`puae_floppy_multidrive`). Les Kickstart du propriétaire (fullset BIOS
+  Recalbox) ont été copiés dans `amiga/bios` le 01/11/2026.
 - NOT_TESTED : deux manettes physiques en même temps (le code donne à chaque
   manette son propre port joueur), le GP520, la SRAM entre deux parties.
 
@@ -174,6 +181,7 @@ Onglet Rétro (Compose)
 | SNES | Snes9x 2010 | non commerciale | buildbot libretro, armeabi-v7a / arm64-v8a / x86_64 |
 | Neo Geo | FB Alpha 2012 Neo Geo | non commerciale | idem ; correspond aux anciens romsets fournis par Recalbox |
 | Arcade | FinalBurn Neo | non commerciale | idem |
+| Amiga | PUAE | GPL-2.0 | idem ; Kickstart copiés depuis le dossier `amiga/bios` du partage |
 
 L'installateur télécharge
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`

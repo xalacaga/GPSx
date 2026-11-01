@@ -21,6 +21,12 @@ Status: **R1 DONE, R2 WORKING ON THE EMULATOR** (2026-11-01). Nothing is validat
   (320x240, 60 fps); coin (Select) and start (Start) reached the car selection.
   How many of the 951 arcade sets FinalBurn Neo accepts is UNKNOWN: many are
   gambling or quiz machines that only MAME emulates.
+- Amiga (code in place, NOT_TESTED): the share's `amiga` folder holds TOSEC disk
+  images. Disks of one release are grouped into one game, and one release per
+  title is kept (complete set first, then the fewest alteration tags, bad dumps
+  last). A multi-disk game is copied with an M3U playlist and runs with each disk
+  in its own drive (`puae_floppy_multidrive`). The owner's Kickstart files
+  (Recalbox full BIOS set) were copied to `amiga/bios` on 2026-11-01.
 - NOT_TESTED: two physical pads at once (the code gives each pad its own player
   port), the GP520, save RAM across sessions.
 
@@ -160,6 +166,7 @@ Retro tab (Compose)
 | SNES | Snes9x 2010 | non-commercial | libretro buildbot, armeabi-v7a / arm64-v8a / x86_64 |
 | Neo Geo | FB Alpha 2012 Neo Geo | non-commercial | idem; matches the older romsets Recalbox shipped |
 | Arcade | FinalBurn Neo | non-commercial | idem |
+| Amiga | PUAE | GPL-2.0 | idem; Kickstart files copied from the share's `amiga/bios` folder |
 
 The core installer downloads
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`
