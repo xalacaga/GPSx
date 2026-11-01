@@ -20,9 +20,13 @@
   (v0.2.97.29) lit ce même romset : 2020 Super Baseball a atteint son mode
   démonstration à 59,18 images/s. Le crédit est Select (Create), le départ Start
   (Options).
+- FACT (émulateur) : FinalBurn Neo a fait tourner '96 Flag Rally du dossier
+  arcade (320x240, 60 images/s) ; crédit (Select) et départ (Start) ont mené au
+  choix de la voiture. La part des 951 jeux arcade acceptés par FinalBurn Neo est
+  UNKNOWN : beaucoup sont des machines de jeu d'argent ou de quiz que seul MAME
+  émule.
 - NOT_TESTED : deux manettes physiques en même temps (le code donne à chaque
-  manette son propre port joueur), le GP520, la SRAM entre deux parties, le
-  dossier arcade.
+  manette son propre port joueur), le GP520, la SRAM entre deux parties.
 
 ## Objectif
 

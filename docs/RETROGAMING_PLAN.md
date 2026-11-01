@@ -17,8 +17,12 @@ Status: **R1 DONE, R2 WORKING ON THE EMULATOR** (2026-11-01). Nothing is validat
   BIOS option names another BIOS. FB Alpha 2012 Neo Geo (v0.2.97.29) runs the same
   set: 2020 Super Baseball reached its attract mode at 59.18 fps. Coin is Select
   (Create), start is Start (Options).
+- FACT (emulator): FinalBurn Neo ran '96 Flag Rally from the arcade folder
+  (320x240, 60 fps); coin (Select) and start (Start) reached the car selection.
+  How many of the 951 arcade sets FinalBurn Neo accepts is UNKNOWN: many are
+  gambling or quiz machines that only MAME emulates.
 - NOT_TESTED: two physical pads at once (the code gives each pad its own player
-  port), the GP520, save RAM across sessions, the arcade folder.
+  port), the GP520, save RAM across sessions.
 
 ## Goal
 
