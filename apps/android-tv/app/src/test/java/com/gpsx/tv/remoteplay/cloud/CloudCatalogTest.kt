@@ -77,7 +77,7 @@ class CloudCatalogTest {
 
     @Test
     fun `ps4 cloud decoded in software announces a lower bandwidth`() {
-        assertEquals(8_000, streamBitrateKbps("psnow", 20_000, softwarePs4Decoder = true))
+        assertEquals(PS4_SOFTWARE_BITRATE_KBPS, streamBitrateKbps("psnow", 20_000, softwarePs4Decoder = true))
         assertEquals(20_000, streamBitrateKbps("psnow", 20_000, softwarePs4Decoder = false))
         assertEquals(20_000, streamBitrateKbps("pscloud", 20_000, softwarePs4Decoder = true))
         assertEquals(5_000, streamBitrateKbps("psnow", 5_000, softwarePs4Decoder = true))

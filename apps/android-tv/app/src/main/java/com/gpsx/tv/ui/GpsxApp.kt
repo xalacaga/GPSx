@@ -1328,6 +1328,7 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
     var audioCompatibility by remember { mutableStateOf(engine.audioCompatibility) }
     var decoderLowLatency by remember { mutableStateOf(engine.decoderLowLatency) }
     var softwarePs4Decoder by remember { mutableStateOf(engine.softwareDecoderForPs4Cloud) }
+    var hardwareVariant by remember { mutableStateOf(engine.hardwareH264Variant) }
     ScreenFrame("", stringResource(R.string.settings_title), "Appliqués à la session suivante.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingRow("Qualité vidéo", "Auto, 720p60 ou 1080p60", state.quality.label) { dispatch(UiAction.CycleQuality) }
@@ -1346,6 +1347,14 @@ private fun SettingsScreen(state: AppUiState, engine: RemotePlayEngine, dispatch
             ) {
                 softwarePs4Decoder = !softwarePs4Decoder
                 engine.softwareDecoderForPs4Cloud = softwarePs4Decoder
+            }
+            SettingRow(
+                "Variante décodeur matériel PS4",
+                "Essai sur la puce vidéo (décodeur logiciel désactivé) : 1 actuelle · 2 méthode Moonlight · 3 Moonlight + horodatages",
+                hardwareVariant.toString(),
+            ) {
+                hardwareVariant = hardwareVariant % 3 + 1
+                engine.hardwareH264Variant = hardwareVariant
             }
             SettingRow(
                 "Sortie audio",

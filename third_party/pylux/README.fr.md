@@ -24,7 +24,10 @@ bloqué ne bloque jamais la réception réseau ; les flux PS4 cloud peuvent util
 décodeur H.264 logiciel d'Android (réglé depuis Kotlin) ; pour le décodeur matériel, le SPS H.264
 est réécrit pour autoriser les trous de frame_num (le PS4 cloud en saute après une perte
 tout en les déclarant impossibles) et annoncer au plus 4 images de référence ; le fil de réception Takion tourne en nice -10 sous Android ; en cloud, une image dont
-la référence est perdue est quand même transmise au décodeur au lieu d'être jetée.
+la référence est perdue est quand même transmise au décodeur au lieu d'être jetée ; un sélecteur de variante
+H.264 matérielle (1 : 4 références, 2 : méthode Moonlight avec 1 référence et paramètres
+en codec config, 3 : la 2 avec des horodatages de 1/60 s) et un journal des sorties du
+décodeur aident à diagnostiquer le décodeur matériel de la GP520.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

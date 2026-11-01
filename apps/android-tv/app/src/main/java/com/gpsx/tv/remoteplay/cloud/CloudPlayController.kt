@@ -45,7 +45,7 @@ data class CloudSnapshot(
 internal const val DEFAULT_BITRATE_KBPS = 20_000
 
 /** Bandwidth announced for PS4 cloud streams decoded in software. */
-internal const val PS4_SOFTWARE_BITRATE_KBPS = 8_000
+internal const val PS4_SOFTWARE_BITRATE_KBPS = 15_000
 
 /**
  * Bandwidth GPSx announces to the cloud service, which picks the stream's bitrate and size from it.
