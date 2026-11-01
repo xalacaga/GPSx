@@ -30,7 +30,17 @@ data class RetroSnapshot(
     val scanning: Boolean = false,
     val detail: String = "",
     val shelves: List<RetroShelf> = emptyList(),
+    /** Compatibility found on this TV, by [RetroLibrary.compatKey]: [COMPAT_OK] or "ko:<reason>". */
+    val compatibility: Map<String, String> = emptyMap(),
 )
+
+const val COMPAT_OK = "ok"
+private const val COMPAT_PENDING = "pending"
+
+/** True when [game] is known not to load with its system's core on this TV. */
+fun RetroSnapshot.incompatible(game: RetroGame): Boolean = compatibility[RetroLibrary.compatKey(game)]?.startsWith("ko") == true
+
+fun RetroSnapshot.compatible(game: RetroGame): Boolean = compatibility[RetroLibrary.compatKey(game)] == COMPAT_OK
 
 /**
  * The Retro library shown in the Consoles menu: the owner's NAS address, the systems found on it
@@ -42,6 +52,7 @@ class RetroLibrary(
     private val sourceFactory: (String, SmbCredentials?) -> RomSource = ::SmbRomSource,
 ) : AutoCloseable {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val compatPreferences = context.applicationContext.getSharedPreferences(COMPAT_PREFERENCES, Context.MODE_PRIVATE)
     private val passwordStore = EncryptedSecretStore(context.applicationContext, SECRET_PREFERENCES, SECRET_KEY_ALIAS) { it.length in 1..256 }
     private val coverDir = File(context.applicationContext.cacheDir, "retro-covers")
     private val main = Handler(Looper.getMainLooper())
@@ -57,6 +68,7 @@ class RetroLibrary(
         RetroSnapshot(
             shareUrl = preferences.getString(KEY_SHARE, null) ?: ShareAddress.DEFAULT,
             user = preferences.getString(KEY_USER, null).orEmpty(),
+            compatibility = loadCompatibility(),
         )
     @Volatile private var source: RomSource = createSource(snapshot.shareUrl, snapshot.user, passwordStore.load())
 
@@ -142,6 +154,24 @@ class RetroLibrary(
                 }
         }
     }
+
+    /**
+     * Records whether [game] loads: [COMPAT_OK], "ko:<reason>", [markPending] before a load attempt,
+     * or null to forget. A load that crashes the app leaves the pending mark, read back as a crash.
+     */
+    fun markCompat(game: RetroGame, value: String?) {
+        val key = compatKey(game)
+        compatPreferences.edit().apply { if (value == null) remove(key) else putString(key, value) }.commit()
+        update { copy(compatibility = if (value == null) compatibility - key else compatibility + (key to value)) }
+    }
+
+    fun markPending(game: RetroGame) = markCompat(game, COMPAT_PENDING)
+
+    private fun loadCompatibility(): Map<String, String> =
+        compatPreferences.all.mapNotNull { (key, value) ->
+            val text = value as? String ?: return@mapNotNull null
+            key to if (text == COMPAT_PENDING) "ko:l’émulateur s’est arrêté pendant le chargement" else text
+        }.toMap()
 
     /** Opens a file of the share; blocking, call it off the main thread. */
     fun openGame(path: List<String>): java.io.InputStream = source.open(path)
@@ -252,14 +282,17 @@ class RetroLibrary(
         if (target != null && !closed.get()) main.post { target(next) }
     }
 
-    private companion object {
-        const val TAG = "GPSxRetro"
-        const val PREFERENCES = "gpsx_retro"
-        const val KEY_SHARE = "share_url"
-        const val KEY_USER = "share_user"
-        const val SECRET_PREFERENCES = "gpsx_retro_account"
-        const val SECRET_KEY_ALIAS = "gpsx_retro_smb_password_v1"
-        const val ART_CACHE_BYTES = 24 * 1024 * 1024
-        const val MAX_COVER_BYTES = 4 * 1024 * 1024
+    companion object {
+        fun compatKey(game: RetroGame): String = game.system.name + "/" + game.path.joinToString("/")
+
+        private const val TAG = "GPSxRetro"
+        private const val PREFERENCES = "gpsx_retro"
+        private const val KEY_SHARE = "share_url"
+        private const val KEY_USER = "share_user"
+        private const val COMPAT_PREFERENCES = "gpsx_retro_compat"
+        private const val SECRET_PREFERENCES = "gpsx_retro_account"
+        private const val SECRET_KEY_ALIAS = "gpsx_retro_smb_password_v1"
+        private const val ART_CACHE_BYTES = 24 * 1024 * 1024
+        private const val MAX_COVER_BYTES = 4 * 1024 * 1024
     }
 }

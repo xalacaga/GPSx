@@ -116,6 +116,18 @@ Onglet Rétro (Compose)
   existe, sinon le nom de fichier nettoyé. Les images sont chargées à la demande
   par SMB et mises en cache.
 
+### Compatibilité au fil des parties
+
+- Chaque lancement note sur la TV si le core a accepté le jeu. Pour les jeux
+  d'arcade, le chargement est strict : une erreur journalisée par le core pendant
+  le chargement (une ROM manquante) compte comme un refus, même si le core
+  afficherait ensuite son propre écran d'erreur. Un chargement qui fait planter
+  l'application est retenu comme un refus au démarrage suivant.
+- Les listes de jeux masquent les jeux refusés par défaut, avec un bouton pour
+  les réafficher ; les cartes indiquent « Compatible » ou « Incompatible » une
+  fois le jeu essayé. Les jeux ne sont jamais testés en masse (décision du
+  propriétaire, 01/11/2026).
+
 ### Hôte natif (R2)
 
 - Un seul core à la fois, possédé par un thread natif dédié (les cores libretro

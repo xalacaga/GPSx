@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
+import com.gpsx.tv.retro.COMPAT_OK
 import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
 import com.gpsx.tv.retro.RetroPhase
@@ -55,6 +56,8 @@ import com.gpsx.tv.retro.RetroSessionSnapshot
 import com.gpsx.tv.retro.RetroShelf
 import com.gpsx.tv.retro.RetroSnapshot
 import com.gpsx.tv.retro.ShareAddress
+import com.gpsx.tv.retro.compatible
+import com.gpsx.tv.retro.incompatible
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -182,8 +185,17 @@ private fun RetroConsoleCard(shelf: RetroShelf, modifier: Modifier, onClick: () 
 
 /** The games of one retro console; Back closes the game sheet first, then the list. */
 @Composable
-internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onPlay: (RetroGame) -> Unit, onBack: () -> Unit) {
+internal fun RetroGamesScreen(
+    shelf: RetroShelf,
+    library: RetroLibrary,
+    retro: RetroSnapshot,
+    onPlay: (RetroGame) -> Unit,
+    onBack: () -> Unit,
+) {
     val responsive = LocalResponsiveLayout.current
+    var hideIncompatible by remember(shelf) { mutableStateOf(true) }
+    val incompatible = shelf.games.count { retro.incompatible(it) }
+    val shown = if (hideIncompatible) shelf.games.filterNot { retro.incompatible(it) } else shelf.games
     val columns = if (responsive.compact) 2 else 3
     var selected by remember(shelf) { mutableStateOf<RetroGame?>(null) }
     var lastSelected by remember(shelf) { mutableStateOf<RetroGame?>(null) }
@@ -192,23 +204,36 @@ internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onPlay: 
     BackHandler(enabled = selected != null) { selected = null }
 
     val game = selected
-    ScreenFrame("", shelf.system.label, "${shelf.games.size} jeux · ${shelf.folder}") {
+    val summary =
+        buildString {
+            append("${shelf.games.size} jeux · ${shelf.folder}")
+            val working = shelf.games.count { retro.compatible(it) }
+            if (working > 0 || incompatible > 0) append(" · $working compatibles, $incompatible incompatibles")
+        }
+    ScreenFrame("", shelf.system.label, summary) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
                 RetroGameSheet(game, library) { onPlay(game) }
                 return@Column
             }
-            FocusButton("← Consoles", modifier = Modifier.testTag("retro-back")) { onBack() }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FocusButton("← Consoles", modifier = Modifier.testTag("retro-back")) { onBack() }
+                if (incompatible > 0) {
+                    FocusButton(if (hideIncompatible) "Afficher les $incompatible incompatibles" else "Masquer les incompatibles") {
+                        hideIncompatible = !hideIncompatible
+                    }
+                }
+            }
             val requesters = remember(shelf) { mutableMapOf<RetroGame, FocusRequester>() }
             // Focus lands on the game just closed, or on the first game when the list opens.
             LaunchedEffect(lastSelected) {
-                (lastSelected ?: shelf.games.firstOrNull())?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } }
+                (lastSelected ?: shown.firstOrNull())?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } }
             }
-            shelf.games.take(visibleCount).chunked(columns).forEach { row ->
+            shown.take(visibleCount).chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { item ->
                         val requester = requesters.getOrPut(item) { FocusRequester() }
-                        RetroGameCard(item, library, Modifier.weight(1f).focusRequester(requester)) {
+                        RetroGameCard(item, library, retro.compatibility[RetroLibrary.compatKey(item)], Modifier.weight(1f).focusRequester(requester)) {
                             lastSelected = item
                             selected = item
                         }
@@ -216,9 +241,9 @@ internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onPlay: 
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            if (shelf.games.size > visibleCount) {
-                FocusButton("Afficher plus (${shelf.games.size - visibleCount} restants)") { visibleCount += RETRO_PAGE_SIZE }
-            } else if (shelf.games.isEmpty()) {
+            if (shown.size > visibleCount) {
+                FocusButton("Afficher plus (${shown.size - visibleCount} restants)") { visibleCount += RETRO_PAGE_SIZE }
+            } else if (shown.isEmpty()) {
                 Text("Aucun jeu reconnu dans ce dossier.", color = Muted, fontSize = 12.sp)
             }
         }
@@ -226,7 +251,7 @@ internal fun RetroGamesScreen(shelf: RetroShelf, library: RetroLibrary, onPlay: 
 }
 
 @Composable
-private fun RetroGameCard(game: RetroGame, library: RetroLibrary, modifier: Modifier, onClick: () -> Unit) {
+private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String?, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier.height(96.dp).clip(RoundedCornerShape(3.dp))
@@ -249,6 +274,10 @@ private fun RetroGameCard(game: RetroGame, library: RetroLibrary, modifier: Modi
         Column {
             Text(game.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(game.facts(), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            when {
+                compat == COMPAT_OK -> Text("✓ Compatible", color = Go, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                compat?.startsWith("ko") == true -> Text("✗ Incompatible", color = Danger, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

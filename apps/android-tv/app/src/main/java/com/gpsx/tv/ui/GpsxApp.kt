@@ -301,7 +301,7 @@ fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
                     key(state.destination) {
                         when (state.destination) {
                             Destination.HOME -> HomeScreen(remote, controllers, cloudState, retroState, ::dispatch)
-                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, ::dispatch) { retroSession.play(it, retro) }
+                            Destination.CONSOLES -> ConsolesScreen(remote, retroState, retro, retroSession, ::dispatch)
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.CONTROLLERS ->
@@ -733,15 +733,20 @@ private fun ConsolesScreen(
     remote: RemotePlaySnapshot,
     retroState: RetroSnapshot,
     retro: RetroLibrary,
+    retroSession: RetroSession,
     dispatch: (UiAction) -> Unit,
-    onPlayRetro: (RetroGame) -> Unit,
 ) {
     // A retro console opens its game list in place; Back returns to the consoles with focus on it.
     var openFolder by remember { mutableStateOf<String?>(null) }
     var lastFolder by remember { mutableStateOf<String?>(null) }
     val shelf = retroState.shelves.firstOrNull { it.folder == openFolder }
     if (shelf != null) {
-        RetroGamesScreen(shelf, retro, onPlay = onPlayRetro) { openFolder = null }
+        RetroGamesScreen(
+            shelf,
+            retro,
+            retroState,
+            onPlay = { retroSession.play(it, retro) },
+        ) { openFolder = null }
         return
     }
     ScreenFrame("", "Vos consoles", "La PS5 associée à GPSx et les consoles rétro de votre NAS.") {

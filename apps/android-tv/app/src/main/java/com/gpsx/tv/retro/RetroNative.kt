@@ -13,8 +13,17 @@ internal object RetroNative {
     /**
      * Loads [corePath] and the game; returns a handle, or 0 with [nativeLastError] set. [options] holds
      * "key=value" lines answered to the core's option queries; other options keep their defaults.
+     * With [strict], an error the core logs while loading (a missing ROM) fails the load.
      */
-    external fun nativeOpen(corePath: String, gamePath: String, systemDir: String, saveDir: String, sramPath: String, options: String): Long
+    external fun nativeOpen(
+        corePath: String,
+        gamePath: String,
+        systemDir: String,
+        saveDir: String,
+        sramPath: String,
+        options: String,
+        strict: Boolean,
+    ): Long
 
     external fun nativeLastError(): String
 

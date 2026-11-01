@@ -24,6 +24,9 @@ data class RetroSessionSnapshot(
     val players: Int = 0,
 )
 
+/** The core refused the game: recorded as incompatible, unlike a network or download failure. */
+private class GameRefused(message: String) : IOException(message)
+
 /**
  * One retro game at a time: installs the system's core if needed, copies the game from the share
  * into the app cache (unzipped for console cores), then runs it in the native host. States:
@@ -75,12 +78,8 @@ class RetroSession(context: Context) : AutoCloseable {
                 val coreFile = installer.ensure(core) { detail -> update { copy(detail = detail) } }
                 update { copy(detail = "Copie du jeu depuis le NAS…") }
                 val gameFile = prepareGame(game, library)
-                val saves = File(savesDir, game.system.name.lowercase(Locale.ROOT)).apply { mkdirs() }
-                systemDir.mkdirs()
-                val sram = File(saves, gameFile.nameWithoutExtension + ".srm")
                 update { copy(detail = "Démarrage de l’émulateur…") }
-                val opened = RetroNative.nativeOpen(coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, "")
-                if (opened == 0L) throw IOException(RetroNative.nativeLastError().ifEmpty { "chargement impossible" })
+                val opened = open(coreFile, gameFile, game, library)
                 val geometry = RetroNative.nativeGeometry(opened)
                 synchronized(lock) {
                     handle = opened
@@ -100,6 +99,29 @@ class RetroSession(context: Context) : AutoCloseable {
                 update { copy(phase = RetroPhase.FAILED, detail = "Lancement impossible : ${failure.message ?: failure.javaClass.simpleName}") }
             }
         }
+    }
+
+    /**
+     * Opens [gameFile] in the native host and records the outcome: "ok", or "ko:<reason>" when the
+     * core refuses it (strict for arcade sets, where a missing ROM is only logged). A pending mark
+     * is left during the load, so a crash inside the core is remembered too.
+     */
+    private fun open(coreFile: File, gameFile: File, game: RetroGame, library: RetroLibrary): Long {
+        val saves = File(savesDir, game.system.name.lowercase(Locale.ROOT)).apply { mkdirs() }
+        systemDir.mkdirs()
+        val sram = File(saves, gameFile.nameWithoutExtension + ".srm")
+        library.markPending(game)
+        val opened =
+            RetroNative.nativeOpen(
+                coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, "", game.system.keepsZip,
+            )
+        if (opened == 0L) {
+            val reason = RetroNative.nativeLastError().ifEmpty { "chargement impossible" }
+            library.markCompat(game, "ko:$reason")
+            throw GameRefused(reason)
+        }
+        library.markCompat(game, COMPAT_OK)
+        return opened
     }
 
     /** The game's video surface; null when it is destroyed. Safe before or after the game starts. */

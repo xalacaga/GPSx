@@ -108,6 +108,16 @@ Retro tab (Compose)
 - The list shows name, year, genre and players from `gamelist.xml` when present,
   else the cleaned file name. Images are loaded lazily over SMB and cached.
 
+### Compatibility as you play
+
+- Each launch records on the TV whether the core accepted the game. For arcade
+  sets the load is strict: an error the core logs while loading (a missing ROM)
+  counts as a refusal, even when the core would go on to show its own error
+  screen. A load that crashes the app is remembered as a refusal at next start.
+- Game lists hide refused games by default, with a button to show them again;
+  cards show "Compatible" or "Incompatible" once a game has been tried. Games are
+  never tested in bulk (owner decision, 2026-11-01).
+
 ### Native host (R2)
 
 - One core at a time, one dedicated native thread that owns it (libretro cores

@@ -161,6 +161,9 @@ struct Host {
     std::string game_path;
     // Core options chosen by GPSx (key → value); other options keep the core's defaults.
     std::map<std::string, std::string> options;
+    // First error the core logged while loading the game (arcade cores report missing ROMs this way).
+    bool loading = false;
+    std::string load_error;
 
     std::mutex window_mutex;
     ANativeWindow* window = nullptr;
@@ -199,6 +202,16 @@ std::string g_last_error;
 void log_core(LogLevel level, const char* format, ...) {
     va_list args;
     va_start(args, format);
+    Host* host = g_host;
+    if (level == kLogError && host != nullptr && host->loading && host->load_error.empty()) {
+        va_list copy;
+        va_copy(copy, args);
+        char message[256];
+        vsnprintf(message, sizeof(message), format, copy);
+        va_end(copy);
+        host->load_error = message;
+        while (!host->load_error.empty() && (host->load_error.back() == '\n' || host->load_error.back() == '\r')) host->load_error.pop_back();
+    }
     const int priority = level == kLogError ? ANDROID_LOG_ERROR : level == kLogWarn ? ANDROID_LOG_WARN : level == kLogInfo ? ANDROID_LOG_INFO : ANDROID_LOG_DEBUG;
     __android_log_vprint(priority, "GPSxRetroCore", format, args);
     va_end(args);
@@ -492,7 +505,7 @@ std::string string_from(JNIEnv* env, jstring value) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
-    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path, jstring options) {
+    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path, jstring options, jboolean strict) {
     std::lock_guard lock(g_host_mutex);
     g_last_error.clear();
     if (g_host != nullptr) {
@@ -566,8 +579,22 @@ JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
         game.data = host->game_data.data();
         game.size = host->game_data.size();
     }
-    if (!api.load_game(&game)) {
-        g_last_error = "le core refuse ce jeu";
+    host->loading = true;
+    const bool loaded = api.load_game(&game);
+    host->loading = false;
+    // Strict mode (arcade sets): an error logged while loading means the romset does not match the
+    // core, even when the core loads anyway to show its own error screen.
+    if (loaded && strict == JNI_TRUE && !host->load_error.empty()) {
+        g_last_error = "romset incompatible : " + host->load_error;
+        api.unload_game();
+        api.deinit();
+        dlclose(lib);
+        g_host = nullptr;
+        delete host;
+        return 0;
+    }
+    if (!loaded) {
+        g_last_error = host->load_error.empty() ? "le core refuse ce jeu" : "le core refuse ce jeu : " + host->load_error;
         api.deinit();
         dlclose(lib);
         g_host = nullptr;
