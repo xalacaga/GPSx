@@ -70,8 +70,8 @@ android {
         applicationId = "com.gpsx.tv"
         minSdk = 24
         targetSdk = 34
-        versionCode = 21
-        versionName = "0.2.19"
+        versionCode = 22
+        versionName = "0.2.20"
 
         buildConfigField("String", "SOURCE_REPOSITORY_URL", "\"https://github.com/xalacaga/GPSx\"")
         buildConfigField("String", "SOURCE_REVISION", "\"$sourceRevision\"")
