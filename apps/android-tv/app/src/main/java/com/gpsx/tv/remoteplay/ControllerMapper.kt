@@ -4,6 +4,7 @@ package com.gpsx.tv.remoteplay
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -90,6 +91,20 @@ private fun InputDevice.usesSonyRawHidLayout(): Boolean =
     vendorId == SONY_VENDOR_ID &&
         hasKeys(KeyEvent.KEYCODE_BUTTON_C, KeyEvent.KEYCODE_BUTTON_Z).all { it }
 
+private const val PAD_LOG_TAG = "GPSxPad"
+
+private val BUTTON_NAMES =
+    listOf(
+        Ps5ButtonMask.CROSS to "CROSS", Ps5ButtonMask.CIRCLE to "CIRCLE", Ps5ButtonMask.SQUARE to "SQUARE", Ps5ButtonMask.TRIANGLE to "TRIANGLE",
+        Ps5ButtonMask.DPAD_UP to "UP", Ps5ButtonMask.DPAD_DOWN to "DOWN", Ps5ButtonMask.DPAD_LEFT to "LEFT", Ps5ButtonMask.DPAD_RIGHT to "RIGHT",
+        Ps5ButtonMask.L1 to "L1", Ps5ButtonMask.R1 to "R1", Ps5ButtonMask.L3 to "L3", Ps5ButtonMask.R3 to "R3",
+        Ps5ButtonMask.CREATE to "CREATE", Ps5ButtonMask.OPTIONS to "OPTIONS", Ps5ButtonMask.PLAYSTATION to "PS", Ps5ButtonMask.TOUCHPAD to "TOUCHPAD",
+    )
+
+/** Held PlayStation buttons as "CROSS+L1", or "none". */
+internal fun buttonNames(buttons: Int): String =
+    BUTTON_NAMES.filter { buttons and it.first != 0 }.joinToString("+") { it.second }.ifEmpty { "none" }
+
 /** L1 + R1 + Options held together (owner's choice of three buttons), reserved to leave the stream. */
 internal const val QUIT_CHORD = Ps5ButtonMask.L1 or Ps5ButtonMask.R1 or Ps5ButtonMask.OPTIONS
 internal const val QUIT_CHORD_HOLD_MILLIS = 1_000L
@@ -149,10 +164,16 @@ class ControllerMapper(
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
         val state = controllers.getOrPut(event.deviceId, ::PlatformControllerState)
         val pressed = event.action == KeyEvent.ACTION_DOWN
-        if (isRawHid(event.device)) {
-            val mask = sonyHidScanCodeToPs5Button(event.scanCode) ?: return isDpadKey(event.keyCode)
+        val rawHid = isRawHid(event.device)
+        if (rawHid) {
+            val mask = sonyHidScanCodeToPs5Button(event.scanCode)
+            if (mask == null) {
+                if (pressed && !isDpadKey(event.keyCode)) logPad("unmapped raw HID key ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
+                return isDpadKey(event.keyCode)
+            }
             if (mask == SONY_HID_TRIGGER_KEY) return true
             state.buttons = if (pressed) state.buttons or mask else state.buttons and mask.inv()
+            logButtons(event, rawHid, state)
             emit(event.deviceId, event.eventTime * 1_000_000L, state)
             return true
         }
@@ -160,12 +181,31 @@ class ControllerMapper(
             KeyEvent.KEYCODE_BUTTON_L2 -> state.l2 = if (pressed) 255 else 0
             KeyEvent.KEYCODE_BUTTON_R2 -> state.r2 = if (pressed) 255 else 0
             else -> {
-                val mask = androidKeyToPs5Button(event.device?.vendorId ?: 0, event.keyCode) ?: return false
+                val mask = androidKeyToPs5Button(event.device?.vendorId ?: 0, event.keyCode)
+                if (mask == null) {
+                    if (pressed && KeyEvent.isGamepadButton(event.keyCode)) logPad("unmapped key ${event.keyCode} scan 0x${event.scanCode.toString(16)}")
+                    return false
+                }
                 state.buttons = if (pressed) state.buttons or mask else state.buttons and mask.inv()
             }
         }
+        logButtons(event, rawHid, state)
         emit(event.deviceId, event.eventTime * 1_000_000L, state)
         return true
+    }
+
+    /** One line per button change for on-device checks through the live log; stick motion is not logged. */
+    private fun logButtons(event: KeyEvent, rawHid: Boolean, state: PlatformControllerState) {
+        if (event.repeatCount > 0) return
+        val action = if (event.action == KeyEvent.ACTION_DOWN) "down" else "up"
+        logPad(
+            "key ${event.keyCode} scan 0x${event.scanCode.toString(16)} $action " +
+                "(${if (rawHid) "raw HID" else "Android layout"}) -> ${buttonNames(state.buttons)} l2=${state.l2} r2=${state.r2}",
+        )
+    }
+
+    private fun logPad(message: String) {
+        runCatching { Log.i(PAD_LOG_TAG, message) }
     }
 
     fun motion(event: MotionEvent): Boolean {

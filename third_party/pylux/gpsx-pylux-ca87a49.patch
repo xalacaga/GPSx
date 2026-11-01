@@ -431,17 +431,20 @@ index 039a4d9..f1b1a82 100644
  }
  
 diff --git a/android/app/src/main/cpp/video-decoder.c b/android/app/src/main/cpp/video-decoder.c
-index a256204..732a141 100644
+index a256204..1a4e6ce 100644
 --- a/android/app/src/main/cpp/video-decoder.c
 +++ b/android/app/src/main/cpp/video-decoder.c
-@@ -10,8 +10,18 @@
+@@ -10,7 +10,20 @@
  
  #include <string.h>
  
 +#include <chiaki/time.h>
 +
  #define INPUT_BUFFER_TIMEOUT_MS 10
- 
++// GPSx: total wait for a decoder input buffer before the first rendered frame, and afterwards.
++#define STARTUP_INPUT_WAIT_MS 5000
++#define STEADY_INPUT_WAIT_MS 100
++
 +// GPSx: 1 = try the low-latency decoder hints first (default), 0 = plain configure. Set from Kotlin.
 +static volatile int g_low_latency_hints = 1;
 +
@@ -449,11 +452,10 @@ index a256204..732a141 100644
 +{
 +	g_low_latency_hints = enabled ? 1 : 0;
 +}
-+
+ 
  static void *android_chiaki_video_decoder_output_thread_func(void *user);
  
- ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec)
-@@ -23,6 +33,15 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
+@@ -23,6 +36,15 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
  	decoder->target_height = target_height;
  	decoder->target_codec = codec;
  	decoder->shutdown_output = false;
@@ -469,7 +471,7 @@ index a256204..732a141 100644
  	return chiaki_mutex_init(&decoder->codec_mutex, false);
  }
  
-@@ -54,39 +73,21 @@ void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder)
+@@ -54,39 +76,21 @@ void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder)
  {
  	if(decoder->codec)
  		kill_decoder(decoder);
@@ -520,7 +522,7 @@ index a256204..732a141 100644
  	const char *mime = chiaki_codec_is_h265(decoder->target_codec) ? "video/hevc" : "video/avc";
  	CHIAKI_LOGI(decoder->log, "Initializing decoder with mime %s", mime);
  
-@@ -94,7 +95,7 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -94,7 +98,7 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  	if(!decoder->codec)
  	{
  		CHIAKI_LOGE(decoder->log, "Failed to create AMediaCodec for mime type %s", mime);
@@ -529,7 +531,7 @@ index a256204..732a141 100644
  	}
  
  	AMediaFormat *format = AMediaFormat_new();
-@@ -102,11 +103,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -102,11 +106,44 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
  	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
  
@@ -575,7 +577,7 @@ index a256204..732a141 100644
  		goto error_codec;
  	}
  
-@@ -125,15 +159,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
+@@ -125,15 +162,104 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
  		goto error_codec;
  	}
  
@@ -684,7 +686,7 @@ index a256204..732a141 100644
  
  beach:
  	chiaki_mutex_unlock(&decoder->codec_mutex);
-@@ -151,9 +274,51 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
+@@ -151,17 +277,66 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  
  	if(!decoder->codec)
  	{
@@ -738,7 +740,24 @@ index a256204..732a141 100644
  
  	while(buf_size > 0)
  	{
-@@ -180,6 +345,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
++		// GPSx: wait for an input buffer instead of dropping the sample. A dropped frame breaks the
++		// reference chain, and PS4 cloud servers answer neither corrupt-frame reports nor IDR requests,
++		// so the picture never came back (GP520 live log: OMX.MS.AVC.Decoder took ~2.2 s to accept
++		// input after its output port reconfigured, every sample was dropped after 30 ms, then every
++		// later frame missed its reference while audio played). Until the first frame is shown the
++		// wait covers that start-up; afterwards a stall up to 100 ms is still waited out.
++		int max_attempts = decoder->frames_rendered == 0 ? STARTUP_INPUT_WAIT_MS / INPUT_BUFFER_TIMEOUT_MS : STEADY_INPUT_WAIT_MS / INPUT_BUFFER_TIMEOUT_MS;
+ 		ssize_t codec_buf_index = -1;
+-		for(int attempt = 0; attempt < 3; attempt++)
++		for(int attempt = 0; attempt < max_attempts; attempt++)
+ 		{
+ 			codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, INPUT_BUFFER_TIMEOUT_MS * 1000);
+-			if(codec_buf_index >= 0)
++			if(codec_buf_index >= 0 || decoder->shutdown_output)
+ 				break;
+ 		}
+ 		if(codec_buf_index < 0)
+@@ -180,6 +355,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, in
  			codec_sample_size = codec_buf_size;
  		}
  		memcpy(codec_buf, buf, codec_sample_size);
@@ -746,7 +765,7 @@ index a256204..732a141 100644
  		media_status_t status = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
  		if(status != AMEDIA_OK)
  		{
-@@ -204,7 +370,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
+@@ -204,7 +380,39 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
  		ssize_t status = AMediaCodec_dequeueOutputBuffer(decoder->codec, &info, -1);
  		if(status >= 0)
  		{

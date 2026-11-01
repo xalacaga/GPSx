@@ -18,7 +18,8 @@ rendait la main sans libérer le verrou du codec (et le reprenait dans
 flux ; les images décodées en retard sont sautées ; options faible latence du
 décodeur désactivables ; en cloud, une demande d'IDR (Takion IDRREQUEST) est
 envoyée au plus une fois par seconde quand une image perd sa référence ou que le
-FEC échoue.
+FEC échoue ; le décodeur attend un tampon d'entrée (jusqu'à 5 s avant la première
+image, 100 ms ensuite) au lieu de jeter l'échantillon.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et

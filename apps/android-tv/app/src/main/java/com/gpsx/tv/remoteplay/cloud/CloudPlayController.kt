@@ -9,6 +9,7 @@ import com.gpsx.tv.remoteplay.RemotePlayEngine
 import com.metallic.chiaki.lib.Codec
 import com.metallic.chiaki.lib.CloudProvisionCallbacks
 import com.metallic.chiaki.lib.CloudProvisionRequest
+import com.metallic.chiaki.lib.CloudProvisionResult
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.lib.ErrorCode
@@ -140,7 +141,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                     regionPreferences.getString(KEY_STORE_LANG, "").orEmpty(),
                     regionPreferences.getBoolean(KEY_NATIVE_MODE, true),
                 )
-            val result =
+            fun provision() =
                 runCatching {
                     cloudProvisionSession(
                         CloudProvisionRequest(
@@ -167,6 +168,23 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
                         },
                     )
                 }.getOrNull()
+            var result = provision()
+            // FACT (GP520 live log, 0.2.11): launches 14 s and 39 s after leaving a game failed with
+            // "step10 lock http 401" while Sony was still releasing the previous allocation; a launch a
+            // minute later worked. Failures without a known reason are retried a few times after a pause.
+            fun failedWithoutKnownReason(attempt: CloudProvisionResult?): Boolean {
+                if (attempt == null) return true
+                if (attempt.err == 0) return false
+                val message = attempt.errorMessage.orEmpty()
+                return provisioningFailureLabel(message) == message.take(200)
+            }
+            var retry = 0
+            while (retry < PROVISION_RETRIES && failedWithoutKnownReason(result) && !cancelProvisioning.get() && !closed.get()) {
+                retry++
+                update { copy(detail = "${game.name} : Sony libère encore la partie précédente, nouvel essai $retry/$PROVISION_RETRIES dans 15 s…") }
+                Thread.sleep(PROVISION_RETRY_DELAY_MILLIS)
+                if (!cancelProvisioning.get() && !closed.get()) result = provision()
+            }
             if (result == null || result.err != 0 || result.serverIp.isEmpty()) {
                 val reason =
                     result?.errorMessage?.takeIf(String::isNotBlank)?.let(::provisioningFailureLabel)
@@ -296,5 +314,7 @@ class CloudPlayController(context: Context, private val engine: RemotePlayEngine
         const val KEY_NATIVE_MODE = "native_mode"
         const val KEY_DATACENTERS_PREFIX = "datacenters_"
         const val MAX_PREFERENCE_LENGTH = 64 * 1024
+        const val PROVISION_RETRY_DELAY_MILLIS = 15_000L
+        const val PROVISION_RETRIES = 3
     }
 }
