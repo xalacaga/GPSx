@@ -204,7 +204,9 @@ Brutal Football stops on a Guru Meditation on the emulator, at either disk speed
 
 The owner chose on 2026-11-07 to keep only Amiga 500 games. A share scan leaves out
 AGA, CD32 and CDTV releases, those for an A1200 or A4000, those needing 2 MB or more
-or a hard disk, Workbench-only disks, and titles known only from bad dumps. A game
+or a hard disk, Workbench-only disks, titles known only from bad dumps, and disks that start no game
+by themselves (data, save, mission and scenery disks, expansions, updates, editors,
+installers, documentation). A game
 with both an AGA and an A500 release keeps the latter. This reads file names only:
 it cannot tell whether a game really runs, and games are never tested in bulk. The
 game sheet has a **Ne marche pas** button for that, which hides the game from its

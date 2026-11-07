@@ -13,6 +13,8 @@ import java.util.Locale
  * Only what an Amiga 500 can run is listed. FACT (GP520, 0.2.27): even A500 games ran below full
  * speed, so AGA, CD32 and big-memory releases cannot be played on this TV. A game with an A500
  * release keeps it; a title known only from bad dumps is left out, as it cannot run properly.
+ * So are disks that start no game by themselves: data, save and mission disks, expansions, updates,
+ * editors, installers and documentation.
  */
 object AmigaReleases {
     /** One game: its disks in order (folder-relative paths), title, year and publisher. */
@@ -22,13 +24,17 @@ object AmigaReleases {
     private val DISK_TAG = Regex("""\s*\((?:Disk|Disque)\s*(\d+)\s*of\s*(\d+)\)(?:\s*\([A-Za-z0-9 ]{1,12}\))?""", RegexOption.IGNORE_CASE)
     private val BEYOND_A500 = Regex("""\bCD32\b|\bCDTV\b|\((?:AGA|A1200[^)]*|A4000[^)]*|\d+MB [^)]*|HD Installer)\)|\[WB\]""", RegexOption.IGNORE_CASE)
     private val BAD_DUMP = Regex("""b\d*(?: .*)?""")
+    private val NOT_A_GAME_TAG =
+        Regex("""\[(?:data disk|save disk|docs|installer|hd installer|hd-fd install required|intro only|addon|write enable disk)[^\]]*\]""", RegexOption.IGNORE_CASE)
+    private val NOT_A_GAME_TITLE =
+        Regex(""" - (?:.*\b(?:Course|Scenery|Scenario|Mission|Expansion|Data|Level|Team Construction) Disk\b|.*\bExpansion\b|.*\bUpdate\b|New Levels\b|(?:Scenario )?Editor\b|Utilities\b)""", RegexOption.IGNORE_CASE)
     private val YEAR = Regex("""\((\d{4})[^)]*\)""")
     private val BRACKETS = Regex("""\[([^\]]*)\]""")
 
     fun group(files: List<List<String>>): List<Release> {
         // Disks of one release share their name once the disk tag is removed.
         val releases =
-            files.filterNot { BEYOND_A500.containsMatchIn(it.last()) }
+            files.filterNot { path -> BEYOND_A500.containsMatchIn(path.last()) || startsNoGame(path.last()) }
                 .groupBy { path -> DISK_TAG.replace(baseName(path.last()), "").trim().lowercase(Locale.ROOT) }
                 .map { (_, disks) ->
                     val ordered = disks.sortedBy { diskNumber(it.last()) }
@@ -60,6 +66,8 @@ object AmigaReleases {
             return score
         }
     }
+
+    private fun startsNoGame(file: String): Boolean = NOT_A_GAME_TAG.containsMatchIn(file) || NOT_A_GAME_TITLE.containsMatchIn(stripTags(file))
 
     private fun baseName(file: String): String = file.substringBeforeLast('.', file)
 

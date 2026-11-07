@@ -222,8 +222,10 @@ Guru Meditation sur l'émulateur, aux deux vitesses de disquette.
 
 Le propriétaire a choisi le 07/11/2026 de ne garder que les jeux Amiga 500. La lecture
 du partage écarte les versions AGA, CD32 et CDTV, celles pour A1200 ou A4000, celles
-qui demandent 2 Mo ou plus ou un disque dur, les disquettes Workbench seules et les
-titres connus uniquement en mauvais dump. Un jeu qui existe en AGA et en A500 garde
+qui demandent 2 Mo ou plus ou un disque dur, les disquettes Workbench seules, les
+titres connus uniquement en mauvais dump et les disquettes qui ne démarrent aucun jeu
+seules (données, sauvegardes, missions, décors, extensions, mises à jour, éditeurs,
+installateurs, documentation). Un jeu qui existe en AGA et en A500 garde
 cette dernière. Ce tri ne lit que les noms de fichiers : il ne dit pas si un jeu
 tourne vraiment, et les jeux ne sont jamais testés en masse. La fiche du jeu a donc
 un bouton **Ne marche pas**, qui le masque de la liste de sa console jusqu'à

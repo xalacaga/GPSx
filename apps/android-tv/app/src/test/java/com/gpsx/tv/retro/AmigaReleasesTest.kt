@@ -26,6 +26,25 @@ class AmigaReleasesTest {
     }
 
     @Test
+    fun `disks that start no game by themselves are left out`() {
+        assertEquals(
+            listOf("Kick Off 2", "The Humans"),
+            titles(
+                "Kick Off 2 (1990)(Anco)[cr].adf",
+                "Kick Off 2 - Expansion Disk (1990)(Anco).adf",
+                "Kick Off 2 (1990)(Anco)[data disk].adf",
+                "Flight Simulator II - Scenery Disk 07 - Washington (1987)(subLOGIC).adf",
+                "Falcon - The F-16 Fighter Simulation - Mission Disk 1 (1989)(Spectrum).adf",
+                "FIFA International Soccer - Update (1994)(EA).adf",
+                "Football Masters - Editor (1991)(Pub).adf",
+                "Game (1990)(Pub)[save disk].adf",
+                "Other (1990)(Pub)[docs].adf",
+                "Humans, The (1994)(Gametek)[HD].adf",
+            ),
+        )
+    }
+
+    @Test
     fun `side labels after the disk tag stay in one release`() {
         val release = AmigaReleases.group(listOf(listOf("Game (1990)(Pub)(Disk 2 of 2)(Data).adf"), listOf("Game (1990)(Pub)(Disk 1 of 2)(Boot).adf"))).single()
 
