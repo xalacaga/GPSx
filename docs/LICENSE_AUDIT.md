@@ -12,7 +12,7 @@ Audit date: 2026-10-25. This is an engineering compliance analysis, not legal ad
 |---|---|---|
 | Chiaki | AGPL-3.0 lineage with OpenSSL exception | Blocked pending product-license decision |
 | chiaki-ng | AGPL-3.0; core files use `LicenseRef-AGPL-3.0-only-OpenSSL` | Accepted at pinned commit for the Android baseline and declared-derivative ports |
-| Pylux | AGPL-3.0 with the same OpenSSL exception | Blocked pending decision |
+| Pylux | AGPL-3.0 with the same OpenSSL exception | Accepted by the owner on 2026-11-07 at pinned commit `ca87a49`, as the native engine of the APK; source, patch and notices ship with each release |
 | Linux `hid-playstation.c` | GPL-2.0-or-later | Behavioral reference only; do not copy without review |
 | Android APIs/AOSP artifacts | License varies; commonly Apache-2.0 for relevant source | API use allowed; copied code still needs review |
 | Graphify | Apache-2.0 per project documentation | Tooling only; no runtime dependency |

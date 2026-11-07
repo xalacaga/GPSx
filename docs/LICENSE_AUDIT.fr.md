@@ -14,7 +14,7 @@ Date de l'audit : 2026-10-25. Il s'agit d'une analyse de conformité d'ingénier
 |---|---|---|
 | Chiaki | Lignée AGPL-3.0 avec exception OpenSSL | Bloqué en attente de la décision de licence produit |
 | chiaki-ng | AGPL-3.0 ; les fichiers du cœur utilisent `LicenseRef-AGPL-3.0-only-OpenSSL` | Accepté au commit épinglé pour la base Android et les ports dérivés déclarés |
-| Pylux | AGPL-3.0 avec la même exception OpenSSL | Bloqué en attente de décision |
+| Pylux | AGPL-3.0 avec la même exception OpenSSL | Accepté par le propriétaire le 2026-11-07 au commit épinglé `ca87a49`, comme moteur natif de l'APK ; source, correctif et mentions accompagnent chaque version |
 | `hid-playstation.c` de Linux | GPL-2.0-or-later | Référence comportementale uniquement ; pas de copie sans revue |
 | API/artefacts Android AOSP | Licence variable ; souvent Apache-2.0 pour les sources concernées | Utilisation des API autorisée ; tout code copié doit être revu |
 | Graphify | Apache-2.0 selon la documentation du projet | Outillage uniquement ; aucune dépendance à l'exécution |
