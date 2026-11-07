@@ -81,6 +81,9 @@ enum class RetroSystem(
     /** Systems whose games can come on several discs. */
     val hasDiscs: Boolean get() = this == PCENGINE || this == PLAYSTATION
 
+    /** Systems whose cartridges can play their music from a CD beside them (MSU-MD). */
+    val cartridgesWithCd: Boolean get() = this == MEGADRIVE
+
 
     /** True when [fileName] has one of this system's extensions and is not a BIOS set. */
     fun accepts(fileName: String): Boolean {

@@ -134,6 +134,19 @@ Onglet Rétro (Compose)
   les réafficher ; les cartes indiquent « Compatible » ou « Incompatible » une
   fois le jeu essayé. Les jeux ne sont jamais testés en masse (décision du
   propriétaire, 01/11/2026).
+- Jusqu'à la 0.2.26, l'hôte plantait sur les cartouches Mega Drive et Master
+  System : le premier démarrage d'une version ultérieure oublie donc une fois
+  toutes les marques de plantage. Un jeu qui plante vraiment se marque de nouveau
+  à son prochain lancement.
+
+### Recherche
+
+L'entrée **Recherche** de la barre du haut trouve un jeu par son nom sur toutes
+les consoles du partage. Les accents, la casse et la ponctuation sont ignorés ;
+chaque mot tapé doit commencer un mot du titre, dans n'importe quel ordre, et les
+espaces peuvent être omises (« megaman »). Elle ne couvre que les jeux rétro ; le
+catalogue PS Plus garde sa propre recherche. Les jeux refusés restent listés avec
+leur marque, car une recherche est une demande délibérée.
 
 ### Stockage sur la TV et commandes
 
@@ -194,6 +207,40 @@ encore sur le partage, donc aucun jeu de ces systèmes n'a tourné sur l'émulat
 GP520. Leurs dossiers (`megadrive`, `mastersystem`, `nes`, `gb`, `gbc`, `gba`, `pcengine`,
 `psx`) existent sur le partage et restent masqués dans GPSx tant qu'ils ne contiennent pas
 de jeu. Un `.cue` PlayStation ou PC Engine nomme ses pistes, qui sont lues avec lui.
+
+### Jeux Mega Drive avec musique CD
+
+Le dossier `megadrive` du propriétaire contient un dossier par jeu : un `.md` patché,
+un `.cue` et des pistes audio (`.bin`, `.wav` ou `.ogg`). Un `.md` accompagné d'un
+`.cue` du même nom reste sur le partage avec ses pistes, comme un jeu CD, et un `.bin`
+à côté d'un `.cue` est une piste, pas un jeu.
+
+Genesis Plus GX trouve seul le `.cue` à partir du chemin du `.md`. Il existe deux
+familles de packs (FACT, source du core lue le 07/11/2026) : les packs MD+ ont des
+lignes `REM LOOP` et utilisent son mode MegaSD, les packs MSU-MD n'en ont pas et
+utilisent son mode Mega CD. Son réglage automatique choisit le bon d'après le `.cue` ;
+GPSx n'y touche donc pas, car forcer le Mega CD rendait les packs MD+ muets. GPSx
+impose seulement une région NTSC, les patches bloquant les consoles PAL.
+
+Le mode Mega CD exige un BIOS, sans lequel le core abandonne le CD sans rien dire.
+GPSx copie `bios_CD_E.bin`, `bios_CD_J.bin` et `bios_CD_U.bin` depuis `megadrive/bios`
+ou le lot Recalbox du propriétaire, une seule fois et sous ces noms exacts. S'ils
+manquent, le lancement s'arrête avec un message et le jeu n'est pas marqué refusé.
+Les BIOS ne sont jamais livrés avec GPSx.
+
+Preuves, sur émulateur uniquement (07/11/2026, vrai partage, core v1.7.4 f27655b) :
+Sonic 2 passe l'écran de blocage à 60 images/s, et la lecture audio CD a été mesurée
+en trafic réseau sur 20 s : Gunstar Heroes 159 Kio/s (MD+), Comix Zone 119 Kio/s et
+Lemmings 159 Kio/s, proche des 172 Kio/s d'un CD. Personne ne l'a encore écoutée.
+NOT_TESTED : le GP520, et Moonwalker après ses crédits, qui demandent une manette.
+Une lecture sur le NAS peut retarder une image en cas d'absence du cache ; on compte
+7 à 51 sous-alimentations audio par partie de 33 s sur l'émulateur, sans comparaison
+sur la TV pour l'instant.
+
+UNKNOWN : sur l'émulateur, le processus gagne un descripteur `sync_file` par image
+affichée, conservé après la fermeture du jeu. GPSx ne manipule aucun descripteur sur
+ce chemin (`ANativeWindow_lock` et `unlockAndPost`), l'origine serait donc la pile
+graphique de l'émulateur (INFERENCE). Cela n'a pas été vérifié sur le GP520.
 
 ### Les jeux CD restent sur le partage
 

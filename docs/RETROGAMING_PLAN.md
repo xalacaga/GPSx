@@ -123,6 +123,17 @@ Retro tab (Compose)
 - Game lists hide refused games by default, with a button to show them again;
   cards show "Compatible" or "Incompatible" once a game has been tried. Games are
   never tested in bulk (owner decision, 2026-11-01).
+- Up to 0.2.26 the host crashed on Mega Drive and Master System cartridges, so
+  the first start of a later version forgets every crash mark once; a game that
+  really crashes marks itself again on its next launch.
+
+### Search
+
+The **Recherche** item of the top bar finds a game by name on every console of
+the share. Accents, case and punctuation are ignored; each typed word has to
+start a word of the title, in any order, and spaces may be left out ("megaman").
+It covers the retro games only; the PS Plus catalog keeps its own search. Refused
+games stay listed with their mark, since a search is a deliberate request.
 
 ### Storage on the TV and controls
 
@@ -179,6 +190,39 @@ yet, so no game of these systems has run on the emulator or the GP520. Their fol
 (`megadrive`, `mastersystem`, `nes`, `gb`, `gbc`, `gba`, `pcengine`, `psx`) exist on the
 share and stay hidden in GPSx until they hold a game. A PlayStation or PC Engine `.cue`
 names its tracks, which are read with it.
+
+### Mega Drive games with CD music
+
+The owner's `megadrive` folder holds one folder per game: a patched `.md`, a `.cue`
+and audio tracks (`.bin`, `.wav` or `.ogg`). A `.md` with a `.cue` of the same name
+beside it stays on the share with its tracks, like a CD game, and a `.bin` beside a
+`.cue` is a track, not a game.
+
+Genesis Plus GX finds the `.cue` by itself from the `.md` path. Two kinds of pack
+exist (FACT, core source read 2026-11-07): MD+ packs have `REM LOOP` lines and use
+its MegaSD mode, MSU-MD packs have none and use its Mega CD mode. Its automatic
+add-on setting picks the right one from the sheet, so GPSx leaves it alone: forcing
+the Mega CD silenced MD+ packs. GPSx only sets an NTSC region, as the patches lock
+out PAL consoles.
+
+The Mega CD mode needs a BIOS, without which the core drops the CD silently. GPSx
+copies `bios_CD_E.bin`, `bios_CD_J.bin` and `bios_CD_U.bin` from `megadrive/bios`
+or the owner's Recalbox set, once, under those exact names. If they are missing the
+launch stops with a message and the game is not marked as refused. The BIOS files
+are never shipped with GPSx.
+
+Evidence, emulator only (2026-11-07, real share, core v1.7.4 f27655b): Sonic 2 runs
+past the lockout screen at 60 frames per second, and CD audio reads were measured
+as network traffic over 20 s: Gunstar Heroes 159 KiB/s (MD+), Comix Zone 119 KiB/s
+and Lemmings 159 KiB/s, near the 172 KiB/s of a CD. No one has listened to it yet.
+NOT_TESTED: the GP520, and Moonwalker past its credits, which needs a pad. A file
+read from the NAS can stall a frame on a cache miss; audio underruns were 7 to 51
+per 33 s run on the emulator, with no comparison yet on the TV.
+
+UNKNOWN: on the emulator the process gains one `sync_file` descriptor per frame
+shown, kept after the game closes. GPSx handles no descriptor on that path
+(`ANativeWindow_lock` and `unlockAndPost`), so this may come from the emulator's
+graphics stack (INFERENCE). It has not been checked on the GP520.
 
 ### CD games stay on the share
 

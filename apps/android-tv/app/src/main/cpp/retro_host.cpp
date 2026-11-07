@@ -392,6 +392,8 @@ constexpr VfsInterface kVfs = {
 bool environment(unsigned command, void* data) {
     Host* host = g_host;
     if (host == nullptr) return false;
+    // Only these commands take no payload; a core sending null to any other is refused, not followed.
+    if (data == nullptr && command != kEnvSetDiskControlInterface && command != kEnvShutdown && command != kEnvGetInputBitmasks) return false;
     switch (command) {
         case kEnvGetCanDupe:
             *static_cast<bool*>(data) = true;
@@ -405,7 +407,8 @@ bool environment(unsigned command, void* data) {
             return true;
         }
         case kEnvSetDiskControlInterface:
-            host->disk = *static_cast<const DiskControl*>(data);
+            // Null withdraws the interface: Genesis Plus GX sends it when the game is a cartridge.
+            host->disk = data != nullptr ? *static_cast<const DiskControl*>(data) : DiskControl{};
             return true;
         case kEnvShutdown:
             host->shutdown_requested.store(true);

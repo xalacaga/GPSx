@@ -12,6 +12,7 @@ enum class Environment { PS5, RETRO }
  */
 enum class Destination(@StringRes val labelRes: Int, val environment: Environment? = null) {
     HOME(R.string.nav_home),
+    SEARCH(R.string.nav_search),
     SESSION(R.string.nav_session, Environment.PS5),
     CLOUD(R.string.nav_cloud, Environment.PS5),
     PS5_SETTINGS(R.string.nav_ps5_settings, Environment.PS5),

@@ -37,12 +37,22 @@ data class RetroGame(
     val coverUrl: String = "",
     /** All disks of a multi-disk game, in order (the first is [path]); empty for a single file. */
     val disks: List<List<String>> = emptyList(),
+    /** Share path of the `.cue` sheet of a cartridge that plays its music from a CD (MSU-MD, MD+); empty for others. */
+    val cdSheet: List<String> = emptyList(),
 ) {
     /** CD images are heavy: they are read from the share and never copied to the TV. */
-    val staysOnShare: Boolean get() = path.last().substringAfterLast('.', "").lowercase(Locale.ROOT) in DISC_IMAGES
+    val staysOnShare: Boolean get() = cdSheet.isNotEmpty() || path.last().substringAfterLast('.', "").lowercase(Locale.ROOT) in DISC_IMAGES
+
+    /**
+     * The system's options, plus an NTSC console: the CD music patches lock out PAL ones. The CD
+     * add-on stays on the core's automatic choice, which reads the sheet: MegaSD for MD+ packs
+     * (REM LOOP lines), Mega CD for MSU-MD packs. Forcing the Mega CD silences MD+ packs.
+     */
+    val coreOptions: String get() = system.coreOptions + if (cdSheet.isEmpty()) "" else CD_MUSIC_OPTIONS
 
     private companion object {
         val DISC_IMAGES = setOf("cue", "chd", "pbp")
+        const val CD_MUSIC_OPTIONS = "genesis_plus_gx_region_detect=ntsc-u\n"
     }
 }
 
@@ -85,6 +95,16 @@ object ShareScanner {
             .filter { it.games.isNotEmpty() }
             .sortedWith(compareBy<RetroShelf> { it.system.ordinal }.thenBy { it.folder.lowercase(Locale.ROOT) })
 
+    /** Game files of one folder. A .bin beside a .cue of the same name is a CD track, not a cartridge. */
+    private fun gameFiles(system: RetroSystem, entries: List<RomFile>): List<RomFile> =
+        entries.filter { !it.directory && system.accepts(it.name) && !(it.name.endsWith(".bin", ignoreCase = true) && cueSheetOf(it.name, entries) != null) }
+
+    /** Name of the .cue sheet beside [name] and named alike, if there is one. */
+    private fun cueSheetOf(name: String, entries: List<RomFile>): String? {
+        val sheet = name.substringBeforeLast('.') + ".cue"
+        return entries.firstOrNull { !it.directory && it.name.equals(sheet, ignoreCase = true) }?.name
+    }
+
     private fun scanFolder(source: RomSource, system: RetroSystem, folder: String): List<RetroGame> {
         val root = listOf(folder)
         val entries = runCatching { source.list(root) }.getOrDefault(emptyList())
@@ -94,14 +114,16 @@ object ShareScanner {
                 .orEmpty()
                 .associateBy { it.path.lowercase(Locale.ROOT) }
         val files = mutableListOf<Pair<List<String>, String>>() // relative path, genre folder
-        entries.forEach { entry ->
-            if (!entry.directory) {
-                if (system.accepts(entry.name)) files += listOf(entry.name) to ""
-            } else if (entry.name.lowercase(Locale.ROOT) !in MEDIA_FOLDERS) {
-                runCatching { source.list(root + entry.name) }.getOrDefault(emptyList())
-                    .filter { !it.directory && system.accepts(it.name) }
-                    .forEach { files += listOf(entry.name, it.name) to RomNames.folderGenre(entry.name) }
+        val sheets = mutableMapOf<List<String>, List<String>>() // cartridge with CD music, its sheet
+        fun collect(folder: List<String>, listed: List<RomFile>, genre: String) {
+            gameFiles(system, listed).forEach { file ->
+                files += (folder + file.name) to genre
+                if (system.cartridgesWithCd) cueSheetOf(file.name, listed)?.let { sheets[folder + file.name] = folder + it }
             }
+        }
+        collect(emptyList(), entries, "")
+        entries.filter { it.directory && it.name.lowercase(Locale.ROOT) !in MEDIA_FOLDERS }.forEach { entry ->
+            collect(listOf(entry.name), runCatching { source.list(root + entry.name) }.getOrDefault(emptyList()), RomNames.folderGenre(entry.name))
         }
         if (system == RetroSystem.AMIGA) {
             return AmigaReleases.group(files.map { it.first }).map { release ->
@@ -140,6 +162,7 @@ object ShareScanner {
                     image = info?.image?.takeIf(String::isNotBlank)?.let { root + it.split('/') }.orEmpty(),
                     coverUrl = Thumbnails.boxArtUrl(system, relative.last()),
                     disks = if (discs.size > 1) discs.map { root + it } else emptyList(),
+                    cdSheet = sheets[relative]?.let { root + it }.orEmpty(),
                 )
             }
             .sortedBy { it.title.lowercase(Locale.ROOT) }

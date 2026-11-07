@@ -178,11 +178,25 @@ class RetroLibrary(
         update { copy(keyboardGames = if (keyboard) keyboardGames + key else keyboardGames - key) }
     }
 
-    private fun loadCompatibility(): Map<String, String> =
-        compatPreferences.all.mapNotNull { (key, value) ->
+    private fun loadCompatibility(): Map<String, String> {
+        forgetOldCrashMarks()
+        return compatPreferences.all.mapNotNull { (key, value) ->
             val text = value as? String ?: return@mapNotNull null
             key to if (text == COMPAT_PENDING) "ko:l’émulateur s’est arrêté pendant le chargement" else text
         }.toMap()
+    }
+
+    /**
+     * Up to 0.2.26 the host itself crashed on Mega Drive and Master System cartridges, which marked
+     * those games as refused and hid them. Those marks say nothing about the games, so they are
+     * dropped once; a game that really crashes marks itself again on its next launch.
+     */
+    private fun forgetOldCrashMarks() {
+        if (preferences.getBoolean(KEY_CRASH_MARKS_FORGOTTEN, false)) return
+        val marks = crashMarks(compatPreferences.all)
+        compatPreferences.edit().apply { marks.forEach { remove(it) } }.commit()
+        preferences.edit().putBoolean(KEY_CRASH_MARKS_FORGOTTEN, true).apply()
+    }
 
     /** Lists a folder of the share; blocking, call it off the main thread. */
     fun listShare(path: List<String>): List<RomFile> = source.list(path)
@@ -302,10 +316,14 @@ class RetroLibrary(
     companion object {
         fun compatKey(game: RetroGame): String = game.system.name + "/" + game.path.joinToString("/")
 
+        /** Keys of the games whose last load never finished. */
+        internal fun crashMarks(marks: Map<String, *>): List<String> = marks.filterValues { it == COMPAT_PENDING }.keys.toList()
+
         private const val TAG = "GPSxRetro"
         private const val PREFERENCES = "gpsx_retro"
         private const val KEY_SHARE = "share_url"
         private const val KEY_USER = "share_user"
+        private const val KEY_CRASH_MARKS_FORGOTTEN = "crash_marks_forgotten"
         private const val COMPAT_PREFERENCES = "gpsx_retro_compat"
         private const val KEYBOARD_PREFERENCES = "gpsx_retro_keyboard"
         private const val SECRET_PREFERENCES = "gpsx_retro_account"

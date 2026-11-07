@@ -19,7 +19,7 @@ class AppStateTest {
     @Test
     fun `top bar holds general items, environments hold console tabs`() {
         assertEquals(
-            listOf(Destination.HOME, Destination.CONTROLLERS, Destination.DIAGNOSTICS, Destination.SETTINGS, Destination.ABOUT),
+            listOf(Destination.HOME, Destination.SEARCH, Destination.CONTROLLERS, Destination.DIAGNOSTICS, Destination.SETTINGS, Destination.ABOUT),
             Destination.topLevel,
         )
         assertEquals(listOf(Destination.SESSION, Destination.CLOUD, Destination.PS5_SETTINGS), Destination.tabsOf(Environment.PS5))

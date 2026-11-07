@@ -2,6 +2,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fr">
     <string name="app_name">GPSx</string>
     <string name="nav_home">Accueil</string>
+    <string name="nav_search">Recherche</string>
     <string name="nav_session">Jouer</string>
     <string name="nav_cloud">Cloud PS Plus</string>
     <string name="nav_ps5_settings">Réglages</string>

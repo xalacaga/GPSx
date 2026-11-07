@@ -88,6 +88,7 @@ class RetroSession(context: Context) : AutoCloseable {
             try {
                 val coreFile = installer.ensure(core) { detail -> update { copy(detail = detail) } }
                 copyBios(game, library)
+                copyMegaCdBios(game, library)
                 val gameFile = if (game.staysOnShare) openRemote(game, library) else prepareGame(game, library)
                 update { copy(detail = "Démarrage de l’émulateur…") }
                 val opened = open(coreFile, gameFile, game, library)
@@ -124,7 +125,7 @@ class RetroSession(context: Context) : AutoCloseable {
         library.markPending(game)
         val opened =
             RetroNative.nativeOpen(
-                coreFile.absolutePath, gameFile.path, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, game.system.coreOptions, game.system.keepsZip,
+                coreFile.absolutePath, gameFile.path, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, game.coreOptions, game.system.keepsZip,
                 remote?.names ?: emptyArray(), remote?.fds ?: IntArray(0),
             )
         if (opened == 0L) {
@@ -206,7 +207,7 @@ class RetroSession(context: Context) : AutoCloseable {
         update { copy(detail = "Ouverture du jeu sur le NAS…") }
         val opened = RemoteGame(appContext).also { remote = it }
         val discs = game.disks.ifEmpty { listOf(game.path) }
-        discs.forEach { disc ->
+        (discs + listOfNotNull(game.cdSheet.takeIf(List<String>::isNotEmpty))).forEach { disc ->
             opened.add(disc.last(), library.openRandom(disc))
             if (disc.last().endsWith(".cue", ignoreCase = true)) {
                 val sheet = library.openGame(disc).use { it.bufferedReader().readText() }
@@ -266,6 +267,26 @@ class RetroSession(context: Context) : AutoCloseable {
             runCatching { library.openGame(source + file.name).use { input -> target.outputStream().use { input.copyTo(it) } } }
                 .onFailure { target.delete() }
         }
+    }
+
+    /**
+     * Copies the owner's Mega CD BIOS files for an MSU-MD game, once, under the names the core asks
+     * for. Without one the core silently drops the CD, so a missing BIOS stops the launch here.
+     */
+    private fun copyMegaCdBios(game: RetroGame, library: RetroLibrary) {
+        if (game.cdSheet.isEmpty()) return
+        systemDir.mkdirs()
+        MegaCdBios.folders(game.path.take(1) + "bios").forEach { folder ->
+            val missing = MegaCdBios.FILES.filterNot { File(systemDir, it).isFile }
+            if (missing.isEmpty()) return
+            val listed = runCatching { library.listShare(folder) }.getOrDefault(emptyList())
+            MegaCdBios.pick(listed, missing).forEach { (shareName, name) ->
+                val target = File(systemDir, name)
+                runCatching { library.openGame(folder + shareName).use { input -> target.outputStream().use { input.copyTo(it) } } }
+                    .onFailure { target.delete() }
+            }
+        }
+        if (MegaCdBios.FILES.any { !File(systemDir, it).isFile }) throw IOException("BIOS Mega CD introuvable sur le NAS (megadrive/bios)")
     }
 
     /**

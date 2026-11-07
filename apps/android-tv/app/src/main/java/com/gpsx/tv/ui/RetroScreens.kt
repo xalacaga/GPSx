@@ -57,6 +57,7 @@ import com.gpsx.tv.retro.RetroControls
 import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
 import com.gpsx.tv.retro.RetroPhase
+import com.gpsx.tv.retro.RetroSearch
 import com.gpsx.tv.retro.RetroSession
 import com.gpsx.tv.retro.RetroSessionSnapshot
 import com.gpsx.tv.retro.RetroStorage
@@ -188,40 +189,117 @@ internal fun RetroGamesScreen(
                     hideIncompatible = !hideIncompatible
                 }
             }
-            val requesters = remember(shelf) { mutableMapOf<RetroGame, FocusRequester>() }
             // Focus lands on the game just closed, or on the first game when the list opens.
-            LaunchedEffect(lastSelected) {
-                (lastSelected ?: shown.firstOrNull())?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } }
+            RetroGameGrid(
+                shown,
+                visibleCount,
+                library,
+                retro,
+                columns,
+                focusKey = lastSelected,
+                focusTarget = lastSelected ?: shown.firstOrNull(),
+                showSystem = false,
+                onMore = { visibleCount += RETRO_PAGE_SIZE },
+            ) {
+                lastSelected = it
+                selected = it
             }
-            shown.take(visibleCount).chunked(columns).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { item ->
-                        val requester = requesters.getOrPut(item) { FocusRequester() }
-                        RetroGameCard(
-                            item,
-                            library,
-                            retro.compatibility[RetroLibrary.compatKey(item)],
-                            keyboard = RetroLibrary.compatKey(item) in retro.keyboardGames,
-                            Modifier.weight(1f).focusRequester(requester),
-                        ) {
-                            lastSelected = item
-                            selected = item
-                        }
-                    }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-            if (shown.size > visibleCount) {
-                FocusButton("Afficher plus (${shown.size - visibleCount} restants)") { visibleCount += RETRO_PAGE_SIZE }
-            } else if (shown.isEmpty()) {
-                Text("Aucun jeu reconnu dans ce dossier.", color = Muted, fontSize = 12.sp)
-            }
+            if (shown.isEmpty()) Text("Aucun jeu reconnu dans ce dossier.", color = Muted, fontSize = 12.sp)
         }
     }
 }
 
+/** Finds a game by name on every console of the share; Back closes the game sheet first. */
 @Composable
-private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String?, keyboard: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun RetroSearchScreen(library: RetroLibrary, retro: RetroSnapshot, onPlay: (RetroGame) -> Unit) {
+    val columns = if (LocalResponsiveLayout.current.compact) 2 else 3
+    var query by remember { mutableStateOf("") }
+    var selected by remember { mutableStateOf<RetroGame?>(null) }
+    var lastSelected by remember { mutableStateOf<RetroGame?>(null) }
+    var visibleCount by remember { mutableStateOf(RETRO_PAGE_SIZE) }
+    val index = remember(retro.shelves) { RetroSearch.index(retro.shelves) }
+    val matches = remember(index, query) { RetroSearch.search(index, query) }
+    BackHandler(enabled = selected != null) { selected = null }
+
+    val game = selected
+    val summary =
+        when {
+            index.isEmpty() -> retro.detail.ifEmpty { "Aucun jeu lu sur le NAS." }
+            query.isBlank() -> "${index.size} jeux sur ${retro.shelves.size} consoles"
+            else -> "${matches.size} sur ${index.size} jeux"
+        }
+    ScreenFrame("", "Tous les jeux rétro", summary) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (game != null) {
+                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames) { onPlay(game) }
+                return@Column
+            }
+            GameSearchBar(query, "retro-search") {
+                query = it
+                visibleCount = RETRO_PAGE_SIZE
+                lastSelected = null
+            }
+            // Results never take the focus by themselves: that would close the keyboard at each key.
+            RetroGameGrid(
+                matches,
+                visibleCount,
+                library,
+                retro,
+                columns,
+                focusKey = lastSelected,
+                focusTarget = lastSelected,
+                showSystem = true,
+                onMore = { visibleCount += RETRO_PAGE_SIZE },
+            ) {
+                lastSelected = it
+                selected = it
+            }
+            if (query.isNotBlank() && matches.isEmpty()) Text("Aucun jeu ne correspond.", color = Muted, fontSize = 12.sp)
+        }
+    }
+}
+
+/** Game cards in rows, [visibleCount] at most; [focusTarget] takes the focus when [focusKey] changes or the grid returns. */
+@Composable
+private fun RetroGameGrid(
+    games: List<RetroGame>,
+    visibleCount: Int,
+    library: RetroLibrary,
+    retro: RetroSnapshot,
+    columns: Int,
+    focusKey: RetroGame?,
+    focusTarget: RetroGame?,
+    showSystem: Boolean,
+    onMore: () -> Unit,
+    onOpen: (RetroGame) -> Unit,
+) {
+    val requesters = remember { mutableMapOf<RetroGame, FocusRequester>() }
+    LaunchedEffect(focusKey) {
+        focusTarget?.let { requesters[it]?.let { r -> runCatching { r.requestFocus() } } }
+    }
+    games.take(visibleCount).chunked(columns).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            row.forEach { item ->
+                val requester = requesters.getOrPut(item) { FocusRequester() }
+                RetroGameCard(
+                    item,
+                    library,
+                    retro.compatibility[RetroLibrary.compatKey(item)],
+                    keyboard = RetroLibrary.compatKey(item) in retro.keyboardGames,
+                    showSystem = showSystem,
+                    modifier = Modifier.weight(1f).focusRequester(requester),
+                ) { onOpen(item) }
+            }
+            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+    if (games.size > visibleCount) {
+        FocusButton("Afficher plus (${games.size - visibleCount} restants)", onClick = onMore)
+    }
+}
+
+@Composable
+private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String?, keyboard: Boolean, showSystem: Boolean, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier.height(96.dp).clip(RoundedCornerShape(3.dp))
@@ -243,7 +321,8 @@ private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String
         Spacer(Modifier.width(12.dp))
         Column {
             Text(game.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(game.facts(), color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val facts = if (showSystem) listOf(game.system.label, game.facts()).distinct().joinToString(" · ") else game.facts()
+            Text(facts, color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 when {
                     compat == COMPAT_OK -> Text("✓ Compatible", color = Go, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -299,6 +378,8 @@ private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, keyboard: Boo
 @Composable
 private fun rememberRetroArt(library: RetroLibrary, game: RetroGame, width: Int): ImageBitmap? {
     val art by produceState(library.cachedArt(game, width)?.asImageBitmap(), game, width) {
+        // A card can change game under a search: it must not keep the previous game's picture.
+        value = library.cachedArt(game, width)?.asImageBitmap()
         if (value == null) {
             value = suspendCancellableCoroutine { continuation -> library.loadArt(game, width) { continuation.resume(it) } }?.asImageBitmap()
         }

@@ -337,6 +337,7 @@ fun GpsxApp(engine: RemotePlayEngine, retroSession: RetroSession) {
                                     onRetroSetup = { dispatch(UiAction.Navigate(Destination.SETTINGS)) },
                                 )
                             Destination.SESSION -> SessionScreen(state, remote, engine, ::dispatch)
+                            Destination.SEARCH -> RetroSearchScreen(retro, retroState, onPlay = { retroSession.play(it, retro) })
                             Destination.CLOUD -> CloudScreen(cloudState, cloud)
                             Destination.PS5_SETTINGS -> Ps5SettingsScreen(state, engine, ::dispatch)
                             Destination.RETRO_GAMES ->
@@ -1805,6 +1806,49 @@ private fun PsnSignInPanel(cloud: CloudPlayController) {
     }
 }
 
+/**
+ * Game name search: a button that opens a text field, then shows the query and a way to clear it.
+ * The field opens only on demand: a focused text field raises the TV keyboard, which swallows the
+ * D-pad, so merely moving through a screen must never land in it.
+ */
+@Composable
+internal fun GameSearchBar(query: String, testTag: String, onQueryChange: (String) -> Unit) {
+    var searching by remember { mutableStateOf(false) }
+    var searchHadFocus by remember { mutableStateOf(false) }
+    val searchButtonFocus = remember { FocusRequester() }
+    val searchFieldFocus = remember { FocusRequester() }
+    fun closeSearch() {
+        searching = false
+        searchHadFocus = false
+        runCatching { searchButtonFocus.requestFocus() }
+    }
+    BackHandler(enabled = searching, onBack = ::closeSearch)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+        FocusButton(
+            if (query.isBlank()) "Rechercher un jeu" else "Recherche : ${query.take(30)}",
+            modifier = Modifier.focusRequester(searchButtonFocus).testTag("$testTag-open"),
+        ) { searching = true }
+        if (query.isNotBlank() && !searching) {
+            FocusButton("Effacer") { onQueryChange("") }
+        }
+        if (searching) {
+            LaunchedEffect(Unit) { runCatching { searchFieldFocus.requestFocus() } }
+            LabeledInput(
+                "Nom du jeu",
+                query,
+                { onQueryChange(it.take(80)) },
+                Modifier.weight(1f).onFocusChanged {
+                    if (it.hasFocus) searchHadFocus = true else if (searchHadFocus) closeSearch()
+                },
+                focusRequester = searchFieldFocus,
+                previousFocusRequester = searchButtonFocus,
+                nextFocusRequester = searchButtonFocus,
+                testTag = testTag,
+            )
+        }
+    }
+}
+
 @Composable
 private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayController, columns: Int, onFocusGame: (CloudGame) -> Unit) {
     var query by remember { mutableStateOf("") }
@@ -1823,47 +1867,9 @@ private fun CloudCatalogPanel(cloudState: CloudSnapshot, cloud: CloudPlayControl
     if (cloudState.warning.isNotEmpty()) {
         Text(cloudState.warning, color = Amber, fontSize = 11.sp)
     }
-    // The search field opens only on demand: a focused text field raises the TV keyboard, which
-    // swallows the D-pad, so merely moving through this screen must never land in it.
-    var searching by remember { mutableStateOf(false) }
-    var searchHadFocus by remember { mutableStateOf(false) }
-    val searchButtonFocus = remember { FocusRequester() }
-    val searchFieldFocus = remember { FocusRequester() }
-    fun closeSearch() {
-        searching = false
-        searchHadFocus = false
-        runCatching { searchButtonFocus.requestFocus() }
-    }
-    BackHandler(enabled = searching, onBack = ::closeSearch)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
-        FocusButton(
-            if (query.isBlank()) "Rechercher un jeu" else "Recherche : ${query.take(30)}",
-            modifier = Modifier.focusRequester(searchButtonFocus).testTag("cloud-search-open"),
-        ) { searching = true }
-        if (query.isNotBlank() && !searching) {
-            FocusButton("Effacer") {
-                query = ""
-                visibleCount = CLOUD_PAGE_SIZE
-            }
-        }
-        if (searching) {
-            LaunchedEffect(Unit) { runCatching { searchFieldFocus.requestFocus() } }
-            LabeledInput(
-                "Nom du jeu",
-                query,
-                {
-                    query = it.take(80)
-                    visibleCount = CLOUD_PAGE_SIZE
-                },
-                Modifier.weight(1f).onFocusChanged {
-                    if (it.hasFocus) searchHadFocus = true else if (searchHadFocus) closeSearch()
-                },
-                focusRequester = searchFieldFocus,
-                previousFocusRequester = searchButtonFocus,
-                nextFocusRequester = searchButtonFocus,
-                testTag = "cloud-search",
-            )
-        }
+    GameSearchBar(query, "cloud-search") {
+        query = it
+        visibleCount = CLOUD_PAGE_SIZE
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         matches.take(visibleCount).chunked(columns).forEach { rowGames ->

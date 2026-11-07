@@ -11,6 +11,64 @@ import org.junit.Test
 
 class RetroLibraryTest {
     @Test
+    fun `a Mega Drive cartridge keeps the cue sheet beside it and stays on the share`() {
+        val share =
+            FakeShare(
+                mapOf(
+                    "" to listOf(RomFile("megadrive", directory = true), RomFile("snes", directory = true)),
+                    "megadrive" to listOf(RomFile("Sonic", directory = true), file("Plain.md")),
+                    "megadrive/Sonic" to listOf(file("Sonic.md"), file("SONIC.CUE"), file("Track 1.wav")),
+                    "snes" to listOf(file("Mario.sfc"), file("Mario.cue")),
+                ),
+            )
+        val shelves = ShareScanner.scan(share)
+        val (plain, msu) = shelves.first { it.system == RetroSystem.MEGADRIVE }.games.sortedBy { it.path.size }
+
+        assertEquals(listOf("megadrive", "Sonic", "SONIC.CUE"), msu.cdSheet)
+        assertTrue(msu.staysOnShare)
+        assertFalse("genesis_plus_gx_add_on" in msu.coreOptions)
+        assertTrue("genesis_plus_gx_region_detect=ntsc-u\n" in msu.coreOptions)
+        assertEquals(emptyList<String>(), plain.cdSheet)
+        assertFalse(plain.staysOnShare)
+        assertEquals("", plain.coreOptions)
+        assertEquals(emptyList<String>(), shelves.first { it.system == RetroSystem.SNES }.games.single().cdSheet)
+    }
+
+    @Test
+    fun `Mega CD BIOS files take the exact names the core asks for`() {
+        assertEquals(
+            mapOf("BIOS_CD_U.BIN" to "bios_CD_U.bin", "bios_cd_e.bin" to "bios_CD_E.bin"),
+            MegaCdBios.pick(listOf(file("BIOS_CD_U.BIN"), file("bios_cd_e.bin"), file("BIOS_CD_J.BIN"), file("other.bin")), listOf("bios_CD_E.bin", "bios_CD_U.bin")),
+        )
+        assertEquals(listOf("megadrive", "bios"), MegaCdBios.folders(listOf("megadrive", "bios")).first())
+    }
+
+    @Test
+    fun `a bin beside its cue sheet is a CD track, not a cartridge`() {
+        val share =
+            FakeShare(
+                mapOf(
+                    "" to listOf(RomFile("megadrive", directory = true)),
+                    "megadrive" to listOf(RomFile("Sonic", directory = true), RomFile("Lone Cartridge.bin", directory = false)),
+                    "megadrive/Sonic" to listOf(RomFile("Sonic.bin", directory = false), RomFile("Sonic.cue", directory = false), RomFile("Sonic.md", directory = false)),
+                ),
+            )
+
+        assertEquals(
+            listOf("Lone Cartridge.bin", "Sonic.md"),
+            ShareScanner.scan(share).single().games.map { it.path.last() }.sorted(),
+        )
+    }
+
+    @Test
+    fun `only unfinished loads count as crash marks`() {
+        assertEquals(
+            listOf("MEGADRIVE/md/Sonic.zip"),
+            RetroLibrary.crashMarks(mapOf("MEGADRIVE/md/Sonic.zip" to "pending", "SNES/s/Mario.zip" to COMPAT_OK, "ARCADE/a/x.zip" to "ko:rom manquante")),
+        )
+    }
+
+    @Test
     fun `folders map to systems with the longest prefix`() {
         assertEquals(RetroSystem.SNES, RetroSystem.fromFolder("SNES SFC French Best Set"))
         assertEquals(RetroSystem.NEOGEO, RetroSystem.fromFolder("neogeo"))
