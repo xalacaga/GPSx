@@ -190,6 +190,9 @@ class RetroLibrary(
     /** Opens a file of the share; blocking, call it off the main thread. */
     fun openGame(path: List<String>): java.io.InputStream = source.open(path)
 
+    /** Opens a file of the share for random reads; blocking, call it off the main thread. */
+    fun openRandom(path: List<String>): RandomRead = source.openRandom(path)
+
     /** The cover of [game] scaled to about [width] pixels if already in memory. */
     fun cachedArt(game: RetroGame, width: Int): Bitmap? = artKey(game, width)?.let(artCache::get)
 

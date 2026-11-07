@@ -16,6 +16,8 @@ constexpr unsigned kExperimental = 0x10000;
 
 // Environment commands answered by the host.
 constexpr unsigned kEnvGetCanDupe = 3;
+constexpr unsigned kEnvSetDiskControlInterface = 13;
+constexpr unsigned kEnvGetVfsInterface = 45 | kExperimental;
 constexpr unsigned kEnvShutdown = 7;
 constexpr unsigned kEnvGetSystemDirectory = 9;
 constexpr unsigned kEnvSetPixelFormat = 10;
@@ -110,6 +112,55 @@ using AudioSampleFn = void (*)(int16_t left, int16_t right);
 using AudioSampleBatchFn = size_t (*)(const int16_t* data, size_t frames);
 using InputPollFn = void (*)();
 using InputStateFn = int16_t (*)(unsigned port, unsigned device, unsigned index, unsigned id);
+
+// Disc changing, offered by cores whose games have several discs.
+struct DiskControl {
+    bool (*set_eject_state)(bool ejected);
+    bool (*get_eject_state)();
+    unsigned (*get_image_index)();
+    bool (*set_image_index)(unsigned index);
+    unsigned (*get_num_images)();
+    bool (*replace_image_index)(unsigned index, const void* info);
+    bool (*add_image_index)();
+};
+
+constexpr unsigned kVfsRead = 1;
+constexpr unsigned kVfsWrite = 2;
+constexpr unsigned kVfsUpdateExisting = 4;
+constexpr int kVfsStatValid = 1;
+constexpr int kVfsStatDirectory = 2;
+constexpr uint32_t kVfsVersion = 3;
+
+struct VfsFile;
+struct VfsDir;
+
+// File access the host offers the core (interface version 3), in the order the core expects.
+struct VfsInterface {
+    const char* (*get_path)(VfsFile*);
+    VfsFile* (*open)(const char* path, unsigned mode, unsigned hints);
+    int (*close)(VfsFile*);
+    int64_t (*size)(VfsFile*);
+    int64_t (*tell)(VfsFile*);
+    int64_t (*seek)(VfsFile*, int64_t offset, int position);
+    int64_t (*read)(VfsFile*, void* target, uint64_t length);
+    int64_t (*write)(VfsFile*, const void* source, uint64_t length);
+    int (*flush)(VfsFile*);
+    int (*remove)(const char* path);
+    int (*rename)(const char* from, const char* to);
+    int64_t (*truncate)(VfsFile*, int64_t length);
+    int (*stat)(const char* path, int32_t* size);
+    int (*mkdir)(const char* path);
+    VfsDir* (*opendir)(const char* path, bool hidden);
+    bool (*readdir)(VfsDir*);
+    const char* (*dirent_get_name)(VfsDir*);
+    bool (*dirent_is_dir)(VfsDir*);
+    int (*closedir)(VfsDir*);
+};
+
+struct VfsInterfaceInfo {
+    uint32_t required_interface_version;
+    const VfsInterface* iface;
+};
 
 // Entry points every core exports, resolved with dlsym.
 struct CoreApi {

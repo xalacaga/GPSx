@@ -14,6 +14,8 @@ internal object RetroNative {
      * Loads [corePath] and the game; returns a handle, or 0 with [nativeLastError] set. [options] holds
      * "key=value" lines answered to the core's option queries; other options keep their defaults.
      * With [strict], an error the core logs while loading (a missing ROM) fails the load.
+     * [remoteNames] and [remoteFds] are the files of a game that stays on the share, which the core
+     * reads under [RemoteGame.ROOT]; they stay open until [nativeClose] returns.
      */
     external fun nativeOpen(
         corePath: String,
@@ -23,6 +25,8 @@ internal object RetroNative {
         sramPath: String,
         options: String,
         strict: Boolean,
+        remoteNames: Array<String>,
+        remoteFds: IntArray,
     ): Long
 
     external fun nativeLastError(): String
@@ -37,6 +41,12 @@ internal object RetroNative {
 
     /** Player [port] state: RetroPad button bits and sticks in -32768..32767. */
     external fun nativeSetInput(handle: Long, port: Int, buttons: Int, leftX: Int, leftY: Int, rightX: Int, rightY: Int)
+
+    /** Asks for the next disc of the game; the core thread changes it before its next frame. */
+    external fun nativeNextDisk(handle: Long)
+
+    /** [current disc from 0, number of discs]; 0 discs when the core offers no disc changing. */
+    external fun nativeDisks(handle: Long): IntArray
 
     /** [frames run, frames shown, audio underruns, dropped audio frames, core asked to shut down]. */
     external fun nativeStats(handle: Long): LongArray

@@ -22,6 +22,11 @@ class RetroPlayTest {
     }
 
     @Test
+    fun `the two chords differ and keep start and select for the game`() {
+        assertEquals(Ps5ButtonMask.L1 or Ps5ButtonMask.R1 or Ps5ButtonMask.CREATE, RetroPadMapper.DISK_CHORD)
+    }
+
+    @Test
     fun `left stick past half way acts as the d-pad`() {
         assertEquals(0, RetroPadMapper.stickAsDpad(10_000, -10_000))
         assertEquals(Ps5ButtonMask.DPAD_RIGHT or Ps5ButtonMask.DPAD_UP, RetroPadMapper.stickAsDpad(30_000, -30_000))

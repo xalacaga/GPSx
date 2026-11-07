@@ -48,6 +48,19 @@ object RetroControls {
                     PadInput.SQUARE to "A", PadInput.CROSS to "B", PadInput.CIRCLE to "C", PadInput.OPTIONS to "Start",
                     PadInput.DPAD to "Croix",
                 )
+            RetroSystem.MASTERSYSTEM ->
+                listOf(PadInput.CROSS to "Bouton 1", PadInput.CIRCLE to "Bouton 2", PadInput.OPTIONS to "Pause", PadInput.DPAD to "Croix")
+            RetroSystem.PCENGINE ->
+                listOf(
+                    PadInput.CIRCLE to "I", PadInput.CROSS to "II", PadInput.CREATE to "Select", PadInput.OPTIONS to "Run",
+                    PadInput.DPAD to "Croix",
+                )
+            RetroSystem.PLAYSTATION ->
+                listOf(
+                    PadInput.CROSS to "Croix", PadInput.CIRCLE to "Rond", PadInput.SQUARE to "Carré", PadInput.TRIANGLE to "Triangle",
+                    PadInput.L1 to "L1", PadInput.R1 to "R1", PadInput.L2 to "L2", PadInput.R2 to "R2",
+                    PadInput.CREATE to "Select", PadInput.OPTIONS to "Start", PadInput.DPAD to "Croix directionnelle",
+                )
             RetroSystem.NES, RetroSystem.GB, RetroSystem.GBC ->
                 listOf(
                     PadInput.CROSS to "B", PadInput.CIRCLE to "A", PadInput.CREATE to "Select", PadInput.OPTIONS to "Start",
@@ -76,6 +89,9 @@ object RetroControls {
      */
     fun keyboardLikely(game: RetroGame): Boolean =
         game.system == RetroSystem.AMIGA && game.genre.lowercase().let { genre -> KEYBOARD_GENRES.any { it in genre } }
+
+    /** Shown for systems whose games can have several discs. */
+    const val DISK_HINT = "L1 + R1 + Create maintenus 1 s : disque suivant"
 
     /** Shown under every layout: leaving a game works the same as in Remote Play. */
     const val QUIT_HINT = "L1 + R1 + Options maintenus 1 s, ou Retour sur la télécommande : quitter le jeu"

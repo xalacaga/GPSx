@@ -167,6 +167,33 @@ Retro tab (Compose)
 | Neo Geo | FB Alpha 2012 Neo Geo | non-commercial | idem; matches the older romsets Recalbox shipped |
 | Arcade | FinalBurn Neo | non-commercial | idem |
 | Amiga | PUAE | GPL-2.0 | idem; Kickstart files copied from the share's `amiga/bios` folder |
+| Mega Drive, Master System | Genesis Plus GX | non-commercial | idem |
+| NES | FCEUmm | GPL-2.0 | idem |
+| Game Boy, Game Boy Color | Gambatte | GPL-2.0 | idem |
+| Game Boy Advance | mGBA | MPL-2.0 | idem; needs no BIOS file |
+| PC Engine | Beetle PCE Fast | GPL-2.0 | idem; CD games need the owner's syscard in `pcengine/bios` |
+| PlayStation | PCSX ReARMed | GPL-2.0 | idem; BIOS from `psx/bios` when present, else the core's replacement |
+
+The systems added on 2026-11-07 are NOT_TESTED: the owner's games are not on the share
+yet, so no game of these systems has run on the emulator or the GP520. Their folders
+(`megadrive`, `mastersystem`, `nes`, `gb`, `gbc`, `gba`, `pcengine`, `psx`) exist on the
+share and stay hidden in GPSx until they hold a game. A PlayStation or PC Engine `.cue`
+names its tracks, which are read with it.
+
+### CD games stay on the share
+
+Owner decision (2026-11-07): heavy games are read from the NAS and never copied to the
+TV. `.cue`, `.chd` and `.pbp` images open as `RemoteGame` files: Android's
+`openProxyFileDescriptor` (API 26) gives a system descriptor backed by SMB reads, and the
+native host offers it to the core through the libretro file interface under a folder
+that exists nowhere (`/gpsx-remote/`). Blocks never cross JNI. `ReadAheadFile` keeps 16
+blocks of 512 KiB in memory and fetches the next block ahead. A core that does not ask
+for the file interface gets an error instead of a silent copy; PCSX ReARMed and Beetle
+PCE Fast ask for it in their sources (FACT), which no run has confirmed yet. If the NAS
+stops answering, the game stalls or fails: there is no local copy to fall back on.
+
+Discs of one game ("(Disc 2)" tags) are one entry and load through a playlist; L1 + R1 +
+Create held 1 s puts the next disc in. Saves take the game's title.
 
 The core installer downloads
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`

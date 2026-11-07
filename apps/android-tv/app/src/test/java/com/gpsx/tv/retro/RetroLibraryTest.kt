@@ -19,6 +19,10 @@ class RetroLibraryTest {
         assertEquals(RetroSystem.GB, RetroSystem.fromFolder("gb"))
         assertEquals(RetroSystem.GBA, RetroSystem.fromFolder("GBA"))
         assertEquals(RetroSystem.MEGADRIVE, RetroSystem.fromFolder("Mega Drive"))
+        assertEquals(RetroSystem.MASTERSYSTEM, RetroSystem.fromFolder("Master System"))
+        assertEquals(RetroSystem.PCENGINE, RetroSystem.fromFolder("pcengine"))
+        assertEquals(RetroSystem.PLAYSTATION, RetroSystem.fromFolder("psx"))
+        assertEquals(RetroSystem.NES, RetroSystem.fromFolder("nes"))
         assertNull(RetroSystem.fromFolder("Documents"))
         assertNull(RetroSystem.fromFolder("###"))
     }
@@ -32,6 +36,66 @@ class RetroLibraryTest {
         assertTrue(RetroSystem.NEOGEO.accepts("mslug.zip"))
         assertFalse(RetroSystem.ARCADE.accepts("eggsplc.chd"))
         assertFalse(RetroSystem.SNES.accepts(".zip"))
+    }
+
+    @Test
+    fun `the systems the owner chose have a core`() {
+        val systems = listOf(RetroSystem.NES, RetroSystem.MEGADRIVE, RetroSystem.MASTERSYSTEM, RetroSystem.GB, RetroSystem.GBC, RetroSystem.GBA, RetroSystem.PCENGINE, RetroSystem.PLAYSTATION)
+        assertTrue(systems.all { it.playable })
+        assertEquals("genesis_plus_gx", RetroSystem.MASTERSYSTEM.core)
+        assertEquals("bios", RetroSystem.PLAYSTATION.biosFolder)
+    }
+
+    @Test
+    fun `playstation lists the cue and not its tracks`() {
+        assertTrue(RetroSystem.PLAYSTATION.accepts("Wipeout (Europe).cue"))
+        assertTrue(RetroSystem.PLAYSTATION.accepts("Wipeout (Europe).chd"))
+        assertFalse(RetroSystem.PLAYSTATION.accepts("Wipeout (Europe) (Track 1).bin"))
+    }
+
+    @Test
+    fun `discs of one game become one set in disc order`() {
+        val sets =
+            DiscSets.group(
+                listOf(
+                    listOf("Final Fantasy VII (France) (Disc 2).cue"),
+                    listOf("Final Fantasy VII (France) (Disc 1).cue"),
+                    listOf("Final Fantasy VII (France) (Disc 3).chd"),
+                    listOf("Final Fantasy VII (France) (Disc 3).cue"),
+                    listOf("Wipeout (Europe).cue"),
+                    listOf("RPG", "Other (Disc 1).cue"),
+                ),
+            )
+        assertEquals(3, sets.size)
+        assertEquals(3, sets.first { it.size > 1 }.size)
+        assertEquals("Final Fantasy VII (France) (Disc 1).cue", sets.first { it.size > 1 }.first().last())
+        assertEquals("Final Fantasy VII (France) (Disc 3).chd", sets.first { it.size > 1 }.last().last())
+    }
+
+    @Test
+    fun `only cd images stay on the share`() {
+        assertTrue(RetroGame(RetroSystem.PLAYSTATION, listOf("psx", "Wipeout.cue"), "Wipeout").staysOnShare)
+        assertTrue(RetroGame(RetroSystem.PCENGINE, listOf("pcengine", "Game.CHD"), "Game").staysOnShare)
+        assertFalse(RetroGame(RetroSystem.PCENGINE, listOf("pcengine", "Game.pce"), "Game").staysOnShare)
+        assertFalse(RetroGame(RetroSystem.SNES, listOf("snes", "Game.zip"), "Game").staysOnShare)
+    }
+
+    @Test
+    fun `cue sheets name their tracks once and never leave the folder`() {
+        val cue =
+            listOf(
+                """FILE "Game (Track 1).bin" BINARY""",
+                "  TRACK 01 MODE2/2352",
+                "    INDEX 01 00:00:00",
+                """FILE "Game (Track 2).bin" BINARY""",
+                "file track3.bin binary",
+                """FILE "Game (Track 1).bin" BINARY""",
+                """FILE "..\..\secret.bin" BINARY""",
+                """FILE "../other/track4.bin" BINARY""",
+                """FILE ".." BINARY""",
+            ).joinToString("\r\n")
+        assertEquals(listOf("Game (Track 1).bin", "Game (Track 2).bin", "track3.bin", "secret.bin", "track4.bin"), CueSheet.files(cue))
+        assertEquals(emptyList<String>(), CueSheet.files("REM nothing here"))
     }
 
     @Test
@@ -148,7 +212,7 @@ class RetroLibraryTest {
     @Test
     fun `an unreadable folder gives an empty shelf, not a failed scan`() {
         val share = FakeShare(mapOf("" to listOf(dir("snes"))))
-        assertEquals(emptyList<RetroGame>(), ShareScanner.scan(share).single().games)
+        assertEquals(emptyList<RetroShelf>(), ShareScanner.scan(share))
     }
 
     private fun dir(name: String) = RomFile(name, directory = true)

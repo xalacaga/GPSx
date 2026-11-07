@@ -16,6 +16,9 @@ interface RomSource {
     fun list(path: List<String>): List<RomFile>
 
     fun open(path: List<String>): InputStream
+
+    /** The file for random reads, for games that stay on the share. */
+    fun openRandom(path: List<String>): RandomRead = throw UnsupportedOperationException()
 }
 
 data class RetroGame(
@@ -34,7 +37,29 @@ data class RetroGame(
     val coverUrl: String = "",
     /** All disks of a multi-disk game, in order (the first is [path]); empty for a single file. */
     val disks: List<List<String>> = emptyList(),
-)
+) {
+    /** CD images are heavy: they are read from the share and never copied to the TV. */
+    val staysOnShare: Boolean get() = path.last().substringAfterLast('.', "").lowercase(Locale.ROOT) in DISC_IMAGES
+
+    private companion object {
+        val DISC_IMAGES = setOf("cue", "chd", "pbp")
+    }
+}
+
+/**
+ * Discs of one game: files named alike but for a "(Disc 2)" tag, in disc order, the first disc
+ * first. A disc number seen twice (a .cue beside a .chd) keeps the first file.
+ */
+object DiscSets {
+    private val DISC_TAG = Regex("""\s*\((?:Disc|Disk|CD)\s*(\d+)(?:\s*of\s*\d+)?\)""", RegexOption.IGNORE_CASE)
+
+    fun group(files: List<List<String>>): List<List<List<String>>> =
+        files.groupBy { path -> (path.dropLast(1) + DISC_TAG.replace(path.last().substringBeforeLast('.'), "")).joinToString("/").lowercase(Locale.ROOT) }
+            .values
+            .map { discs -> discs.distinctBy(::discNumber).sortedBy(::discNumber) }
+
+    private fun discNumber(path: List<String>): Int = DISC_TAG.find(path.last())?.groupValues?.get(1)?.toIntOrNull() ?: 1
+}
 
 /** The games of one system folder on the share. */
 data class RetroShelf(val system: RetroSystem, val folder: String, val games: List<RetroGame>)
@@ -43,7 +68,8 @@ data class RetroShelf(val system: RetroSystem, val folder: String, val games: Li
  * Builds the shelves of an EmulationStation-style share: each top folder whose name maps to a
  * [RetroSystem] becomes a shelf, with games read from its files and from one level of subfolders
  * (Recalbox genre folders such as "# Combat #"). Media folders and BIOS sets are skipped; folders
- * holding only CHD disks (MAME) give no game. `gamelist.xml` supplies names and details when present.
+ * holding only CHD disks (MAME) give no game, and a folder without games gives no shelf, so folders
+ * prepared ahead of the owner's games stay hidden. `gamelist.xml` supplies names and details when present.
  */
 object ShareScanner {
     private val MEDIA_FOLDERS =
@@ -56,6 +82,7 @@ object ShareScanner {
                 val system = RetroSystem.fromFolder(folder.name) ?: return@mapNotNull null
                 RetroShelf(system, folder.name, scanFolder(source, system, folder.name))
             }
+            .filter { it.games.isNotEmpty() }
             .sortedWith(compareBy<RetroShelf> { it.system.ordinal }.thenBy { it.folder.lowercase(Locale.ROOT) })
 
     private fun scanFolder(source: RomSource, system: RetroSystem, folder: String): List<RetroGame> {
@@ -93,8 +120,12 @@ object ShareScanner {
                 )
             }
         }
-        return files
-            .map { (relative, folderGenre) ->
+        val sets = if (system.hasDiscs) DiscSets.group(files.map { it.first }) else files.map { listOf(it.first) }
+        val genres = files.toMap()
+        return sets
+            .map { discs ->
+                val relative = discs.first()
+                val folderGenre = genres[relative].orEmpty()
                 val info = described[relative.joinToString("/").lowercase(Locale.ROOT)]
                 val parsed = RomNames.parse(relative.last())
                 RetroGame(
@@ -108,6 +139,7 @@ object ShareScanner {
                     description = info?.description.orEmpty(),
                     image = info?.image?.takeIf(String::isNotBlank)?.let { root + it.split('/') }.orEmpty(),
                     coverUrl = Thumbnails.boxArtUrl(system, relative.last()),
+                    disks = if (discs.size > 1) discs.map { root + it } else emptyList(),
                 )
             }
             .sortedBy { it.title.lowercase(Locale.ROOT) }

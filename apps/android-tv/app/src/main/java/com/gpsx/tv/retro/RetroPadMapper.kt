@@ -71,11 +71,13 @@ data class RetroPlayerInput(val port: Int, val buttons: Int, val leftX: Int, val
  * Android pad events → one RetroPad per physical controller. Each controller gets the next free
  * player port (P1, P2…) the first time it sends a button, up to [ports]. The left stick also drives
  * the D-pad, since most retro games read only the D-pad. Holding L1 + R1 + Options for
- * [QUIT_CHORD_HOLD_MILLIS] on any pad calls [onQuitChord], as in Remote Play.
+ * [QUIT_CHORD_HOLD_MILLIS] on any pad calls [onQuitChord], as in Remote Play; L1 + R1 + Create the
+ * same way calls [onDiskChord].
  */
 class RetroPadMapper(
     private val sink: (RetroPlayerInput) -> Unit,
     private val onQuitChord: () -> Unit,
+    private val onDiskChord: () -> Unit = {},
     private val ports: Int = 4,
 ) {
     private class Pad(val port: Int) {
@@ -93,13 +95,17 @@ class RetroPadMapper(
     private val main = Handler(Looper.getMainLooper())
     private var chordHeld = false
     private val quitIfStillHeld = Runnable { if (chordHeld) { chordHeld = false; onQuitChord() } }
+    private var diskChordHeld = false
+    private val diskIfStillHeld = Runnable { if (diskChordHeld) { diskChordHeld = false; onDiskChord() } }
 
     val playerCount: Int get() = pads.size
 
     fun reset() {
         pads.clear()
         chordHeld = false
+        diskChordHeld = false
         main.removeCallbacks(quitIfStillHeld)
+        main.removeCallbacks(diskIfStillHeld)
     }
 
     fun key(event: KeyEvent): Boolean {
@@ -173,8 +179,21 @@ class RetroPadMapper(
             main.removeCallbacks(quitIfStillHeld)
         }
         chordHeld = anyChord
+        val anyDiskChord = pads.values.any { it.buttons and DISK_CHORD == DISK_CHORD }
+        if (anyDiskChord && !diskChordHeld) {
+            main.removeCallbacks(diskIfStillHeld)
+            main.postDelayed(diskIfStillHeld, QUIT_CHORD_HOLD_MILLIS)
+        } else if (!anyDiskChord) {
+            main.removeCallbacks(diskIfStillHeld)
+        }
+        diskChordHeld = anyDiskChord
         // While the chord is complete its buttons are released towards the game.
-        val buttons = if (ps and QUIT_CHORD == QUIT_CHORD) ps and QUIT_CHORD.inv() else ps
+        val buttons =
+            when {
+                ps and QUIT_CHORD == QUIT_CHORD -> ps and QUIT_CHORD.inv()
+                ps and DISK_CHORD == DISK_CHORD -> ps and DISK_CHORD.inv()
+                else -> ps
+            }
         sink(RetroPlayerInput(pad.port, RetroPad.fromPs5(buttons, pad.l2, pad.r2), pad.leftX, pad.leftY, pad.rightX, pad.rightY))
     }
 
@@ -186,6 +205,7 @@ class RetroPadMapper(
 
     companion object {
         private const val SONY_VENDOR_ID = 0x054c
+        internal const val DISK_CHORD = Ps5ButtonMask.L1 or Ps5ButtonMask.R1 or Ps5ButtonMask.CREATE
         private const val TRIGGER_THRESHOLD = 0.5f
         private const val STICK_DPAD_THRESHOLD = Short.MAX_VALUE / 2
 

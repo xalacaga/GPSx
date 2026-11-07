@@ -450,6 +450,7 @@ internal fun RetroControlsPanel(system: RetroSystem, modifier: Modifier = Modifi
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+        if (system.hasDiscs) Text(RetroControls.DISK_HINT, color = Muted, fontSize = 10.sp)
         Text(RetroControls.QUIT_HINT, color = Muted, fontSize = 10.sp)
     }
 }

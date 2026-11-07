@@ -4,6 +4,7 @@ package com.gpsx.tv.retro
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -33,7 +34,8 @@ private class GameRefused(message: String) : IOException(message)
 
 /**
  * One retro game at a time: installs the system's core if needed, copies the game from the share
- * into the app cache (unzipped for console cores), then runs it in the native host. States:
+ * into the app cache (unzipped for console cores) or, for CD images, leaves it on the share and
+ * opens it as a [RemoteGame], then runs it in the native host. States:
  * IDLE → PREPARING → PLAYING → IDLE, or FAILED with a reason (left with [stop] or a new [play]).
  * Pad input goes through [padMapper], one player port per controller.
  */
@@ -47,11 +49,12 @@ class RetroSession(context: Context) : AutoCloseable {
     private val worker = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gpsx-retro-session").apply { isDaemon = true } }
     private val lock = Any()
     private var handle = 0L
+    private var remote: RemoteGame? = null
     private var surface: Surface? = null
     private var listener: ((RetroSessionSnapshot) -> Unit)? = null
     private var snapshot = RetroSessionSnapshot()
 
-    val padMapper = RetroPadMapper(sink = ::submit, onQuitChord = ::stop)
+    val padMapper = RetroPadMapper(sink = ::submit, onQuitChord = ::stop, onDiskChord = ::nextDisk)
 
     init {
         worker.execute(storage::removeLegacyCopies)
@@ -84,8 +87,8 @@ class RetroSession(context: Context) : AutoCloseable {
         worker.execute {
             try {
                 val coreFile = installer.ensure(core) { detail -> update { copy(detail = detail) } }
-                val gameFile = prepareGame(game, library)
                 copyBios(game, library)
+                val gameFile = if (game.staysOnShare) openRemote(game, library) else prepareGame(game, library)
                 update { copy(detail = "Démarrage de l’émulateur…") }
                 val opened = open(coreFile, gameFile, game, library)
                 val geometry = RetroNative.nativeGeometry(opened)
@@ -121,7 +124,8 @@ class RetroSession(context: Context) : AutoCloseable {
         library.markPending(game)
         val opened =
             RetroNative.nativeOpen(
-                coreFile.absolutePath, gameFile.absolutePath, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, game.system.coreOptions, game.system.keepsZip,
+                coreFile.absolutePath, gameFile.path, systemDir.absolutePath, saves.absolutePath, sram.absolutePath, game.system.coreOptions, game.system.keepsZip,
+                remote?.names ?: emptyArray(), remote?.fds ?: IntArray(0),
             )
         if (opened == 0L) {
             val reason = RetroNative.nativeLastError().ifEmpty { "chargement impossible" }
@@ -153,6 +157,19 @@ class RetroSession(context: Context) : AutoCloseable {
         worker.shutdown()
     }
 
+    /** The next disc of the running game, shown briefly over the picture. */
+    private fun nextDisk() {
+        synchronized(lock) { if (handle != 0L) RetroNative.nativeNextDisk(handle) }
+        main.postDelayed(::showDisk, DISK_NOTICE_DELAY_MILLIS)
+    }
+
+    private fun showDisk() {
+        val disks = synchronized(lock) { if (handle != 0L) RetroNative.nativeDisks(handle) else null } ?: return
+        if (disks[1] < 2) return
+        update { copy(detail = "Disque ${disks[0] + 1} / ${disks[1]}") }
+        main.postDelayed({ update { if (phase == RetroPhase.PLAYING) copy(detail = "") else this } }, DISK_NOTICE_MILLIS)
+    }
+
     private fun submit(input: RetroPlayerInput) {
         synchronized(lock) {
             if (handle != 0L) RetroNative.nativeSetInput(handle, input.port, input.buttons, input.leftX, input.leftY, input.rightX, input.rightY)
@@ -175,6 +192,33 @@ class RetroSession(context: Context) : AutoCloseable {
     private fun closeHandle() {
         val closing = synchronized(lock) { handle.also { handle = 0L } }
         if (closing != 0L) RetroNative.nativeClose(closing)
+        remote?.close()
+        remote = null
+    }
+
+    /**
+     * Opens a CD game where it is, with the tracks its .cue sheets name. A game of several discs
+     * loads through a playlist, named after the game because its saves take that name. The file
+     * returned exists only for the core, under [RemoteGame.ROOT].
+     */
+    private fun openRemote(game: RetroGame, library: RetroLibrary): File {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) throw IOException("lecture depuis le NAS impossible avant Android 8")
+        update { copy(detail = "Ouverture du jeu sur le NAS…") }
+        val opened = RemoteGame(appContext).also { remote = it }
+        val discs = game.disks.ifEmpty { listOf(game.path) }
+        discs.forEach { disc ->
+            opened.add(disc.last(), library.openRandom(disc))
+            if (disc.last().endsWith(".cue", ignoreCase = true)) {
+                val sheet = library.openGame(disc).use { it.bufferedReader().readText() }
+                CueSheet.files(sheet).forEach { track -> opened.add(track, library.openRandom(disc.dropLast(1) + track)) }
+            }
+        }
+        if (discs.size == 1) return File(RemoteGame.ROOT, discs.single().last())
+        val name = game.title.filter { it.isLetterOrDigit() || it == ' ' }.ifBlank { "game" } + ".m3u"
+        val playlist = File(appContext.cacheDir, "retro-discs.m3u")
+        playlist.writeText(discs.joinToString("\n", postfix = "\n") { it.last() })
+        opened.addLocal(name, playlist)
+        return File(RemoteGame.ROOT, name)
     }
 
     /**
@@ -227,12 +271,18 @@ class RetroSession(context: Context) : AutoCloseable {
     /**
      * Copies the game into [gamesDir]. Console games are unzipped (the core gets the ROM itself);
      * arcade sets stay zipped, with the system's BIOS sets copied next to them when the share has
-     * them in the game's folder or the system folder.
+     * them in the game's folder or the system folder. A .cue brings the tracks it names.
      */
     private fun copyGame(game: RetroGame, library: RetroLibrary, gamesDir: File): File {
         val name = game.path.last()
         val copied = File(gamesDir, name)
         library.openGame(game.path).use { input -> copied.outputStream().use { input.copyTo(it) } }
+        if (name.endsWith(".cue", ignoreCase = true)) {
+            CueSheet.files(copied.readText()).forEach { track ->
+                library.openGame(game.path.dropLast(1) + track).use { input -> File(gamesDir, track).outputStream().use { input.copyTo(it) } }
+            }
+            return copied
+        }
         if (game.system.keepsZip) {
             val folders = listOf(game.path.dropLast(1), game.path.take(1)).distinct()
             game.system.biosSets.forEach { bios ->
@@ -283,5 +333,7 @@ class RetroSession(context: Context) : AutoCloseable {
     private companion object {
         const val TAG = "GPSxRetro"
         const val MAX_ROM_BYTES = 64L * 1024 * 1024
+        const val DISK_NOTICE_DELAY_MILLIS = 300L
+        const val DISK_NOTICE_MILLIS = 3_000L
     }
 }

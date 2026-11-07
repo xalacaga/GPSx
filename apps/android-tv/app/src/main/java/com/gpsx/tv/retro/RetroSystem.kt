@@ -23,11 +23,17 @@ enum class RetroSystem(
     val thumbnailSet: String? = null,
 ) {
     SNES("Super Nintendo", "snes9x2010", setOf("sfc", "smc", "fig", "swc", "zip"), listOf("snes", "sfc", "supernintendo", "superfamicom"), thumbnailSet = "Nintendo - Super Nintendo Entertainment System"),
-    NES("Nintendo NES", null, setOf("nes", "zip"), listOf("nes", "famicom", "nintendoentertainment"), thumbnailSet = "Nintendo - Nintendo Entertainment System"),
-    MEGADRIVE("Mega Drive", null, setOf("md", "gen", "bin", "smd", "zip"), listOf("megadrive", "genesis", "md"), thumbnailSet = "Sega - Mega Drive - Genesis"),
-    GBA("Game Boy Advance", null, setOf("gba", "zip"), listOf("gba", "gameboyadvance"), thumbnailSet = "Nintendo - Game Boy Advance"),
-    GBC("Game Boy Color", null, setOf("gbc", "zip"), listOf("gbc", "gameboycolor"), thumbnailSet = "Nintendo - Game Boy Color"),
-    GB("Game Boy", null, setOf("gb", "zip"), listOf("gb", "gameboy"), thumbnailSet = "Nintendo - Game Boy"),
+    NES("Nintendo NES", "fceumm", setOf("nes", "zip"), listOf("nes", "famicom", "nintendoentertainment"), thumbnailSet = "Nintendo - Nintendo Entertainment System"),
+    MEGADRIVE("Mega Drive", "genesis_plus_gx", setOf("md", "gen", "bin", "smd", "zip"), listOf("megadrive", "genesis", "md"), thumbnailSet = "Sega - Mega Drive - Genesis"),
+    MASTERSYSTEM("Master System", "genesis_plus_gx", setOf("sms", "zip"), listOf("mastersystem", "sms"), thumbnailSet = "Sega - Master System - Mark III"),
+    GBA("Game Boy Advance", "mgba", setOf("gba", "zip"), listOf("gba", "gameboyadvance"), thumbnailSet = "Nintendo - Game Boy Advance"),
+    GBC("Game Boy Color", "gambatte", setOf("gbc", "zip"), listOf("gbc", "gameboycolor"), thumbnailSet = "Nintendo - Game Boy Color"),
+    GB("Game Boy", "gambatte", setOf("gb", "zip"), listOf("gb", "gameboy"), thumbnailSet = "Nintendo - Game Boy"),
+    // CD games need the owner's syscard BIOS in the folder's bios subfolder; HuCards need nothing.
+    PCENGINE("PC Engine", "mednafen_pce_fast", setOf("pce", "cue", "chd", "zip"), listOf("pcengine", "pce", "turbografx", "tg16"), thumbnailSet = "NEC - PC Engine - TurboGrafx 16"),
+    // A .cue names its tracks, which stay hidden from the list and are copied with it. PCSX ReARMed
+    // uses the owner's BIOS from the folder's bios subfolder, else its own replacement.
+    PLAYSTATION("PlayStation", "pcsx_rearmed", setOf("cue", "chd", "pbp"), listOf("playstation", "psx", "ps1"), thumbnailSet = "Sony - PlayStation"),
     // FB Alpha 2012 Neo Geo reads the older romsets Recalbox shipped; FinalBurn Neo requires
     // sp-s3.sp1 in neogeo.zip, which those sets lack (FACT, owner's share, 2026-11-01).
     NEOGEO("Neo Geo", "fbalpha2012_neogeo", setOf("zip"), listOf("neogeo"), keepsZip = true, biosSets = setOf("neogeo")),
@@ -68,9 +74,12 @@ enum class RetroSystem(
             }
 
     /** Folder of the system on the share holding its BIOS files, copied to the core's system folder. */
-    val biosFolder: String? get() = if (this == AMIGA) "bios" else null
+    val biosFolder: String? get() = if (this == AMIGA || this == PCENGINE || this == PLAYSTATION) "bios" else null
 
     val playable: Boolean get() = core != null
+
+    /** Systems whose games can come on several discs. */
+    val hasDiscs: Boolean get() = this == PCENGINE || this == PLAYSTATION
 
 
     /** True when [fileName] has one of this system's extensions and is not a BIOS set. */

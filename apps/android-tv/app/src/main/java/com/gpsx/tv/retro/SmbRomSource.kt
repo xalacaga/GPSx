@@ -11,6 +11,7 @@ import jcifs.context.BaseContext
 import jcifs.smb.NtlmPasswordAuthenticator
 import jcifs.smb.SmbAuthException
 import jcifs.smb.SmbFile
+import jcifs.smb.SmbRandomAccessFile
 
 /** NAS account; [toString] never shows the password. */
 class SmbCredentials(val user: String, val password: String) {
@@ -58,6 +59,34 @@ class SmbRomSource(private val shareUrl: String, private val credentials: SmbCre
                     override fun close() {
                         try {
                             super.close()
+                        } finally {
+                            file.close()
+                        }
+                    }
+                }
+            } catch (failure: Exception) {
+                file.close()
+                throw failure
+            }
+        }
+
+    override fun openRandom(path: List<String>): RandomRead =
+        withContext { cifs ->
+            val file = resolve(cifs, path, directory = false)
+            try {
+                val total = file.length()
+                val random = SmbRandomAccessFile(file, "r")
+                object : RandomRead {
+                    override val size: Long = total
+
+                    override fun read(position: Long, target: ByteArray, offset: Int, length: Int): Int {
+                        random.seek(position)
+                        return random.read(target, offset, length)
+                    }
+
+                    override fun close() {
+                        try {
+                            random.close()
                         } finally {
                             file.close()
                         }

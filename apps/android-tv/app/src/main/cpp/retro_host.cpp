@@ -9,8 +9,12 @@
 #include <android/native_window_jni.h>
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
+#include <dirent.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <jni.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -169,6 +173,14 @@ struct Host {
     // First error the core logged while loading the game (arcade cores report missing ROMs this way).
     bool loading = false;
     std::string load_error;
+    // Files of a game that stays on the share: lowercase name under kRemoteRoot → descriptor, owned
+    // by Kotlin until the host is closed.
+    std::map<std::string, int> remote_files;
+    bool vfs_granted = false;
+    DiskControl disk{};
+    std::atomic<bool> disk_swap{false};
+    std::atomic<int> disk_index{0};
+    std::atomic<int> disk_count{0};
 
     std::mutex window_mutex;
     ANativeWindow* window = nullptr;
@@ -232,12 +244,168 @@ void log_core(LogLevel level, const char* format, ...) {
     va_end(args);
 }
 
+// ---- Files offered to the core ----
+
+constexpr char kRemoteRoot[] = "/gpsx-remote/";
+
+}  // namespace
+
+// Declared by the interface; one open file, read at its own position so handles never interfere.
+namespace gpsx::retro {
+struct VfsFile {
+    std::string path;
+    int fd = -1;
+    bool remote = false;
+    int64_t position = 0;
+};
+
+struct VfsDir {
+    DIR* dir = nullptr;
+    dirent* entry = nullptr;
+};
+}  // namespace gpsx::retro
+
+namespace {
+
+int remote_descriptor(const char* path) {
+    Host* host = g_host;
+    const size_t root = sizeof(kRemoteRoot) - 1;
+    if (host == nullptr || path == nullptr || strncmp(path, kRemoteRoot, root) != 0) return -1;
+    std::string name(path + root);
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+    const auto found = host->remote_files.find(name);
+    return found == host->remote_files.end() ? -1 : found->second;
+}
+
+bool is_remote(const char* path) { return path != nullptr && strncmp(path, kRemoteRoot, sizeof(kRemoteRoot) - 1) == 0; }
+
+const char* vfs_get_path(VfsFile* file) { return file->path.c_str(); }
+
+VfsFile* vfs_open(const char* path, unsigned mode, unsigned) {
+    if (path == nullptr) return nullptr;
+    auto* file = new VfsFile();
+    file->path = path;
+    if (is_remote(path)) {
+        file->remote = true;
+        file->fd = (mode & kVfsWrite) != 0 ? -1 : remote_descriptor(path);
+    } else {
+        const bool reads = (mode & kVfsRead) != 0;
+        const bool writes = (mode & kVfsWrite) != 0;
+        int flags = writes ? (reads ? O_RDWR : O_WRONLY) | O_CREAT : O_RDONLY;
+        if (writes && (mode & kVfsUpdateExisting) == 0) flags |= O_TRUNC;
+        file->fd = open(path, flags | O_CLOEXEC, 0644);
+    }
+    if (file->fd < 0) {
+        delete file;
+        return nullptr;
+    }
+    return file;
+}
+
+int vfs_close(VfsFile* file) {
+    const int result = file->remote ? 0 : close(file->fd);
+    delete file;
+    return result;
+}
+
+int64_t vfs_size(VfsFile* file) {
+    struct stat info {};
+    return fstat(file->fd, &info) == 0 ? static_cast<int64_t>(info.st_size) : -1;
+}
+
+int64_t vfs_tell(VfsFile* file) { return file->position; }
+
+int64_t vfs_seek(VfsFile* file, int64_t offset, int position) {
+    int64_t base = 0;
+    if (position == SEEK_CUR) base = file->position;
+    if (position == SEEK_END) base = vfs_size(file);
+    if (base < 0 || base + offset < 0) return -1;
+    file->position = base + offset;
+    return file->position;
+}
+
+int64_t vfs_read(VfsFile* file, void* target, uint64_t length) {
+    const ssize_t count = pread64(file->fd, target, static_cast<size_t>(length), file->position);
+    if (count > 0) file->position += count;
+    return count;
+}
+
+int64_t vfs_write(VfsFile* file, const void* source, uint64_t length) {
+    if (file->remote) return -1;
+    const ssize_t count = pwrite64(file->fd, source, static_cast<size_t>(length), file->position);
+    if (count > 0) file->position += count;
+    return count;
+}
+
+int vfs_flush(VfsFile* file) { return file->remote ? 0 : fsync(file->fd); }
+
+int vfs_remove(const char* path) { return is_remote(path) ? -1 : remove(path); }
+
+int vfs_rename(const char* from, const char* to) { return is_remote(from) || is_remote(to) ? -1 : rename(from, to); }
+
+int64_t vfs_truncate(VfsFile* file, int64_t length) { return file->remote ? -1 : ftruncate64(file->fd, length); }
+
+int vfs_stat(const char* path, int32_t* size) {
+    struct stat info {};
+    const int remote = remote_descriptor(path);
+    const int result = remote >= 0 ? fstat(remote, &info) : is_remote(path) ? -1 : stat(path, &info);
+    if (result != 0) return 0;
+    if (size != nullptr) *size = static_cast<int32_t>(info.st_size);
+    return kVfsStatValid | (S_ISDIR(info.st_mode) ? kVfsStatDirectory : 0);
+}
+
+int vfs_mkdir(const char* path) {
+    if (is_remote(path)) return -1;
+    if (mkdir(path, 0755) == 0) return 0;
+    return errno == EEXIST ? -2 : -1;
+}
+
+VfsDir* vfs_opendir(const char* path, bool) {
+    if (is_remote(path)) return nullptr;
+    DIR* dir = opendir(path);
+    if (dir == nullptr) return nullptr;
+    auto* result = new VfsDir();
+    result->dir = dir;
+    return result;
+}
+
+bool vfs_readdir(VfsDir* dir) {
+    dir->entry = readdir(dir->dir);
+    return dir->entry != nullptr;
+}
+
+const char* vfs_dirent_name(VfsDir* dir) { return dir->entry != nullptr ? dir->entry->d_name : nullptr; }
+
+bool vfs_dirent_is_dir(VfsDir* dir) { return dir->entry != nullptr && dir->entry->d_type == DT_DIR; }
+
+int vfs_closedir(VfsDir* dir) {
+    const int result = closedir(dir->dir);
+    delete dir;
+    return result;
+}
+
+constexpr VfsInterface kVfs = {
+    vfs_get_path, vfs_open,   vfs_close,  vfs_size,    vfs_tell,    vfs_seek,        vfs_read,          vfs_write,   vfs_flush, vfs_remove,
+    vfs_rename,   vfs_truncate, vfs_stat, vfs_mkdir,   vfs_opendir, vfs_readdir,     vfs_dirent_name,   vfs_dirent_is_dir, vfs_closedir,
+};
+
 bool environment(unsigned command, void* data) {
     Host* host = g_host;
     if (host == nullptr) return false;
     switch (command) {
         case kEnvGetCanDupe:
             *static_cast<bool*>(data) = true;
+            return true;
+        case kEnvGetVfsInterface: {
+            auto* info = static_cast<VfsInterfaceInfo*>(data);
+            if (info->required_interface_version > kVfsVersion) return false;
+            info->required_interface_version = kVfsVersion;
+            info->iface = &kVfs;
+            host->vfs_granted = true;
+            return true;
+        }
+        case kEnvSetDiskControlInterface:
+            host->disk = *static_cast<const DiskControl*>(data);
             return true;
         case kEnvShutdown:
             host->shutdown_requested.store(true);
@@ -550,6 +718,20 @@ void unload(Host* host) {
     if (host->library != nullptr) dlclose(host->library);
 }
 
+// Core thread: the next disc, as a console's lid opened and closed. Cores keep the lid open a moment
+// after the change, so games that ask for a disc see it.
+void swap_disk(Host* host) {
+    const DiskControl& disk = host->disk;
+    if (disk.get_num_images == nullptr) return;
+    const unsigned count = disk.get_num_images();
+    if (count < 2) return;
+    const unsigned next = (disk.get_image_index() + 1) % count;
+    disk.set_eject_state(true);
+    disk.set_image_index(next);
+    disk.set_eject_state(false);
+    host->disk_index.store(static_cast<int>(disk.get_image_index()));
+}
+
 // Core thread: runs a frame whenever the audio ring has room, else waits a millisecond. Without an
 // audio device it paces itself on the core's frame rate.
 void run_loop(Host* host) {
@@ -567,6 +749,7 @@ void run_loop(Host* host) {
             std::this_thread::sleep_until(next);
             next += frame_time;
         }
+        if (host->disk_swap.exchange(false)) swap_disk(host);
         sample_input(host);
         host->core.run();
         host->frames_run.fetch_add(1, std::memory_order_relaxed);
@@ -586,7 +769,8 @@ std::string string_from(JNIEnv* env, jstring value) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
-    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path, jstring options, jboolean strict) {
+    JNIEnv* env, jobject, jstring core_path, jstring game_path, jstring system_dir, jstring save_dir, jstring sram_path, jstring options, jboolean strict,
+    jobjectArray remote_names, jintArray remote_fds) {
     std::lock_guard lock(g_host_mutex);
     g_last_error.clear();
     if (g_host != nullptr) {
@@ -604,6 +788,18 @@ JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
         while (std::getline(lines, line)) {
             const size_t equals = line.find('=');
             if (equals != std::string::npos && equals > 0) host->options[line.substr(0, equals)] = line.substr(equals + 1);
+        }
+    }
+    const jsize remote_count = remote_names != nullptr ? env->GetArrayLength(remote_names) : 0;
+    if (remote_count > 0) {
+        std::vector<jint> fds(static_cast<size_t>(remote_count));
+        env->GetIntArrayRegion(remote_fds, 0, remote_count, fds.data());
+        for (jsize i = 0; i < remote_count; ++i) {
+            auto* item = static_cast<jstring>(env->GetObjectArrayElement(remote_names, i));
+            std::string name = string_from(env, item);
+            env->DeleteLocalRef(item);
+            std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+            host->remote_files[name] = fds[static_cast<size_t>(i)];
         }
     }
     const std::string core = string_from(env, core_path);
@@ -660,6 +856,15 @@ JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
         game.data = host->game_data.data();
         game.size = host->game_data.size();
     }
+    // A game that stays on the share can only be read through the host's file access.
+    if (!host->remote_files.empty() && !host->vfs_granted) {
+        g_last_error = "cet émulateur ne sait pas lire le jeu depuis le NAS";
+        api.deinit();
+        dlclose(lib);
+        g_host = nullptr;
+        delete host;
+        return 0;
+    }
     host->loading = true;
     const bool loaded = api.load_game(&game);
     host->loading = false;
@@ -681,6 +886,10 @@ JNIEXPORT jlong JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeOpen(
         g_host = nullptr;
         delete host;
         return 0;
+    }
+    if (host->disk.get_num_images != nullptr) {
+        host->disk_count.store(static_cast<int>(host->disk.get_num_images()));
+        host->disk_index.store(static_cast<int>(host->disk.get_image_index()));
     }
     api.get_system_av_info(&host->av);
     for (unsigned port = 0; port < kPorts; ++port) api.set_controller_port_device(port, kDeviceJoypad);
@@ -745,6 +954,20 @@ JNIEXPORT void JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeSetInput(
     host->latched[port].fetch_or(static_cast<uint32_t>(buttons), std::memory_order_relaxed);
     host->left_stick[port].store((left_x & 0xFFFF) | (left_y << 16), std::memory_order_relaxed);
     host->right_stick[port].store((right_x & 0xFFFF) | (right_y << 16), std::memory_order_relaxed);
+}
+
+// Asks the core thread for the next disc of the game.
+JNIEXPORT void JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeNextDisk(JNIEnv*, jobject, jlong handle) {
+    reinterpret_cast<Host*>(handle)->disk_swap.store(true);
+}
+
+// [current disc from 0, number of discs]
+JNIEXPORT jintArray JNICALL Java_com_gpsx_tv_retro_RetroNative_nativeDisks(JNIEnv* env, jobject, jlong handle) {
+    auto* host = reinterpret_cast<Host*>(handle);
+    const jint values[2] = {host->disk_index.load(), host->disk_count.load()};
+    jintArray result = env->NewIntArray(2);
+    if (result != nullptr) env->SetIntArrayRegion(result, 0, 2, values);
+    return result;
 }
 
 // [frames run, frames shown, audio underruns, dropped audio frames, core asked to shut down]

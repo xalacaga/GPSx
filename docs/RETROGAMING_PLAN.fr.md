@@ -182,6 +182,35 @@ Onglet Rétro (Compose)
 | Neo Geo | FB Alpha 2012 Neo Geo | non commerciale | idem ; correspond aux anciens romsets fournis par Recalbox |
 | Arcade | FinalBurn Neo | non commerciale | idem |
 | Amiga | PUAE | GPL-2.0 | idem ; Kickstart copiés depuis le dossier `amiga/bios` du partage |
+| Mega Drive, Master System | Genesis Plus GX | non commerciale | idem |
+| NES | FCEUmm | GPL-2.0 | idem |
+| Game Boy, Game Boy Color | Gambatte | GPL-2.0 | idem |
+| Game Boy Advance | mGBA | MPL-2.0 | idem ; aucun fichier BIOS nécessaire |
+| PC Engine | Beetle PCE Fast | GPL-2.0 | idem ; les jeux CD demandent la syscard du propriétaire dans `pcengine/bios` |
+| PlayStation | PCSX ReARMed | GPL-2.0 | idem ; BIOS de `psx/bios` s'il existe, sinon le remplacement du core |
+
+Les systèmes ajoutés le 2026-11-07 sont NOT_TESTED : les jeux du propriétaire ne sont pas
+encore sur le partage, donc aucun jeu de ces systèmes n'a tourné sur l'émulateur ni sur le
+GP520. Leurs dossiers (`megadrive`, `mastersystem`, `nes`, `gb`, `gbc`, `gba`, `pcengine`,
+`psx`) existent sur le partage et restent masqués dans GPSx tant qu'ils ne contiennent pas
+de jeu. Un `.cue` PlayStation ou PC Engine nomme ses pistes, qui sont lues avec lui.
+
+### Les jeux CD restent sur le partage
+
+Décision du propriétaire (2026-11-07) : les jeux lourds sont lus depuis le NAS et jamais
+copiés sur la TV. Les images `.cue`, `.chd` et `.pbp` s'ouvrent comme fichiers `RemoteGame` :
+`openProxyFileDescriptor` d'Android (API 26) fournit un descripteur système alimenté par
+des lectures SMB, et l'hôte natif le présente au core par l'interface de fichiers libretro,
+dans un dossier qui n'existe nulle part (`/gpsx-remote/`). Les blocs ne traversent jamais
+JNI. `ReadAheadFile` garde 16 blocs de 512 Kio en mémoire et lit le bloc suivant à l'avance.
+Un core qui ne demande pas l'interface de fichiers reçoit une erreur plutôt qu'une copie
+silencieuse ; PCSX ReARMed et Beetle PCE Fast la demandent dans leurs sources (FACT), ce
+qu'aucune exécution n'a encore confirmé. Si le NAS ne répond plus, le jeu se bloque ou
+échoue : il n'y a pas de copie locale de secours.
+
+Les disques d'un même jeu (étiquettes « (Disc 2) ») forment une seule entrée et se chargent
+par une playlist ; L1 + R1 + Create maintenus 1 s insèrent le disque suivant. Les sauvegardes
+prennent le titre du jeu.
 
 L'installateur télécharge
 `https://buildbot.libretro.com/nightly/android/latest/<abi>/<core>_libretro_android.so.zip`

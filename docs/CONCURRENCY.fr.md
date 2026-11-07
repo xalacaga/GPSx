@@ -25,6 +25,7 @@ remplacer par les mesures GP520.
 | Callback audio | lecture du ring PCM et correction de dérive |
 | Télémétrie | drainage des rings vers JSONL, faible priorité |
 | Core rétro (un jeu) | échantillonner les manettes, `retro_run`, copier vers `ANativeWindow`, rééchantillonner l'audio dans le ring PCM rétro ; dort 1 ms tant que le ring contient ≥ 2048 images |
+| Rétro distant (un jeu) | sert les lectures du core pour un jeu CD depuis le partage ; un second thread lit le bloc suivant à l'avance ; bloque sur les lectures SMB |
 
 Windows réutilise les threads du cœur avec ses propres threads média. Ses
 résultats ne prouvent rien pour Android.
@@ -49,6 +50,7 @@ l’échéance est vérifiée avant chaque réception, même sous un flot contin
 | Pool vidéo | N buffers fixes | pool vide = débordement vidéo |
 | Ring PCM | cible T=40 ms, max 2T, HYPOTHESIS | jeter le plus ancien ; silence et compteur en underrun |
 | Ring PCM rétro (core rétro → callback AAudio) | 4096 images stéréo à 48 kHz (~85 ms) ; le core ne tourne qu'en dessous de 2048 images | jeter les images entrantes et les compter ; sous-alimentation : silence compté ; les deux sont journalisés à la fermeture du jeu |
+| Cache de lecture rétro (thread d'anticipation ou distant → lectures du core, par fichier) | 16 blocs de 512 Kio (8 Mio) | le bloc le plus ancien est retiré ; une seule anticipation à la fois, une anticipation échouée est ignorée et la lecture qui a besoin du bloc signale l'erreur |
 | État manette rétro (Main → core rétro) | un masque tenu + un masque mémorisé par port (4 ports), sticks au plus récent | un appui est mémorisé jusqu'à l'échantillonnage avant l'image suivante : un appui plus court qu'une image n'est jamais perdu |
 | Télémétrie | ring fixe par thread | jeter le nouveau record et compter |
 | Événements Kotlin | petit lot fixe | ne pas perdre lifecycle/erreur ; métriques « latest wins » |
