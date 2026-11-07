@@ -2,6 +2,8 @@
 
 package com.gpsx.tv.diagnostics
 
+import java.io.InputStream
+import java.io.InterruptedIOException
 import java.net.HttpURLConnection
 import java.net.URL
 import org.junit.Assert.assertEquals
@@ -18,6 +20,16 @@ class LiveLogServerTest {
         assertNull(LiveLogServer.sanitizeLogLine("I/Chiaki: npsso=abc"))
         assertNull(LiveLogServer.sanitizeLogLine("I/Chiaki: handshake ok"))
         assertEquals("E/Chiaki: connect to x.x.x.x failed", LiveLogServer.sanitizeLogLine("E/Chiaki: connect to 203.0.113.9 failed"))
+    }
+
+    @Test
+    fun `a log ended by close does not throw out of the reading thread`() {
+        val ended =
+            object : InputStream() {
+                override fun read(): Int = throw InterruptedIOException("read interrupted")
+            }
+
+        LiveLogServer().read(ended)
     }
 
     private fun get(url: String): Pair<Int, String> {

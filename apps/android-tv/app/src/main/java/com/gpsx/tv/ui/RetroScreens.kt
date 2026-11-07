@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
 import com.gpsx.tv.retro.COMPAT_OK
+import com.gpsx.tv.retro.OWNER_REFUSED
 import com.gpsx.tv.retro.RetroControls
 import com.gpsx.tv.retro.RetroGame
 import com.gpsx.tv.retro.RetroLibrary
@@ -181,7 +182,7 @@ internal fun RetroGamesScreen(
     ScreenFrame("", "Jeux", summary) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
-                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames) { onPlay(game) }
+                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames, refused = retro.incompatible(game)) { onPlay(game) }
                 return@Column
             }
             if (incompatible > 0) {
@@ -231,7 +232,7 @@ internal fun RetroSearchScreen(library: RetroLibrary, retro: RetroSnapshot, onPl
     ScreenFrame("", "Tous les jeux rétro", summary) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (game != null) {
-                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames) { onPlay(game) }
+                RetroGameSheet(game, library, keyboard = RetroLibrary.compatKey(game) in retro.keyboardGames, refused = retro.incompatible(game)) { onPlay(game) }
                 return@Column
             }
             GameSearchBar(query, "retro-search") {
@@ -338,7 +339,7 @@ private fun RetroGameCard(game: RetroGame, library: RetroLibrary, compat: String
 }
 
 @Composable
-private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, keyboard: Boolean, onPlay: () -> Unit) {
+private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, keyboard: Boolean, refused: Boolean, onPlay: () -> Unit) {
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(game) { runCatching { playFocus.requestFocus() } }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -361,6 +362,10 @@ private fun RetroGameSheet(game: RetroGame, library: RetroLibrary, keyboard: Boo
                 // The owner marks keyboard games after trying them; nothing in TOSEC names tells.
                 FocusButton(if (keyboard) "⌨ Jeu au clavier : oui" else "⌨ Marquer : jeu au clavier", modifier = Modifier.testTag("retro-keyboard")) {
                     library.setKeyboardGame(game, !keyboard)
+                }
+                // Only playing tells whether a game works: the owner sets aside those that do not.
+                FocusButton(if (refused) "✓ Remettre dans la liste" else "✗ Ne marche pas", modifier = Modifier.testTag("retro-refuse")) {
+                    library.markCompat(game, if (refused) null else OWNER_REFUSED)
                 }
             }
             when {

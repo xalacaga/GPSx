@@ -11,6 +11,16 @@ import org.junit.Test
 
 class RetroLibraryTest {
     @Test
+    fun `Amiga options are one key and value per line`() {
+        val options = RetroSystem.AMIGA.coreOptions.trim().lines().associate { it.substringBefore('=') to it.substringAfter('=') }
+
+        assertEquals("auto-lores", options["puae_video_resolution"])
+        assertEquals("1", options["puae_gfx_framerate"])
+        assertEquals("400", options["puae_floppy_speed"])
+        assertEquals("enabled", options["puae_floppy_multidrive"])
+    }
+
+    @Test
     fun `a Mega Drive cartridge keeps the cue sheet beside it and stays on the share`() {
         val share =
             FakeShare(

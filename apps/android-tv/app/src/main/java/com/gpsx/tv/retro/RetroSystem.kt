@@ -56,6 +56,10 @@ enum class RetroSystem(
      * and the pad covers the keys and mouse most games need (owner request: play with the pad as
      * much as possible): Square Return, Triangle Space, L1/R1 F1/F2, L2/R2 mouse buttons (core
      * default), right stick mouse (the left one stays the joystick), Create virtual keyboard.
+     * FACT (GP520, 0.2.27): with the core's defaults Amiga games ran at 31 to 38 frames per second
+     * instead of 50, slow and full of audio underruns, so the rest trades detail for speed: low
+     * resolution unless a game needs more, every other frame drawn, plain sound mixing without the
+     * drive noise. Disks read four times faster, as loading was slower still at that speed.
      */
     val coreOptions: String
         get() =
@@ -69,6 +73,11 @@ enum class RetroSystem(
                         "puae_mapper_x=RETROK_SPACE",
                         "puae_mapper_l=RETROK_F1",
                         "puae_mapper_r=RETROK_F2",
+                        "puae_video_resolution=auto-lores",
+                        "puae_gfx_framerate=1",
+                        "puae_sound_interpol=none",
+                        "puae_floppy_sound=0",
+                        "puae_floppy_speed=400",
                     ).joinToString("\n", postfix = "\n")
                 else -> ""
             }

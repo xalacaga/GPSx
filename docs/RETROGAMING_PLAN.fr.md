@@ -208,6 +208,28 @@ GP520. Leurs dossiers (`megadrive`, `mastersystem`, `nes`, `gb`, `gbc`, `gba`, `
 `psx`) existent sur le partage et restent masqués dans GPSx tant qu'ils ne contiennent pas
 de jeu. Un `.cue` PlayStation ou PC Engine nomme ses pistes, qui sont lues avec lui.
 
+### Vitesse de l'Amiga sur le GP520
+
+FACT (GP520, 0.2.27, 07/11/2026) : avec les options par défaut du core, quatre parties
+PUAE ont atteint 31 à 38 images/s au lieu de 50, avec 112 à 4811 sous-alimentations
+audio. Le son et la vitesse ont une seule cause : l'horloge audio attend un core qui
+ne suit pas. La même soirée, la Mega Drive tournait à 58-59 images/s et la Neo Geo à
+58. GPSx demande maintenant une basse résolution sauf si le jeu en exige plus, une
+image sur deux affichée, pas d'interpolation du son, pas de bruit de lecteur, et une
+lecture des disquettes quatre fois plus rapide. NOT_TESTED sur le GP520 ; l'émulateur
+montre seulement que Speedball 2 démarre toujours. Brutal Football s'arrête sur un
+Guru Meditation sur l'émulateur, aux deux vitesses de disquette.
+
+Le propriétaire a choisi le 07/11/2026 de ne garder que les jeux Amiga 500. La lecture
+du partage écarte les versions AGA, CD32 et CDTV, celles pour A1200 ou A4000, celles
+qui demandent 2 Mo ou plus ou un disque dur, les disquettes Workbench seules et les
+titres connus uniquement en mauvais dump. Un jeu qui existe en AGA et en A500 garde
+cette dernière. Ce tri ne lit que les noms de fichiers : il ne dit pas si un jeu
+tourne vraiment, et les jeux ne sont jamais testés en masse. La fiche du jeu a donc
+un bouton **Ne marche pas**, qui le masque de la liste de sa console jusqu'à
+**Remettre dans la liste** ; la recherche l'affiche toujours. Les fichiers du partage
+ne sont pas touchés.
+
 ### Jeux Mega Drive avec musique CD
 
 Le dossier `megadrive` du propriétaire contient un dossier par jeu : un `.md` patché,

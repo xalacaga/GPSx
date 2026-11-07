@@ -46,8 +46,7 @@ class LiveLogServer(
         server = socket
         logcat = runCatching { ProcessBuilder(logcatCommand).redirectErrorStream(true).start() }.getOrNull()
         logcat?.let { process ->
-            Thread({ process.inputStream.bufferedReader().useLines { all -> all.forEach { if (!closed.get()) append(it) } } }, "gpsx-live-log-read")
-                .apply { isDaemon = true }.start()
+            Thread({ read(process.inputStream) }, "gpsx-live-log-read").apply { isDaemon = true }.start()
         }
         Thread({ serve(socket) }, "gpsx-live-log").apply { isDaemon = true }.start()
         return "$host:${socket.localPort}/$code"
@@ -57,6 +56,15 @@ class LiveLogServer(
         if (!closed.compareAndSet(false, true)) return
         runCatching { server?.close() }
         runCatching { logcat?.destroy() }
+    }
+
+    /** Stores the log until it ends; [close] ends it with an I/O error, which must not reach the app. */
+    internal fun read(log: InputStream) {
+        try {
+            log.bufferedReader().useLines { all -> all.forEach { if (!closed.get()) append(it) } }
+        } catch (_: IOException) {
+            return
+        }
     }
 
     /** Filters and stores one log line; visible for tests. */

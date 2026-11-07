@@ -1146,6 +1146,27 @@ index f2ea0e5..9baf79d 100644
  void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder, JNIEnv *env, jobject surface);
  bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
  
+diff --git a/lib/src/cloudsession_gaikai.c b/lib/src/cloudsession_gaikai.c
+--- a/lib/src/cloudsession_gaikai.c
++++ b/lib/src/cloudsession_gaikai.c
+@@ -572,7 +572,16 @@
+ 			continue;
+ 		}
+ 		net_errors = 0;
+-		if(resp.status_code != 200) { CHIAKI_LOGE(c->log, "[GAIKAI] step10 lock http %ld", resp.status_code); cc_http_response_fini(&resp); return CHIAKI_ERR_UNKNOWN; }
++		if(resp.status_code != 200)
++		{
++			// Error fields only: the whole body is never logged, as it may carry session data.
++			struct json_object *err = resp.data ? json_tokener_parse(resp.data) : NULL;
++			CHIAKI_LOGE(c->log, "[GAIKAI] step10 lock http %ld attempt %d error=%d reason=%.80s", resp.status_code, attempt,
++				err ? cc_json_int(err, "code") : 0, err ? cc_json_str(err, "error") : "");
++			if(err) json_object_put(err);
++			cc_http_response_fini(&resp);
++			return CHIAKI_ERR_UNKNOWN;
++		}
+ 		gk_update_session_key(c, &resp);
+ 		struct json_object *j = resp.data ? json_tokener_parse(resp.data) : NULL;
+ 		bool acquired = j && cc_json_bool(j, "lockAcquired");
 diff --git a/lib/src/ctrl.c b/lib/src/ctrl.c
 index 9e3625b..6b6d94d 100644
 --- a/lib/src/ctrl.c

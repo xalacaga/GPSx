@@ -37,6 +37,7 @@ data class RetroSnapshot(
 )
 
 const val COMPAT_OK = "ok"
+const val OWNER_REFUSED = "ko:écarté par le propriétaire"
 private const val COMPAT_PENDING = "pending"
 
 /** True when [game] is known not to load with its system's core on this TV. */

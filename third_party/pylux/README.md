@@ -26,6 +26,7 @@ OpenSSL exception (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
 - Cloud: a frame whose reference was lost is still decoded instead of being dropped
   (PS4 cloud servers never send a new IDR); the Takion receive thread runs at nice -10
   on Android.
+- `lib/src/cloudsession_gaikai.c`: logs the error fields of a refused session lock, never the whole response.
 
 Rebuild the stripped `RelWithDebInfo` libraries for all ABIs with
 `tools/powershell/build-pylux-native.ps1`. See `docs/PROVENANCE.md` and

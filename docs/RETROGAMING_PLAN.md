@@ -191,6 +191,26 @@ yet, so no game of these systems has run on the emulator or the GP520. Their fol
 share and stay hidden in GPSx until they hold a game. A PlayStation or PC Engine `.cue`
 names its tracks, which are read with it.
 
+### Amiga speed on the GP520
+
+FACT (GP520, 0.2.27, 2026-11-07): with the core's default options, four PUAE runs
+reached 31 to 38 frames per second instead of 50, with 112 to 4811 audio underruns.
+Sound and speed share one cause, as the audio clock waits for a core that cannot
+keep up. Mega Drive ran at 58 to 59 frames per second and Neo Geo at 58 in the same
+evening. GPSx now asks for low resolution unless a game needs more, one frame in
+two drawn, no sound interpolation, no drive noise, and disks read four times faster.
+NOT_TESTED on the GP520; the emulator only shows that Speedball 2 still starts.
+Brutal Football stops on a Guru Meditation on the emulator, at either disk speed.
+
+The owner chose on 2026-11-07 to keep only Amiga 500 games. A share scan leaves out
+AGA, CD32 and CDTV releases, those for an A1200 or A4000, those needing 2 MB or more
+or a hard disk, Workbench-only disks, and titles known only from bad dumps. A game
+with both an AGA and an A500 release keeps the latter. This reads file names only:
+it cannot tell whether a game really runs, and games are never tested in bulk. The
+game sheet has a **Ne marche pas** button for that, which hides the game from its
+console list until **Remettre dans la liste**; the search still shows it. Files on
+the share are not touched.
+
 ### Mega Drive games with CD music
 
 The owner's `megadrive` folder holds one folder per game: a patched `.md`, a `.cue`

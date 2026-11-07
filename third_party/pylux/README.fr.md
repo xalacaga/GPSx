@@ -30,6 +30,7 @@ l'exception OpenSSL (`LICENSE-AGPL-3.0-only-OpenSSL.txt`).
 - Cloud : une image dont la référence est perdue est quand même décodée au lieu
   d'être jetée (les serveurs PS4 cloud n'envoient jamais de nouvelle IDR) ; le fil de
   réception Takion tourne en nice -10 sous Android.
+- `lib/src/cloudsession_gaikai.c` : journalise les champs d'erreur d'un verrou de session refusé, jamais la réponse entière.
 
 Reconstruisez les bibliothèques `RelWithDebInfo` strippées pour toutes les ABI
 avec `tools/powershell/build-pylux-native.ps1`. Voir `docs/PROVENANCE.fr.md` et
